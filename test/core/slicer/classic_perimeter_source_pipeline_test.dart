@@ -285,4 +285,71 @@ void main() {
       true,
     );
   });
+
+  test('overhang settings generate all source series and distance boundaries', () {
+    final lowerSlices = [sourceRectangle(0, 0, 2000000, 2000000)];
+    final generated = SourceClassicPerimeterOverhangSettings2.fromLowerSlices(
+      overhangFlow: overhangFlow,
+      externalPerimeterFlow: externalFlow,
+      smallerExternalPerimeterFlow: smallerExternalFlow,
+      perimeterFlow: perimeterFlow,
+      lowerSlices: lowerSlices,
+      wallNozzleDiameter: 0.4,
+      layerId: 1,
+    );
+
+    expect(generated.externalLowerPolygonsSeries, hasLength(2));
+    expect(generated.smallerExternalLowerPolygonsSeries, hasLength(2));
+    expect(generated.perimeterLowerPolygonsSeries, hasLength(2));
+    expect(generated.externalOverhangDistBoundary, isNotNull);
+    expect(generated.smallerExternalOverhangDistBoundary, isNotNull);
+    expect(generated.perimeterOverhangDistBoundary, isNotNull);
+    expect(generated.externalOverhangDistBoundary!.first, 0);
+    expect(generated.perimeterOverhangDistBoundary!.first, 0);
+    expect(
+      generated.externalOverhangDistBoundary!.second,
+      isNot(generated.perimeterOverhangDistBoundary!.second),
+    );
+  });
+
+  test('pipeline builds overhang support directly from lower slices', () {
+    final result = generator.generate(
+      [ExPolygon2(contour: rectangle(0, 0, 20, 20))],
+      settings(wallLoops: 1),
+      layerIndex: 1,
+    );
+
+    final entities = SourceClassicPerimeterPipeline2
+        .buildExtrusionsFromLowerSlicesWithoutSpeedGrading(
+      result: result,
+      externalPerimeterFlow: externalFlow,
+      smallerExternalPerimeterFlow: smallerExternalFlow,
+      perimeterFlow: perimeterFlow,
+      overhangFlow: overhangFlow,
+      layerHeight: 0.2,
+      lowerSlices: [
+        sourceRectangle(1000000, -100000, 2100000, 2100000),
+      ],
+      wallNozzleDiameter: 0.4,
+      layerId: 1,
+    );
+
+    expect(entities, hasLength(1));
+    final loop = entities.single as ExtrusionLoop2;
+    expect(loop.isCounterClockwise, true);
+    expect(
+      loop.paths.any((path) => path.role == ExtrusionRole.externalPerimeter),
+      true,
+    );
+    expect(
+      loop.paths.any((path) => path.role == ExtrusionRole.overhangPerimeter),
+      true,
+    );
+    expect(
+      loop.paths
+          .where((path) => path.role == ExtrusionRole.overhangPerimeter)
+          .every((path) => path.mm3PerMm == overhangFlow.mm3PerMm),
+      true,
+    );
+  });
 }
