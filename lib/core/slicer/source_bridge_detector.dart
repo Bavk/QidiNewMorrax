@@ -29,7 +29,7 @@ class SourceBridgeDetector2 {
     required ExPolygon2 expolygon,
     required List<ExPolygon2> lowerSlices,
     required int spacingSource,
-    this.clipper = const ClipperGeometry(),
+    ClipperGeometry clipper = const ClipperGeometry(),
   }) : this.fromExPolygons(
           expolygons: [expolygon],
           lowerSlices: lowerSlices,
@@ -348,7 +348,7 @@ class SourceBridgeDetector2 {
     List<ExPolygon2> values,
     double rotation,
   ) {
-    SourcePoint2? first;
+    var hasPoint = false;
     var minX = 0;
     var minY = 0;
     var maxX = 0;
@@ -363,8 +363,8 @@ class SourceBridgeDetector2 {
         final source = _toSourcePoint(point);
         final x = _cppRound(c * source.x - s * source.y);
         final y = _cppRound(c * source.y + s * source.x);
-        if (first == null) {
-          first = source;
+        if (!hasPoint) {
+          hasPoint = true;
           minX = maxX = x;
           minY = maxY = y;
         } else {
@@ -375,7 +375,7 @@ class SourceBridgeDetector2 {
         }
       }
     }
-    if (first == null) return null;
+    if (!hasPoint) return null;
     return _SourceBounds2(minX, minY, maxX, maxY);
   }
 
