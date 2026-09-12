@@ -1,16 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qidi_flow_flutter/core/geometry/expolygon.dart';
 import 'package:qidi_flow_flutter/core/geometry/medial_axis_postprocess.dart';
-import 'package:qidi_flow_flutter/core/geometry/point.dart';
-import 'package:qidi_flow_flutter/core/geometry/polygon.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
 import 'package:qidi_flow_flutter/core/geometry/thick_polyline.dart';
 
-ExPolygon2 square10() => ExPolygon2(
-      contour: Polygon2(const [
-        Point2(0, 0),
-        Point2(10, 0),
-        Point2(10, 10),
-        Point2(0, 10),
+SourceExPolygon2 square10mm() => SourceExPolygon2(
+      contour: SourcePolygon2(const [
+        SourcePoint2(0, 0),
+        SourcePoint2(1000000, 0),
+        SourcePoint2(1000000, 1000000),
+        SourcePoint2(0, 1000000),
       ]),
     );
 
@@ -19,12 +18,15 @@ void main() {
 
   test('extends true medial-axis endpoints to ExPolygon contour', () {
     final result = post.process(
-      expolygon: square10(),
-      maxWidth: 5,
+      expolygon: square10mm(),
+      maxWidth: 500000,
       rawPolylines: [
         ThickPolyline2(
-          points: const [Point2(2, 5), Point2(8, 5)],
-          width: const [1, 1],
+          points: const [
+            SourcePoint2(200000, 500000),
+            SourcePoint2(800000, 500000),
+          ],
+          width: const [100000, 100000],
           startIsEndpoint: true,
           endIsEndpoint: true,
         ),
@@ -32,31 +34,32 @@ void main() {
     );
 
     expect(result, hasLength(1));
-    expect(result.single.firstPoint.x, closeTo(0, 1e-12));
-    expect(result.single.firstPoint.y, closeTo(5, 1e-12));
-    expect(result.single.lastPoint.x, closeTo(10, 1e-12));
-    expect(result.single.lastPoint.y, closeTo(5, 1e-12));
+    expect(result.single.firstPoint, const SourcePoint2(0, 500000));
+    expect(result.single.lastPoint, const SourcePoint2(1000000, 500000));
   });
 
   test('does not extend endpoint already on any ExPolygon boundary', () {
-    final expolygon = ExPolygon2(
-      contour: square10().contour,
+    final expolygon = SourceExPolygon2(
+      contour: square10mm().contour,
       holes: [
-        Polygon2(const [
-          Point2(4, 4),
-          Point2(4, 6),
-          Point2(6, 6),
-          Point2(6, 4),
+        SourcePolygon2(const [
+          SourcePoint2(400000, 400000),
+          SourcePoint2(400000, 600000),
+          SourcePoint2(600000, 600000),
+          SourcePoint2(600000, 400000),
         ]),
       ],
     );
     final result = post.process(
       expolygon: expolygon,
-      maxWidth: 10,
+      maxWidth: 1000000,
       rawPolylines: [
         ThickPolyline2(
-          points: const [Point2(4, 5), Point2(0, 5)],
-          width: const [1, 1],
+          points: const [
+            SourcePoint2(400000, 500000),
+            SourcePoint2(0, 500000),
+          ],
+          width: const [100000, 100000],
           startIsEndpoint: true,
           endIsEndpoint: true,
         ),
@@ -64,18 +67,20 @@ void main() {
     );
 
     expect(result, hasLength(1));
-    expect(result.single.firstPoint.x, 4);
-    expect(result.single.firstPoint.y, 5);
+    expect(result.single.firstPoint, const SourcePoint2(400000, 500000));
   });
 
   test('removes source-style short endpoint branches after extension attempt', () {
     final result = post.process(
-      expolygon: square10(),
-      maxWidth: 0.2,
+      expolygon: square10mm(),
+      maxWidth: 20000,
       rawPolylines: [
         ThickPolyline2(
-          points: const [Point2(4.5, 5), Point2(5.5, 5)],
-          width: const [1, 1],
+          points: const [
+            SourcePoint2(450000, 500000),
+            SourcePoint2(550000, 500000),
+          ],
+          width: const [100000, 100000],
           startIsEndpoint: true,
           endIsEndpoint: false,
         ),
@@ -86,28 +91,40 @@ void main() {
 
   test('after pruning, greedily reconnects source-compatible consecutive branches', () {
     final result = post.process(
-      expolygon: square10(),
-      maxWidth: 0.01,
+      expolygon: square10mm(),
+      maxWidth: 1000,
       rawPolylines: [
         ThickPolyline2(
-          points: const [Point2(1, 1), Point2(2, 1)],
-          width: const [0.1, 0.1],
+          points: const [
+            SourcePoint2(100000, 100000),
+            SourcePoint2(200000, 100000),
+          ],
+          width: const [10000, 10000],
         ),
         ThickPolyline2(
-          points: const [Point2(2, 1), Point2(3, 1)],
-          width: const [0.1, 0.1],
+          points: const [
+            SourcePoint2(200000, 100000),
+            SourcePoint2(300000, 100000),
+          ],
+          width: const [10000, 10000],
         ),
         // Forces the source `removed` path, then gets pruned.
         ThickPolyline2(
-          points: const [Point2(5, 5), Point2(5.05, 5)],
-          width: const [0.1, 0.1],
+          points: const [
+            SourcePoint2(500000, 500000),
+            SourcePoint2(505000, 500000),
+          ],
+          width: const [10000, 10000],
           startIsEndpoint: true,
         ),
       ],
     );
 
     expect(result, hasLength(1));
-    expect(result.single.points.map((p) => p.x).toList(), [1, 2, 3]);
-    expect(result.single.width, [0.1, 0.1, 0.1, 0.1]);
+    expect(
+      result.single.points.map((p) => p.x).toList(),
+      [100000, 200000, 300000],
+    );
+    expect(result.single.width, [10000, 10000, 10000, 10000]);
   });
 }
