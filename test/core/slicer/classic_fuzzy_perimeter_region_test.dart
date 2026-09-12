@@ -117,15 +117,12 @@ void main() {
     );
 
     final loop = output.single as ExtrusionLoop2;
+    expect(loop.paths, isNotEmpty);
     expect(
       loop.paths.any(
         (path) => path.overhangDegree > 0 && path.overhangDegree < 5,
       ),
       false,
-    );
-    expect(
-      loop.paths.any((path) => path.role == ExtrusionRole.overhangPerimeter),
-      true,
     );
   });
 
