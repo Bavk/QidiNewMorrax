@@ -1,4 +1,4 @@
-import 'point.dart';
+import 'source_geometry.dart';
 
 class ThickLine2 {
   const ThickLine2({
@@ -8,42 +8,44 @@ class ThickLine2 {
     required this.bWidth,
   });
 
-  final Point2 a;
-  final Point2 b;
+  final SourcePoint2 a;
+  final SourcePoint2 b;
   final double aWidth;
   final double bWidth;
 }
 
 /// Pure-Dart counterpart of `Slic3r::ThickPolyline` from `Polyline.hpp/.cpp`.
 ///
-/// Source invariant: for N points (N >= 2), `width.length == 2 * N - 2`.
-/// Each segment i stores its start/end width at indexes `2*i` and `2*i+1`.
+/// Points intentionally live in the original integer `coord_t` domain, not in
+/// millimeter doubles. Width values are `coordf_t` in the same scaled source
+/// coordinate units. Source invariant: for N points (N >= 2),
+/// `width.length == 2 * N - 2`.
 class ThickPolyline2 {
   ThickPolyline2({
-    Iterable<Point2> points = const [],
+    Iterable<SourcePoint2> points = const [],
     Iterable<double> width = const [],
     this.startIsEndpoint = false,
     this.endIsEndpoint = false,
-  })  : points = List<Point2>.of(points),
+  })  : points = List<SourcePoint2>.of(points),
         width = List<double>.of(width) {
     _assertInvariant(allowEmpty: true);
   }
 
-  final List<Point2> points;
+  final List<SourcePoint2> points;
   final List<double> width;
   bool startIsEndpoint;
   bool endIsEndpoint;
 
   bool get isEmpty => points.isEmpty;
   bool get isClosed =>
-      points.length >= 2 && _samePoint(points.first, points.last);
-  Point2 get firstPoint => points.first;
-  Point2 get lastPoint => points.last;
+      points.length >= 2 && points.first == points.last;
+  SourcePoint2 get firstPoint => points.first;
+  SourcePoint2 get lastPoint => points.last;
 
   double get length {
     var result = 0.0;
     for (var i = 0; i + 1 < points.length; i++) {
-      result += points[i].distanceTo(points[i + 1]);
+      result += (points[i + 1] - points[i]).length;
     }
     return result;
   }
@@ -90,7 +92,7 @@ class ThickPolyline2 {
     final uniqueCount = n - 1;
     final normalizedIdx = idx % uniqueCount;
 
-    final rebasedPoints = List<Point2>.filled(n, points.first);
+    final rebasedPoints = List<SourcePoint2>.filled(n, points.first);
     for (var j = 0; j < n - 1; j++) {
       rebasedPoints[j] = points[(normalizedIdx + j) % uniqueCount];
     }
@@ -146,7 +148,7 @@ class ThickPolyline2 {
       endIsEndpoint = other.endIsEndpoint;
       return;
     }
-    if (!_samePoint(lastPoint, other.firstPoint)) {
+    if (lastPoint != other.firstPoint) {
       throw ArgumentError(
         'ThickPolyline continuation must start at the current last point',
       );
@@ -175,6 +177,4 @@ class ThickPolyline2 {
       );
     }
   }
-
-  static bool _samePoint(Point2 a, Point2 b) => a.x == b.x && a.y == b.y;
 }
