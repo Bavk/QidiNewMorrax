@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'source_boost_circle_formation_pps.dart';
+import 'source_boost_circle_formation_pss.dart';
 import 'source_boost_extended_numeric.dart';
 import 'source_boost_robust_fpt.dart';
 import 'source_boost_voronoi_predicates.dart';
@@ -9,10 +10,10 @@ import 'source_boost_voronoi_structures.dart';
 /// Incremental port of Boost.Polygon 1.83
 /// `circle_formation_predicate` + `lazy/mp_circle_formation_functor`.
 ///
-/// PPP and PPS are represented with their lazy robust formulas and selective
-/// multiprecision fallback. PSS/SSS remain explicit unsupported branches until
-/// their exact source formulas are ported; Fortune construction must not
-/// approximate them.
+/// PPP, PPS and PSS are represented with their lazy robust formulas and
+/// selective multiprecision fallback. SSS remains an explicit unsupported
+/// branch until its exact source formulas are ported; Fortune construction must
+/// not approximate it.
 class BoostCircleFormation2 {
   const BoostCircleFormation2();
 
@@ -63,8 +64,20 @@ class BoostCircleFormation2 {
           circle,
         );
       } else {
-        throw UnsupportedError(
-          'Boost PSS circle formation is still being ported.',
+        if (!BoostVoronoiPredicates2.circleExistsPss(
+          site1,
+          site2,
+          site3,
+          1,
+        )) {
+          return false;
+        }
+        const BoostPssCircleFormation2().form(
+          site1,
+          site2,
+          site3,
+          1,
+          circle,
         );
       }
     } else if (!site2.isSegment) {
@@ -85,13 +98,37 @@ class BoostCircleFormation2 {
           circle,
         );
       } else {
-        throw UnsupportedError(
-          'Boost PSS circle formation is still being ported.',
+        if (!BoostVoronoiPredicates2.circleExistsPss(
+          site2,
+          site3,
+          site1,
+          2,
+        )) {
+          return false;
+        }
+        const BoostPssCircleFormation2().form(
+          site2,
+          site3,
+          site1,
+          2,
+          circle,
         );
       }
     } else if (!site3.isSegment) {
-      throw UnsupportedError(
-        'Boost PSS circle formation is still being ported.',
+      if (!BoostVoronoiPredicates2.circleExistsPss(
+        site3,
+        site1,
+        site2,
+        3,
+      )) {
+        return false;
+      }
+      const BoostPssCircleFormation2().form(
+        site3,
+        site1,
+        site2,
+        3,
+        circle,
       );
     } else {
       throw UnsupportedError(
