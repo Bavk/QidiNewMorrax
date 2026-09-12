@@ -1,3 +1,4 @@
+import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import 'source_fuzzy_skin_geometry.dart';
 import 'source_fuzzy_skin_policy.dart';
