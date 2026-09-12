@@ -94,8 +94,6 @@ class BoostCircleFormation2 {
           circle,
         );
       } else {
-        // Boost source: pss(site2, site1, site3, 2). The two segment sites
-        // must retain their original left/right order here.
         if (!BoostVoronoiPredicates2.circleExistsPss(
           site2,
           site1,
@@ -177,13 +175,12 @@ class BoostCircleFormation2 {
     final difY1 = site1.y.toDouble() - site2.y.toDouble();
     final difY2 = site2.y.toDouble() - site3.y.toDouble();
 
-    // Boost: robust_cross_product(dif_x1, dif_y1, dif_x2, dif_y2).
-    // Keeping the x/y pairs in this exact order is observable at int32
-    // extremes and determines whether a circle event exists later in sweep.
+    // Literal Boost 1.83 call order:
+    // robust_cross_product(dif_x1, dif_x2, dif_y1, dif_y2).
     final orientation = BoostVoronoiPredicates2.robustCrossProduct(
       site1.x - site2.x,
-      site1.y - site2.y,
       site2.x - site3.x,
+      site1.y - site2.y,
       site2.y - site3.y,
     );
     final invOrientation = BoostRobustFpt2(0.5 / orientation, 2);
