@@ -20,28 +20,30 @@ Pinned toolchain:
 
 ### Current normal parity run
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34681600348` (#185) executed on code commit `4a235117a905bf94fe7732031b1b3b8a7556867b` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34682700807` (#203) executed on code commit `b6809d50912e5135a3d4851177093934a715adf9` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+225: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+248: All tests passed!`**;
 - job conclusion — **success**.
 
-This checkpoint includes the represented classic loop tree, source shortest-path chaining, recursive traversal, wall-sequence adjustment, QIDI Clipper2 open-subject clipping, no-speed overhang splitting and the end-to-end overhang-aware classic source pipeline.
+This checkpoint includes the represented classic lower-support-series generation, source distance boundaries, continuous/intermediate overhang degree grading, speed/no-speed splitter branches, recursive traversal, and raw-lower-slices end-to-end speed-graded pipeline in addition to all earlier green geometry/slicer fixtures.
 
 ### Independently green intermediate source milestones
 
-Run `34681547786` (#183) completed successfully with **224/224** after integrating supported/unsupported overhang splitting into recursive classic traversal and freezing the Clipper2 duplicated-start seam behavior.
+- run `34682605150` (#201): speed-graded recursive traversal, including selected external/smaller/internal boundary handling;
+- run `34682507521` (#199): speed-grading splitter branch independently green;
+- run `34682411840` (#197): standalone `detect_overhang_degree()` helpers green after freezing source IEEE-754 terrace behavior;
+- run `34682165435` (#194): automatic overhang settings/pipeline from raw lower slices green;
+- run `34681985037` (#191): **231/231**, source lower-overhang-series generation and `dist_boundary()` green;
+- run `34681547786` (#183): **224/224**, no-speed overhang split integrated into recursive traversal and Clipper2 duplicated-start seam frozen;
+- run `34680042259` (#172): source classic wall-sequence helper and ordering quirks green;
+- run `34678782013` (#147): thin-wall MedialAxis output wired through `SourceVariableWidth2` using source external perimeter `Flow`;
+- run `34678922719` (#150): source integer-domain open-polyline offset and `polygons_covered_by_width()` dispatch green.
 
-Run `34680042259` (#172) completed successfully for the source classic wall-sequence helper and its ordering quirks.
+Earlier Boost/Voronoi and Clipper compatibility repairs were re-exercised by all later full-suite runs; no fixture was weakened or skipped.
 
-Run `34678782013` (#147) completed successfully after wiring classic thin-wall MedialAxis output through `SourceVariableWidth2` using the source external perimeter `Flow`.
-
-Run `34678922719` (#150) completed successfully after adding source integer-domain open-polyline offset and `ExtrusionEntity::polygons_covered_by_width()`-shaped dispatch. Its exact open-butt fixture checks a 1 mm path at width 0.4 mm plus 10 source units of epsilon.
-
-Earlier Boost/Voronoi and Clipper compatibility repairs were also re-exercised by all of these later green full-suite runs; no fixture was weakened or skipped.
-
-## What the 225-test suite currently proves
+## What the 248-test suite currently proves
 
 The passing suite contains source-derived, source-formula, or Boost/Clipper oracle coverage for the represented subsets of:
 
@@ -53,26 +55,21 @@ The passing suite contains source-derived, source-formula, or Boost/Clipper orac
 - Boost.Polygon 1.83 robust numeric helpers, site/circle predicates, PPP/PPS/PSS/SSS circle formation, Fortune construction, topology adaptation, and known regression inputs;
 - QIDI Voronoi issue detection, repair angles/remapping, annotation and default direct builder behavior;
 - MedialAxis edge validation/traversal plus `ExPolygon::medial_axis()` post-processing;
-- Clipper/ClipperUtils translated boolean and offset fixtures, including Clipper1 miter-limit and positive-hole reconstruction compatibility at the Dart Clipper2 adapter boundary;
-- source open-polyline square/open-butt offset used by extrusion covered-width geometry;
-- QIDI `Clipper2Utils.cpp` open-subject intersection/difference in source integer coordinates, including the duplicated-start seam split for a closed perimeter represented as an open polyline;
+- translated Clipper boolean/offset fixtures, Clipper1 miter-limit and positive-hole compatibility, open-line covered-width offset, and QIDI Clipper2 open-subject intersection/difference including duplicated-start seam behavior;
+- source closed-polygon offset behavior required by classic lower-support generation for represented box/hole fixtures, including source float32 deltas and QIDI Clipper1 short-edge prefilter;
 - Flow formulas/config fallback behavior;
 - Extruder state/math and QIDI variant resolution;
 - Surface classification/copy/assignment quirks;
 - ExtrusionEntity/Path/MultiPath/Loop/Collection represented semantics;
-- QIDI/libslic3r variable-width `ThickPolyline` conversion;
-- represented `polygons_covered_by_width()` dispatch and exact integer-coordinate path coverage;
+- QIDI/libslic3r variable-width `ThickPolyline` conversion and covered-width geometry;
 - source-style G-code formatter and linear/arc extrusion-path emission subset;
-- classic perimeter onion-shell formulas and QIDI smaller-width outer-loop behavior;
-- classic `detect_thin_wall` through MedialAxis **and** variable-width external-perimeter extrusion conversion;
-- classic gap detection on the extra shell iteration, source float32 offset casts, width-limited gap region construction, closed-polygon Douglas–Peucker, MedialAxis, configured length filtering, gap-fill variable-width extrusion conversion, and covered-width subtraction from the residual region;
-- source structural loop nesting and `is_internal_contour()` behavior;
-- structural loop → `ExtrusionLoop2` conversion with source roles, loop-role flags, Flow selection and split-at-first-point semantics;
-- source-shaped `chain_extrusion_entities()` graph/reversal behavior and thin-wall insertion into the same nearest-neighbor collection;
-- recursive contour/hole child ordering and winding normalization in classic `traverse_loops()`;
-- source wall-sequence postprocessing for outer-inner, first-layer outer-only brim and inner-outer-inner, including the trailing-second-wall drop quirk;
-- the represented `detect_overhang_wall` branch when overhang-speed grading is disabled: supported/unsupported clipping, role/flow selection, bridge-wall degree 5/6 classification, path reordering and raft-layer activation condition;
-- end-to-end classic shell → loop tree → overhang split → recursive traversal → wall-sequence composition for that branch;
+- classic perimeter onion-shell formulas, QIDI smaller-width outer-loop behavior, thin-wall conversion and gap-fill pipeline;
+- source loop nesting, shortest-path chaining, recursive contour/hole ordering/winding and wall-sequence postprocessing;
+- automatic `generate_lower_polygons_series(width)` for internal/external/smaller-external walls, including source float32 arithmetic, scaled-width reuse, hole winding/delta, positive/negative source-coordinate offsets and `dist_boundary(width)`;
+- no-speed supported/unsupported overhang splitting, bridge-wall degree 5/6 classification, path reordering and raft activation boundary;
+- classic speed grading: 0.6 mm SplitLines endpoint cuts, source Point/lrint split coordinates, float32 distance query/return boundary, non-uniform `{0,10,25,50,75,100}` mapping, smoothing, binary-double 0.1 terraces, adjacent-run merge, and extrusion payloads;
+- recursive speed-graded traversal with correct external/smaller/internal series+boundary selection and customize flags;
+- end-to-end raw lower slices → lower-series/boundaries → zero/intermediate/unsupported split → recursive traversal → wall sequence;
 - existing linear-infill and basic writer fixtures.
 
 ## What is not proven by this checkpoint
@@ -80,9 +77,8 @@ The passing suite contains source-derived, source-formula, or Boost/Clipper orac
 This checkpoint does **not** establish full application parity. In particular it does not prove:
 
 - the full source Clipper/ClipperUtils regression space beyond translated/current-consumer fixtures;
-- automatic source `generate_lower_polygons_series(width)` construction from lower slices, including source float32 arithmetic and exact positive/negative polygon-offset behavior;
-- `detect_overhang_degree()` intermediate overhang-speed grades 1–4 and distance-boundary math;
-- fuzzy-skin transformation and `fuzzy_skin_allows_overhang_slowdown()` interaction;
+- fuzzy-skin policy, geometry, random/deterministic noise modes, per-region line segmentation, or `fuzzy_skin_allows_overhang_slowdown()` interaction;
+- remaining lower-polygon bbox-clipping/performance wrappers where they may have observable source effects;
 - complete remaining `PerimeterGenerator::process_classic()` fill-surface/fill-no-overlap and later stages, or Arachne;
 - complete native G-code state/templates/travel/retraction/cooling/acceleration/multi-material behavior;
 - all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
