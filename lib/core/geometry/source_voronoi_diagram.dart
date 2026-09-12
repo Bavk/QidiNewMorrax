@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'source_boost_topology_adapter.dart';
 import 'source_geometry.dart';
 import 'source_voronoi_utils.dart';
 import 'voronoi_topology.dart';
@@ -40,10 +41,10 @@ class SourceVoronoiBuildResult2 {
 
 /// Application-owned wrapper logic from `Geometry/Voronoi.cpp`.
 ///
-/// The exact Boost.Polygon segment Fortune builder is intentionally injected;
-/// this class ports QIDI issue detection, repair scheduling and the rotate-
-/// back endpoint remapping around it without substituting a different Voronoi
-/// implementation.
+/// By default the constructor now invokes the directly ported Boost.Polygon
+/// 1.83 segment Fortune builder, matching the C++ `boost::polygon::construct_voronoi`
+/// call made by QIDI. [builder] remains injectable for translated regression
+/// tests and synthetic issue/repair fixtures only.
 class SourceVoronoiDiagram2 {
   const SourceVoronoiDiagram2();
 
@@ -56,10 +57,11 @@ class SourceVoronoiDiagram2 {
 
   SourceVoronoiBuildResult2 construct(
     List<BoundarySegment2> segments, {
-    required SourceVoronoiTopologyBuilder2 builder,
+    SourceVoronoiTopologyBuilder2? builder,
     bool tryToRepairIfNeeded = true,
   }) {
-    var topology = builder(List<BoundarySegment2>.of(segments));
+    final buildTopology = builder ?? SourceBoostSegmentVoronoiBuilder2.build;
+    var topology = buildTopology(List<BoundarySegment2>.of(segments));
     if (!tryToRepairIfNeeded) {
       return SourceVoronoiBuildResult2(
         topology: topology,
@@ -85,7 +87,7 @@ class SourceVoronoiDiagram2 {
             segment.b.rotated(angle),
           ),
       ];
-      final rotatedTopology = builder(rotatedSegments);
+      final rotatedTopology = buildTopology(rotatedSegments);
       issue = detectKnownIssues(rotatedTopology, rotatedSegments);
       topology = _rotateBackAndRemapEndpoints(
         rotatedTopology,
