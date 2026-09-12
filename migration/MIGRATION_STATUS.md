@@ -19,9 +19,9 @@ As of 2026-09-12:
 - pinned Flutter: **3.47.2**;
 - Dart: **3.13.2**;
 - `flutter analyze`: **No issues found**;
-- `flutter test --reporter expanded`: **225/225 passing**;
-- validated code commit: `4a235117a905bf94fe7732031b1b3b8a7556867b`;
-- validation workflow: `.github/workflows/flutter-parity.yml` run `34681600348` (#185), conclusion **success**.
+- `flutter test --reporter expanded`: **248/248 passing**;
+- validated code commit: `b6809d50912e5135a3d4851177093934a715adf9`;
+- validation workflow: `.github/workflows/flutter-parity.yml` run `34682700807` (#203), conclusion **success**.
 
 See [`VALIDATION.md`](VALIDATION.md) for the executed evidence and exact scope.
 
@@ -90,9 +90,10 @@ The current pure-Dart Clipper2 adapter is `parity_verified` **for the translated
 - Clipper1 miter-limit compatibility: source values below 2 behave as effective limit 2;
 - positive `ExPolygon` hole reconstruction across offset;
 - source open-polyline offset used by `polygons_covered_by_width()`, with square join, open-butt end type and source integer coordinates;
-- QIDI `Clipper2Utils.cpp` open-subject `intersection_pl_2()` / `diff_pl_2()` behavior in source integer coordinates, including the duplicated-start seam that may split a closed perimeter represented as an open polyline into two difference runs.
+- QIDI `Clipper2Utils.cpp` open-subject `intersection_pl_2()` / `diff_pl_2()` behavior in source integer coordinates, including the duplicated-start seam that may split a closed perimeter represented as an open polyline into two difference runs;
+- the closed-polygon offset subset used by classic lower-overhang support generation, including source float32 deltas, miter limit 3, opposite hole delta/winding, negative offsets and QIDI-patched Clipper1 `ShortestEdgeLength = abs(delta * 0.005)` prefilter behavior for the represented fixtures.
 
-The broader Clipper/ClipperUtils module remains `port_started`: the source uses Clipper 6.x plus custom Slic3r/QIDI wrappers, so more original regression coverage is still required before calling the whole subsystem equivalent. In particular, automatic lower-layer overhang-series generation still needs the exact source polygon-offset path, including negative-offset behavior and float32 boundaries.
+The broader Clipper/ClipperUtils module remains `port_started`: the source uses Clipper 6.x plus custom Slic3r/QIDI wrappers, so more original regression coverage is still required before calling the whole subsystem equivalent.
 
 ## Flow / Extruder / Surface / ExtrusionEntity
 
@@ -176,15 +177,18 @@ The currently represented `PerimeterGenerator::process_classic()` subset is `par
 - thin-wall variable-width entities inserted into the same nearest-neighbor chain with the source far-bbox-corner start-point rule;
 - recursive `traverse_loops()` ordering and winding: contour children before contour, hole before children, contour forced CCW and hole forced CW;
 - source wall-sequence adjustment for `OuterInner`, first-layer outer-only brim, and `InnerOuterInner`, including the source trailing-second-wall drop quirk;
-- QIDI Clipper2 open-subject supported/unsupported perimeter splitting for the branch where overhang-speed grading is disabled;
-- supported path role/flow preservation, unsupported `erOverhangPerimeter` role/overhang Flow, and `detect_bridge_wall()` degree 5 vs 6 classification;
-- `layer_id > raft_layers` activation boundary and end-to-end shell → loop tree → overhang split → traversal → wall-sequence pipeline.
+- automatic `generate_lower_polygons_series(width)` for internal/external/smaller-external wall widths, including source float32 arithmetic, source scaling, scaled-width reuse of internal series for equal external/internal widths, opposite hole delta/winding and represented Clipper1 short-edge behavior;
+- source `dist_boundary(width)` arithmetic and per-wall boundary selection;
+- QIDI Clipper2 supported/zero/middle/unsupported perimeter splitting;
+- no-speed branch supported role/flow preservation, unsupported `erOverhangPerimeter` role/overhang Flow, and `detect_bridge_wall()` degree 5 vs 6 classification;
+- classic speed grading through `prepare_split_polylines`, 0.6 mm endpoint cuts, float32 perimeter-distance queries/returns, non-uniform `{0,10,25,50,75,100}` degree map, source smoothing, IEEE-754 0.1 terracing, adjacent-run merge, and normal wall role/flow preservation for intermediate degrees;
+- recursive speed-graded traversal with external/smaller/internal boundary selection, customize-flag propagation, and the `layer_id > raft_layers` activation boundary;
+- end-to-end raw lower slices → lower-series/boundaries → zero/intermediate/unsupported split → recursive traversal → wall-sequence pipeline.
 
 This does **not** complete `process_classic()`. Still pending include:
 
-- automatic `generate_lower_polygons_series(width)` construction from lower slices, including source float32 arithmetic, Clipper1-style positive/negative polygon offsets and exact source scaling;
-- overhang-speed grading / `detect_overhang_degree()` for intermediate degrees 1–4 and its distance-boundary math;
-- fuzzy-skin application and `fuzzy_skin_allows_overhang_slowdown()` gating;
+- fuzzy-skin application and `fuzzy_skin_allows_overhang_slowdown()` gating; source `None` vs `Disabled_fuzzy` policy and deterministic/non-deterministic noise paths are not yet represented;
+- perimeter-region line segmentation used by per-region fuzzy skin;
 - remaining lower-polygon bbox-clipping/performance wrapper details where they may expose observable source behavior;
 - remaining fill-surface/fill-no-overlap and later perimeter stages;
 - Arachne variable-width wall generation.
@@ -219,11 +223,11 @@ The earlier local audit verified 3,657/3,657 copied runtime entries against sour
 
 ## Immediate next dependency order
 
-1. Port automatic `PerimeterGenerator::generate_lower_polygons_series(width)` and `dist_boundary(width)` with source float32/scaling semantics and source-compatible polygon offsets.
-2. Port `detect_overhang_degree()` / overhang-speed grading for degrees 1–4 and verify path segmentation against source/oracle fixtures.
-3. Port fuzzy-skin interaction and the exact slowdown gating branch, then close the remaining represented `traverse_loops()` overhang variants.
+1. Port fuzzy-skin policy and identity behavior first: exact `FuzzySkinType` enum semantics, `should_fuzzify()` and `fuzzy_skin_allows_overhang_slowdown()`, proving the source distinction between `None` and `Disabled_fuzzy` when perimeter regions exist.
+2. Port source fuzzy-skin geometry for deterministic noise modes and establish an injectable/source-equivalent RNG boundary for Uniform noise; then port per-region line segmentation rather than silently fuzzifying an entire loop.
+3. Integrate fuzzy transformation/gating into classic `traverse_loops()` and close the remaining represented overhang variants without weakening the already verified speed/no-speed branches.
 4. Continue `process_classic()` through fill-surface/fill-no-overlap and later perimeter stages.
-5. Expand Clipper/ClipperUtils translated regression coverage as each new source consumer requires it, especially negative/multi-polygon offset edge cases.
+5. Expand Clipper/ClipperUtils translated regression coverage as each new source consumer requires it.
 6. Continue Arachne/surfaces/fill/bridge/support/seam toolpath modules.
 7. Expand the native G-code state machine and integrate the exact ExtrusionEntity model into Preview/G-code consumers.
 8. Continue project/profile/editor/device/cloud/calibration/desktop/UI parity in parallel.
