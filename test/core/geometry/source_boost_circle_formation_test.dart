@@ -11,7 +11,6 @@ void main() {
     final b = BoostSiteEvent2.point(const SourcePoint2(0, 10));
     final c = BoostSiteEvent2.point(const SourcePoint2(10, 0));
     final circle = BoostCircleEvent2();
-
     expect(formation.tryForm(a, b, c, circle), true);
     expect(circle.x, closeTo(5, 1e-12));
     expect(circle.y, closeTo(5, 1e-12));
@@ -29,7 +28,6 @@ void main() {
       const SourcePoint2(2147480000, -200),
     );
     final circle = BoostCircleEvent2();
-
     expect(formation.tryForm(a, b, c, circle), true);
     expect(circle.x, closeTo(-357914738.88887125, 1e-6));
     expect(circle.y, closeTo(-357914722.22214752, 1e-6));
@@ -53,7 +51,6 @@ void main() {
       const SourcePoint2(10, 20),
     )..setSortedIndex(2);
     final circle = BoostCircleEvent2();
-
     expect(formation.tryForm(p1, p2, segment, circle), true);
     expect(circle.x, closeTo(3.75, 1e-12));
     expect(circle.y, closeTo(5, 1e-12));
@@ -70,7 +67,6 @@ void main() {
     final p2 = BoostSiteEvent2.point(const SourcePoint2(0, 10))
       ..setSortedIndex(2);
     final circle = BoostCircleEvent2();
-
     expect(formation.tryForm(segment, p1, p2, circle), true);
     expect(circle.x, closeTo(3.75, 1e-12));
     expect(circle.y, closeTo(5, 1e-12));
@@ -87,7 +83,6 @@ void main() {
     final p2 = BoostSiteEvent2.point(const SourcePoint2(7, 11))
       ..setSortedIndex(2);
     final circle = BoostCircleEvent2();
-
     expect(formation.tryForm(p1, segment, p2, circle), true);
     expect(circle.x, closeTo(-101.97217573169743, 1e-10));
     expect(circle.y, closeTo(143.79623430892991, 1e-10));
@@ -106,7 +101,6 @@ void main() {
       ..setSortedIndex(2)
       ..inverse();
     final circle = BoostCircleEvent2();
-
     expect(formation.tryForm(p1, p2, segment, circle), true);
     expect(circle.x, closeTo(6.9840663381183559, 1e-12));
     expect(circle.y, closeTo(-1.4787551174911417, 1e-12));
@@ -125,22 +119,97 @@ void main() {
     expect(formation.tryForm(p1, p2, segment, BoostCircleEvent2()), false);
   });
 
-  test('PSS and SSS stay explicit until their exact source formulas exist', () {
-    final point = BoostSiteEvent2.point(const SourcePoint2(0, 0));
+  test('PSS parallel-segment branch matches Boost C++ oracle', () {
+    final point = BoostSiteEvent2.point(const SourcePoint2(-10, -20))
+      ..setSortedIndex(0);
     final segment1 = BoostSiteEvent2.segment(
-      const SourcePoint2(10, 0),
-      const SourcePoint2(10, 10),
-    );
+      const SourcePoint2(-20, -20),
+      const SourcePoint2(20, -20),
+    )..setSortedIndex(1);
     final segment2 = BoostSiteEvent2.segment(
-      const SourcePoint2(20, 0),
-      const SourcePoint2(20, 10),
-    );
+      const SourcePoint2(-20, -15),
+      const SourcePoint2(20, -15),
+    )..setSortedIndex(2);
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(point, segment1, segment2, circle), true);
+    expect(circle.x, closeTo(-10, 1e-12));
+    expect(circle.y, closeTo(-17.5, 1e-12));
+    expect(circle.lowerX, closeTo(-7.5, 1e-12));
+  });
+
+  test('PSS nonparallel point_index=1 matches Boost C++ oracle', () {
+    final point = BoostSiteEvent2.point(const SourcePoint2(2, 3))
+      ..setSortedIndex(0);
+    final segment1 = BoostSiteEvent2.segment(
+      const SourcePoint2(-10, 0),
+      const SourcePoint2(10, 20),
+    )..setSortedIndex(1);
+    final segment2 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 20),
+      const SourcePoint2(20, -5),
+    )..setSortedIndex(2);
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(point, segment1, segment2, circle), true);
+    expect(circle.x, closeTo(4.0490595942202701, 1e-11));
+    expect(circle.y, closeTo(7.3056186958621945, 1e-11));
+    expect(circle.lowerX, closeTo(8.8173923819799693, 1e-11));
+  });
+
+  test('PSS nonparallel point_index=2 matches Boost C++ oracle', () {
+    final segment1 = BoostSiteEvent2.segment(
+      const SourcePoint2(-10, 0),
+      const SourcePoint2(10, 20),
+    )..setSortedIndex(0);
+    final point = BoostSiteEvent2.point(const SourcePoint2(2, 3))
+      ..setSortedIndex(1);
+    final segment2 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 20),
+      const SourcePoint2(20, -5),
+    )..setSortedIndex(2);
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(segment1, point, segment2, circle), true);
+    expect(circle.x, closeTo(2.5366195859226051, 1e-11));
+    expect(circle.y, closeTo(-20.0020681522799, 1e-11));
+    expect(circle.lowerX, closeTo(25.544946336517164, 1e-11));
+  });
+
+  test('PSS nonparallel point_index=3 matches Boost C++ oracle', () {
+    final segment1 = BoostSiteEvent2.segment(
+      const SourcePoint2(-10, 0),
+      const SourcePoint2(10, 20),
+    )..setSortedIndex(0);
+    final segment2 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 20),
+      const SourcePoint2(20, -5),
+    )..setSortedIndex(1);
+    final point = BoostSiteEvent2.point(const SourcePoint2(2, 3))
+      ..setSortedIndex(2);
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(segment1, segment2, point, circle), true);
+    expect(circle.x, closeTo(4.0490595942202701, 1e-11));
+    expect(circle.y, closeTo(7.3056186958621945, 1e-11));
+    expect(circle.lowerX, closeTo(8.8173923819799693, 1e-11));
+  });
+
+  test('SSS stays explicit until its exact source formula exists', () {
+    final segment1 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 0),
+      const SourcePoint2(10, 10),
+    )..setSortedIndex(0);
+    final segment2 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 10),
+      const SourcePoint2(10, 0),
+    )..setSortedIndex(1);
+    final segment3 = BoostSiteEvent2.segment(
+      const SourcePoint2(5, -5),
+      const SourcePoint2(5, 15),
+    )..setSortedIndex(2);
     expect(
-      () => formation.tryForm(point, segment1, segment2, BoostCircleEvent2()),
-      throwsUnsupportedError,
-    );
-    expect(
-      () => formation.tryForm(segment1, segment2, segment1, BoostCircleEvent2()),
+      () => formation.tryForm(segment1, segment2, segment3, BoostCircleEvent2()),
       throwsUnsupportedError,
     );
   });
