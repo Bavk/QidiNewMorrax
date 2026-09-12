@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/expolygon.dart';
-import 'package:qidi_flow_flutter/core/geometry/point.dart';
-import 'package:qidi_flow_flutter/core/geometry/polygon.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
 import 'package:qidi_flow_flutter/core/slicer/classic_perimeter.dart';
