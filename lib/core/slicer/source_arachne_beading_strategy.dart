@@ -81,22 +81,15 @@ abstract class SourceArachneBeadingStrategy2 {
 class SourceArachneDistributedBeadingStrategy2
     extends SourceArachneBeadingStrategy2 {
   SourceArachneDistributedBeadingStrategy2({
-    required int optimalWidth,
-    required int defaultTransitionLength,
-    required double transitioningAngle,
-    required double wallSplitMiddleThreshold,
-    required double wallAddMiddleThreshold,
+    required super.optimalWidth,
+    required super.defaultTransitionLength,
+    required super.transitioningAngle,
+    required super.wallSplitMiddleThreshold,
+    required super.wallAddMiddleThreshold,
     required this.distributionRadius,
   })  : oneOverDistributionRadiusSquared =
             _distributionWeightScale(distributionRadius),
-        super(
-          optimalWidth: optimalWidth,
-          defaultTransitionLength: defaultTransitionLength,
-          transitioningAngle: transitioningAngle,
-          wallSplitMiddleThreshold: wallSplitMiddleThreshold,
-          wallAddMiddleThreshold: wallAddMiddleThreshold,
-          name: 'DistributedBeadingStrategy',
-        );
+        super(name: 'DistributedBeadingStrategy');
 
   final int distributionRadius;
   final double oneOverDistributionRadiusSquared;
