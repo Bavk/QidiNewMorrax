@@ -140,11 +140,10 @@ class VoronoiTopology2 {
           'Voronoi edge ${edge.id} finite flag disagrees with nullable endpoints',
         );
       }
-      if (!edge.finite && edge.vertex0 == null && edge.vertex1 == null) {
-        throw StateError(
-          'Voronoi infinite edge ${edge.id} must retain one finite vertex',
-        );
-      }
+      // Boost line diagrams with no finite Voronoi vertices (for example two
+      // point sites) legitimately have both endpoints null. Do not reject that
+      // source representation merely because MedialAxis normally sees rays
+      // with one finite endpoint.
       if (edge.cellIndex < 0 || edge.cellIndex >= this.cells.length) {
         throw StateError('Voronoi edge ${edge.id} has invalid cell index');
       }
