@@ -5,8 +5,10 @@ import 'flow.dart';
 import 'source_arachne_extrusion_line_variable_width.dart';
 import 'source_arachne_extrusion_order.dart';
 import 'source_arachne_overhang.dart';
+import 'source_arachne_overhang_speed.dart';
 import 'source_fuzzy_skin_apply.dart';
 import 'source_fuzzy_skin_geometry.dart';
+import 'source_fuzzy_skin_policy.dart';
 import 'variable_width.dart';
 
 class SourceArachneExtrusionTraversalSettings2 {
@@ -41,8 +43,7 @@ class SourceArachneExtrusionTraversalSettings2 {
   final Flow? overhangFlow;
   final double nozzleDiameterMm;
 
-  /// `is_enable_overhang_speed()` after process/filament override resolution.
-  /// The speed-graded branch is the next explicit migration seam.
+  /// Result of source `is_enable_overhang_speed()` before its fuzzy-skin gate.
   final bool enableOverhangSpeed;
   final bool zDirectionOutwallSpeedContinuous;
 }
@@ -50,13 +51,10 @@ class SourceArachneExtrusionTraversalSettings2 {
 /// Source-order slice of `PerimeterGenerator::traverse_extrusions()`.
 ///
 /// This composes the represented fuzzy-skin transform, Arachne
-/// `to_thick_polyline()`, source variable-width adapters, loop/open entity
-/// construction, orientation restoration and circle-compensation propagation.
-/// The active overhang branch is represented for the source path where
-/// overhang-speed grading is disabled (or fuzzy skin disallows it), including
-/// width-carrying clipping, unsupported bridge-wall classification and
-/// path re-chaining. The speed-graded overhang branch and QIDI loop-node
-/// producer remain explicit seams.
+/// `to_thick_polyline()`, source variable-width adapters, both active-overhang
+/// branches, loop/open entity construction, orientation restoration and
+/// circle-compensation propagation. The Arachne-specific QIDI loop-node
+/// producer remains the next explicit seam.
 class SourceArachneExtrusionTraversal2 {
   const SourceArachneExtrusionTraversal2._();
 
@@ -100,25 +98,36 @@ class SourceArachneExtrusionTraversal2 {
 
       late final List<ExtrusionPath2> paths;
       if (settings.detectOverhangWall && settings.layerId > settings.raftLayers) {
-        if (settings.enableOverhangSpeed) {
-          throw UnsupportedError(
-            'Pinned Arachne speed-graded overhang traversal is not yet composed',
-          );
-        }
         final overhangFlow = settings.overhangFlow;
         if (overhangFlow == null) {
           throw ArgumentError(
             'Pinned Arachne overhang traversal requires overhangFlow',
           );
         }
-        paths = SourceArachneOverhang2.splitWithoutSpeedGrading(
-          extrusion: extrusion,
-          lowerLayerPolygons: settings.lowerLayerPolygons,
-          nozzleDiameterMm: settings.nozzleDiameterMm,
-          supportedRole: role,
-          supportedFlow: flow,
-          overhangFlow: overhangFlow,
+        final speedGrading = SourceFuzzySkinPolicy2.enablesOverhangSpeed(
+          configuredOverhangSpeedEnabled: settings.enableOverhangSpeed,
+          type: settings.fuzzyConfig.type,
+          perimeterRegionsEmpty: settings.perimeterRegions.isEmpty,
         );
+        if (speedGrading) {
+          paths = SourceArachneOverhangSpeed2.splitWithSpeedGrading(
+            extrusion: extrusion,
+            lowerLayerPolygons: settings.lowerLayerPolygons,
+            nozzleDiameterMm: settings.nozzleDiameterMm,
+            supportedRole: role,
+            supportedFlow: flow,
+            overhangFlow: overhangFlow,
+          );
+        } else {
+          paths = SourceArachneOverhang2.splitWithoutSpeedGrading(
+            extrusion: extrusion,
+            lowerLayerPolygons: settings.lowerLayerPolygons,
+            nozzleDiameterMm: settings.nozzleDiameterMm,
+            supportedRole: role,
+            supportedFlow: flow,
+            overhangFlow: overhangFlow,
+          );
+        }
       } else {
         final converted = variableWidth.thickPolylineToMultiPath(
           extrusion.toThickPolylineSource(),
