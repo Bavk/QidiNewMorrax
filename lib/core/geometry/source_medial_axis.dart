@@ -1,5 +1,6 @@
 import 'medial_axis_core.dart';
 import 'medial_axis_postprocess.dart';
+import 'source_boost_topology_adapter.dart';
 import 'source_polygon.dart';
 import 'source_polyline.dart';
 import 'source_voronoi_annotation.dart';
@@ -22,25 +23,25 @@ class SourceMedialAxisRawResult2 {
 }
 
 /// Direct composition of source `Geometry::MedialAxis::MedialAxis()` and
-/// `MedialAxis::build(ThickPolylines*)` around the already ported source units.
+/// `MedialAxis::build(ThickPolylines*)`.
 ///
-/// The only injected dependency is the still-pending exact Boost.Polygon
-/// segment Voronoi constructor. No alternate skeletonizer is accepted here.
-/// Just like the C++ source, [buildThick] does **not** abort when the QIDI
-/// rotation repair state is unsuccessful: `construct_voronoi()` leaves its
-/// last diagram installed and `MedialAxis::build()` proceeds to annotation.
+/// By default this now uses the directly ported Boost.Polygon 1.83 segment
+/// Fortune builder. [voronoiBuilder] remains injectable only for translated
+/// source regression fixtures and synthetic topology tests. Just like the C++
+/// source, [buildThick] does **not** abort when QIDI rotation repair ends in
+/// REPAIR_UNSUCCESSFUL: the last diagram is still annotated and traversed.
 class SourceMedialAxis2 {
   SourceMedialAxis2({
     required this.minWidth,
     required this.maxWidth,
     required this.expolygon,
-    required this.voronoiBuilder,
+    this.voronoiBuilder,
   });
 
   final double minWidth;
   final double maxWidth;
   final SourceExPolygon2 expolygon;
-  final SourceVoronoiTopologyBuilder2 voronoiBuilder;
+  final SourceVoronoiTopologyBuilder2? voronoiBuilder;
 
   SourceMedialAxisRawResult2 buildThick() {
     final lines = <BoundarySegment2>[
@@ -49,7 +50,7 @@ class SourceMedialAxis2 {
 
     final diagram = const SourceVoronoiDiagram2().construct(
       lines,
-      builder: voronoiBuilder,
+      builder: voronoiBuilder ?? SourceBoostSegmentVoronoiBuilder2.build,
     );
 
     // Source intentionally performs this even after REPAIR_UNSUCCESSFUL.
@@ -101,7 +102,7 @@ class SourceExPolygonMedialAxis2 {
     required SourceExPolygon2 expolygon,
     required double minWidth,
     required double maxWidth,
-    required SourceVoronoiTopologyBuilder2 voronoiBuilder,
+    SourceVoronoiTopologyBuilder2? voronoiBuilder,
   }) {
     final raw = SourceMedialAxis2(
       minWidth: minWidth,
@@ -128,7 +129,7 @@ class SourceExPolygonMedialAxis2 {
     required SourceExPolygon2 expolygon,
     required double minWidth,
     required double maxWidth,
-    required SourceVoronoiTopologyBuilder2 voronoiBuilder,
+    SourceVoronoiTopologyBuilder2? voronoiBuilder,
   }) =>
       [
         for (final thick in buildThick(
