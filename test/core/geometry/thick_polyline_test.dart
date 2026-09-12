@@ -1,11 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qidi_flow_flutter/core/geometry/point.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/thick_polyline.dart';
 
 void main() {
   test('thicklines maps source width pairs to each segment', () {
     final polyline = ThickPolyline2(
-      points: const [Point2(0, 0), Point2(10, 0), Point2(10, 5)],
+      points: const [
+        SourcePoint2(0, 0),
+        SourcePoint2(10, 0),
+        SourcePoint2(10, 5),
+      ],
       width: const [1, 2, 3, 4],
     );
 
@@ -19,7 +23,11 @@ void main() {
 
   test('reverse exactly reverses points/widths and swaps endpoint flags', () {
     final polyline = ThickPolyline2(
-      points: const [Point2(0, 0), Point2(10, 0), Point2(20, 0)],
+      points: const [
+        SourcePoint2(0, 0),
+        SourcePoint2(10, 0),
+        SourcePoint2(20, 0),
+      ],
       width: const [1, 2, 3, 4],
       startIsEndpoint: true,
       endIsEndpoint: false,
@@ -35,10 +43,10 @@ void main() {
   test('rebaseAt ports ThickPolyline::rebase_at width indexing', () {
     final polyline = ThickPolyline2(
       points: const [
-        Point2(0, 0),
-        Point2(10, 0),
-        Point2(10, 10),
-        Point2(0, 0),
+        SourcePoint2(0, 0),
+        SourcePoint2(10, 0),
+        SourcePoint2(10, 10),
+        SourcePoint2(0, 0),
       ],
       width: const [1, 2, 3, 4, 5, 1],
     );
@@ -46,14 +54,14 @@ void main() {
     final rebased = polyline.rebaseAt(1);
     expect(
       rebased.points.map((p) => '${p.x},${p.y}').toList(),
-      ['10.0,0.0', '10.0,10.0', '0.0,0.0', '10.0,0.0'],
+      ['10,0', '10,10', '0,0', '10,0'],
     );
     expect(rebased.width, [3, 4, 5, 1, 2, 3]);
   });
 
   test('rebaseAt returns empty source-style result for open polyline', () {
     final open = ThickPolyline2(
-      points: const [Point2(0, 0), Point2(1, 0)],
+      points: const [SourcePoint2(0, 0), SourcePoint2(1, 0)],
       width: const [1, 1],
     );
     expect(open.rebaseAt(0).isEmpty, true);
@@ -62,10 +70,10 @@ void main() {
   test('getWidthAt retains source indexing quirk', () {
     final polyline = ThickPolyline2(
       points: const [
-        Point2(0, 0),
-        Point2(1, 0),
-        Point2(2, 0),
-        Point2(3, 0),
+        SourcePoint2(0, 0),
+        SourcePoint2(1, 0),
+        SourcePoint2(2, 0),
+        SourcePoint2(3, 0),
       ],
       width: const [10, 11, 20, 21, 30, 31],
     );
@@ -78,7 +86,11 @@ void main() {
   test('constructor enforces source width cardinality invariant', () {
     expect(
       () => ThickPolyline2(
-        points: const [Point2(0, 0), Point2(1, 0), Point2(2, 0)],
+        points: const [
+          SourcePoint2(0, 0),
+          SourcePoint2(1, 0),
+          SourcePoint2(2, 0),
+        ],
         width: const [1, 2],
       ),
       throwsStateError,
