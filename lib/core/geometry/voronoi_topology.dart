@@ -1,19 +1,29 @@
-import 'point.dart';
+import 'source_geometry.dart';
 
 enum VoronoiVertexCategory { onContour, inside, outside, unknown }
 enum VoronoiSourceCategory { segmentStartPoint, segmentEndPoint, segment }
 
+/// Boundary segment in original integer `coord_t` units.
 class BoundarySegment2 {
   const BoundarySegment2(this.a, this.b);
 
-  final Point2 a;
-  final Point2 b;
+  final SourcePoint2 a;
+  final SourcePoint2 b;
+}
+
+/// Boost.Polygon stores Voronoi vertex coordinates as doubles while the source
+/// boundary segments remain integer coord_t. Values here are therefore doubles
+/// in **source coordinate units**, not millimeters.
+class VoronoiPoint2 {
+  const VoronoiPoint2(this.x, this.y);
+  final double x;
+  final double y;
 }
 
 class VoronoiVertex2 {
   const VoronoiVertex2({required this.point, required this.category});
 
-  final Point2 point;
+  final VoronoiPoint2 point;
   final VoronoiVertexCategory category;
 }
 
@@ -32,9 +42,9 @@ class VoronoiCell2 {
 /// Half-edge topology required by `Geometry::MedialAxis`.
 ///
 /// `rotNextId` is the Boost.Polygon `edge_type::rot_next()` relation. The
-/// Fortune/Boost-equivalent diagram constructor is a separate migration layer;
-/// this data model allows the exact MedialAxis validation/traversal logic to be
-/// ported and tested independently first.
+/// Boost-compatible segment Voronoi constructor and QIDI repair/annotation are
+/// separate migration layers; this topology keeps the MedialAxis traversal
+/// representation source-shaped instead of substituting another skeletonizer.
 class VoronoiHalfEdge2 {
   const VoronoiHalfEdge2({
     required this.id,
@@ -75,8 +85,10 @@ class VoronoiTopology2 {
           'Voronoi edge ${edge.id} has missing rotNext ${edge.rotNextId}',
         );
       }
-      if (edge.vertex0 < 0 || edge.vertex0 >= this.vertices.length ||
-          edge.vertex1 < 0 || edge.vertex1 >= this.vertices.length) {
+      if (edge.vertex0 < 0 ||
+          edge.vertex0 >= this.vertices.length ||
+          edge.vertex1 < 0 ||
+          edge.vertex1 >= this.vertices.length) {
         throw StateError('Voronoi edge ${edge.id} has invalid vertex index');
       }
       if (edge.cellIndex < 0 || edge.cellIndex >= this.cells.length) {
