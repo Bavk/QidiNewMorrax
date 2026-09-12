@@ -277,13 +277,13 @@ class SourceShortestPath2 {
 
     final direct = _walkGraph(
       endPoints,
-      firstPointIndex!,
+      firstPointIndex,
       count,
       couldReverse,
     );
     if (direct != null) return direct;
 
-    if (startNear == null && lastPointIndex != null) {
+    if (startNear == null) {
       final reverseDirection = _walkGraph(
         endPoints,
         lastPointIndex,
