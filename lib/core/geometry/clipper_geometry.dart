@@ -78,7 +78,7 @@ class ClipperGeometry {
       delta: _scaleDistance(delta),
       joinType: _joinType(joinType),
       endType: c2.EndType.polygon,
-      miterLimit: miterLimit,
+      miterLimit: _clipper2MiterLimit(joinType, miterLimit),
       arcTolerance: arcTolerance == 0 ? 0 : _scaleDistance(arcTolerance).abs(),
     );
     return _pathsToExPolygons(result);
@@ -133,10 +133,12 @@ class ClipperGeometry {
       ));
     }
 
-    final raw = <c2.Path64>[
-      ...contours,
-      for (final hole in holes) hole.reversed.toList(growable: false),
-    ];
+    // Clipper1 (used by QIDI) reorients a standalone CW hole to CCW during
+    // Execute(), so source reverses that result before collecting it. Clipper2
+    // deliberately retains the input orientation in its offset solution. Our
+    // hole enters _offsetSinglePolygon() CW, therefore the Clipper2 result is
+    // already in the final CW hole orientation and must NOT be reversed again.
+    final raw = <c2.Path64>[...contours, ...holes];
     return _pathsToExPolygons(raw);
   }
 
@@ -259,7 +261,7 @@ class ClipperGeometry {
       delta: _scaleDistance(delta),
       joinType: _joinType(joinType),
       endType: c2.EndType.polygon,
-      miterLimit: miterLimit,
+      miterLimit: _clipper2MiterLimit(joinType, miterLimit),
       arcTolerance: arcTolerance == 0 ? 0 : _scaleDistance(arcTolerance).abs(),
     );
   }
@@ -331,6 +333,13 @@ class ClipperGeometry {
     }
     return value * coordinateScale;
   }
+
+  /// Clipper1 clamps MiterLimit values <= 2 to an effective limit of 2.
+  /// Clipper2 changed that threshold to <= 1. Preserve the Clipper1/QIDI
+  /// behavior at this adapter boundary so acute-corner decisions stay source
+  /// compatible (notably source regression fixtures using 1.2 and 1.5).
+  double _clipper2MiterLimit(PolygonJoinType joinType, double miterLimit) =>
+      joinType == PolygonJoinType.miter && miterLimit < 2 ? 2 : miterLimit;
 
   Polygon2 _ensureOuter(Polygon2 polygon) =>
       polygon.isClockwise ? polygon.reversed() : polygon;
