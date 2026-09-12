@@ -11,8 +11,6 @@ class SourceSegmentCellRange2 {
     this.edgeEndId,
   });
 
-  /// Source `compute_segment_cell_range()` intentionally constructs the range
-  /// with `(to, from)` for these two fields.
   final SourcePoint2 segmentStartPoint;
   final SourcePoint2 segmentEndPoint;
   final int? edgeBeginId;
@@ -22,8 +20,6 @@ class SourceSegmentCellRange2 {
       edgeBeginId != null && edgeEndId != null && edgeBeginId != edgeEndId;
 }
 
-/// Port of the source helpers in `Geometry/VoronoiUtils.cpp` required by
-/// MedialAxis construction and Voronoi issue detection/repair.
 class SourceVoronoiUtils2 {
   const SourceVoronoiUtils2._();
 
@@ -61,9 +57,6 @@ class SourceVoronoiUtils2 {
     }
   }
 
-  /// Source `VoronoiUtils::to_point()` uses `std::llround`, i.e. nearest with
-  /// halfway cases away from zero (different from the `lrint` conversion used
-  /// by the older MedialAxis code path).
   static SourcePoint2 toPoint(VoronoiPoint2 point) {
     if (!isFinitePoint(point)) {
       throw ArgumentError('Voronoi vertex must be finite');
@@ -99,9 +92,17 @@ class SourceVoronoiUtils2 {
     final source = getSourceSegment(cell, segments);
     final from = source.a;
     final to = source.b;
+    final invalid = SourceSegmentCellRange2(
+      segmentStartPoint: to,
+      segmentEndPoint: from,
+    );
 
-    var edgeBeginId = null as int?;
-    var edgeEndId = null as int?;
+    // A non-degenerate Boost cell always has incident_edge(). Missing topology
+    // here corresponds to an invalid cell range for source issue detection.
+    if (cell.incidentEdgeId == null) return invalid;
+
+    int? edgeBeginId;
+    int? edgeEndId;
     var seenPossibleStart = false;
     var afterStart = false;
     var endingEdgeIsSetBeforeStart = false;
@@ -117,7 +118,6 @@ class SourceVoronoiUtils2 {
       }
 
       if (v0 == to && !afterStart) {
-        // Source deliberately keeps the last candidate starting at `to`.
         edgeBeginId = edge.id;
         seenPossibleStart = true;
       } else if (seenPossibleStart) {
