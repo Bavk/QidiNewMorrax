@@ -61,10 +61,11 @@ final traversalSettings = SourceClassicPerimeterTraversalSettings2(
 SourceFuzzySkinNoRegionConfig2 fuzzyConfig({
   SourceFuzzySkinType2 type = SourceFuzzySkinType2.external,
   SourceFuzzyNoiseType2 noise = SourceFuzzyNoiseType2.classic,
+  bool firstLayer = true,
 }) =>
     SourceFuzzySkinNoRegionConfig2(
       type: type,
-      fuzzySkinFirstLayer: true,
+      fuzzySkinFirstLayer: firstLayer,
       thicknessMm: 0.1,
       pointDistanceMm: 0.4,
       noiseType: noise,
@@ -104,6 +105,7 @@ void main() {
       settings: traversalSettings,
       fuzzyConfig: fuzzyConfig(),
       random: random,
+      layerId: 1,
       configuredOverhangSpeedEnabled: true,
     );
 
@@ -126,6 +128,7 @@ void main() {
       settings: traversalSettings,
       fuzzyConfig: fuzzyConfig(),
       random: ZeroDisplacementRandom(),
+      layerId: 1,
       configuredOverhangSpeedEnabled: true,
       overhangSettings: overhangSettings(),
     );
@@ -158,6 +161,7 @@ void main() {
       settings: traversalSettings,
       fuzzyConfig: fuzzyConfig(type: SourceFuzzySkinType2.none),
       random: EmptyRandom(),
+      layerId: 1,
       configuredOverhangSpeedEnabled: true,
       overhangSettings: overhangSettings(),
     );
@@ -191,6 +195,7 @@ void main() {
       settings: traversalSettings,
       fuzzyConfig: fuzzyConfig(type: SourceFuzzySkinType2.allWalls),
       random: random,
+      layerId: 1,
       configuredOverhangSpeedEnabled: true,
     );
 
@@ -200,6 +205,27 @@ void main() {
     expect(inner.polygon().points.length, greaterThan(4));
     expect(outer.polygon().points.length, greaterThan(4));
     expect(random.calls, greaterThan(0));
+  });
+
+  test('first-layer suppression uses explicit layer id without overhang state', () {
+    final root = SourcePerimeterLoop2(
+      polygon: rectangle(0, 0, 200000, 200000),
+      depth: 0,
+      isContour: true,
+    );
+
+    final output = SourceClassicFuzzyPerimeterTraversal2.traverseNoRegion(
+      loops: [root],
+      thinWalls: <ThickPolyline2>[],
+      settings: traversalSettings,
+      fuzzyConfig: fuzzyConfig(firstLayer: false),
+      random: EmptyRandom(),
+      layerId: 0,
+      configuredOverhangSpeedEnabled: true,
+    );
+
+    final loop = output.single as ExtrusionLoop2;
+    expect(loop.polygon().points, hasLength(4));
   });
 
   test('required non-Classic fuzzy noise still fails before traversal output', () {
@@ -216,6 +242,7 @@ void main() {
         settings: traversalSettings,
         fuzzyConfig: fuzzyConfig(noise: SourceFuzzyNoiseType2.perlin),
         random: EmptyRandom(),
+        layerId: 1,
         configuredOverhangSpeedEnabled: true,
         overhangSettings: overhangSettings(),
       ),

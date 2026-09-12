@@ -24,7 +24,7 @@ class SourceClassicFuzzyPerimeterPipeline2 {
     required double layerHeight,
     required int layerId,
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
-    required SourceFuzzyUnitRandom2 random,
+    SourceFuzzyUnitRandom2? random,
     required bool detectOverhangWall,
     required bool configuredOverhangSpeedEnabled,
     List<SourcePolygon2>? lowerSlices,
@@ -41,11 +41,6 @@ class SourceClassicFuzzyPerimeterPipeline2 {
       layerHeight: layerHeight,
     );
 
-    // Fuzzy application needs the true layer id even when overhang detection is
-    // disabled. The fuzzy traversal currently carries layer identity through the
-    // same source-shaped overhang state object; making raftLayers == layerId is
-    // an internal sentinel that guarantees the overhang branch is skipped while
-    // preserving that layer id. It is not exposed as source configuration.
     final overhangSettings = detectOverhangWall
         ? SourceClassicPerimeterOverhangSettings2.fromLowerSlices(
             overhangFlow: overhangFlow,
@@ -57,21 +52,15 @@ class SourceClassicFuzzyPerimeterPipeline2 {
             layerId: layerId,
             raftLayers: raftLayers,
           )
-        : SourceClassicPerimeterOverhangSettings2(
-            overhangFlow: overhangFlow,
-            externalLowerPolygonsSeries: const [],
-            smallerExternalLowerPolygonsSeries: const [],
-            perimeterLowerPolygonsSeries: const [],
-            layerId: layerId,
-            raftLayers: layerId,
-          );
+        : null;
 
     final traversed = SourceClassicFuzzyPerimeterTraversal2.traverseNoRegion(
       loops: SourceClassicPerimeterPipeline2.buildLoopTree(result),
       thinWalls: _cloneThinWalls(result),
       settings: traversalSettings,
       fuzzyConfig: fuzzyConfig,
-      random: random,
+      random: random ?? sourceFuzzyProductionRandom2(),
+      layerId: layerId,
       configuredOverhangSpeedEnabled: configuredOverhangSpeedEnabled,
       overhangSettings: overhangSettings,
     );

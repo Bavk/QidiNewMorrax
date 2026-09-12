@@ -35,6 +35,29 @@ void main() {
     ]);
   });
 
+  test('mt19937 engine matches standard seed oracle', () {
+    final random = SourceFuzzyMt19937Random2.seeded(5489);
+    expect(
+      List<int>.generate(4, (_) => random.nextUint32()),
+      const [3499211612, 581869302, 3890346734, 3586334585],
+    );
+  });
+
+  test('uniform double sequence matches libstdc++ mt19937 oracle', () {
+    final random = SourceFuzzyMt19937Random2.seeded(5489);
+    const expected = [
+      0.1354770042967805,
+      0.8350085899945795,
+      0.9688677711242314,
+      0.2210340429827049,
+      0.30816705050700327,
+      0.5472205963678519,
+    ];
+    for (final value in expected) {
+      expect(random.nextUnit(), closeTo(value, 1e-15));
+    }
+  });
+
   test('Classic open sampling carries exact 0.75 distance and zero noise', () {
     final result = SourceFuzzySkinGeometry2.fuzzyClassicPolyline(
       polyline: SourcePolyline2(const [
@@ -74,7 +97,7 @@ void main() {
     ]);
   });
 
-  test('Classic noise displaces perpendicular to horizontal segment', () {
+  test('Classic displacement shares random_value stream with spacing', () {
     final result = SourceFuzzySkinGeometry2.fuzzyClassicPolyline(
       polyline: SourcePolyline2(const [
         SourcePoint2(0, 0),
@@ -139,24 +162,24 @@ void main() {
     ]);
   });
 
-  test('polygon wrapper removes consecutive and closing duplicates', () {
+  test('pinned fuzzy_polygon preserves fallback duplicates literally', () {
     final result = SourceFuzzySkinGeometry2.fuzzyClassicPolygon(
       polygon: SourcePolygon2(const [
         SourcePoint2(0, 0),
-        SourcePoint2(100000, 0),
-        SourcePoint2(100000, 100000),
-        SourcePoint2(0, 100000),
+        SourcePoint2(10, 0),
+        SourcePoint2(10, 10),
+        SourcePoint2(0, 10),
       ]),
-      thicknessMm: 0,
-      pointDistanceMm: 0.5,
-      random: SequenceRandom(zeroDisplacementSequence(12)),
+      thicknessMm: 0.1,
+      pointDistanceMm: 100,
+      random: SequenceRandom([0.9]),
     );
 
-    expect(result.points.length, greaterThanOrEqualTo(3));
-    for (var i = 1; i < result.points.length; i++) {
-      expect(result.points[i], isNot(result.points[i - 1]));
-    }
-    expect(result.points.last, isNot(result.points.first));
+    expect(result.points, const [
+      SourcePoint2(10, 10),
+      SourcePoint2(10, 10),
+      SourcePoint2(10, 10),
+    ]);
   });
 
   test('invalid random stream values are rejected explicitly', () {

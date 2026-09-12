@@ -29,6 +29,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     required SourceClassicPerimeterTraversalSettings2 settings,
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
     required SourceFuzzyUnitRandom2 random,
+    required int layerId,
     required bool configuredOverhangSpeedEnabled,
     SourceClassicPerimeterOverhangSettings2? overhangSettings,
   }) {
@@ -43,6 +44,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
       settings: settings,
       fuzzyConfig: fuzzyConfig,
       random: random,
+      layerId: layerId,
       speedGrading: speedGrading,
       overhangSettings: overhangSettings,
     );
@@ -54,6 +56,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     required SourceClassicPerimeterTraversalSettings2 settings,
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
     required SourceFuzzyUnitRandom2 random,
+    required int layerId,
     required bool speedGrading,
     required SourceClassicPerimeterOverhangSettings2? overhangSettings,
   }) {
@@ -64,7 +67,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
       final polygon = SourceFuzzySkinNoRegionApply2.applyPolygon(
         polygon: loop.polygon,
         config: fuzzyConfig,
-        layerIndex: overhangSettings?.layerId ?? 0,
+        layerIndex: layerId,
         perimeterIndex: loop.depth,
         isContour: loop.isContour,
         random: random,
@@ -161,6 +164,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
         settings: settings,
         fuzzyConfig: fuzzyConfig,
         random: random,
+        layerId: layerId,
         speedGrading: speedGrading,
         overhangSettings: overhangSettings,
       );
