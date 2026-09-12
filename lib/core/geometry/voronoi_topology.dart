@@ -5,17 +5,12 @@ enum VoronoiEdgeCategory { pointsInside, pointsOutside, pointsToContour, unknown
 enum VoronoiCellCategory { inside, outside, boundary, unknown }
 enum VoronoiSourceCategory { segmentStartPoint, segmentEndPoint, segment }
 
-/// Boundary segment in original integer `coord_t` units.
 class BoundarySegment2 {
   const BoundarySegment2(this.a, this.b);
-
   final SourcePoint2 a;
   final SourcePoint2 b;
 }
 
-/// Boost.Polygon stores Voronoi vertex coordinates as doubles while the source
-/// boundary segments remain integer coord_t. Values here are doubles in
-/// **source coordinate units**, not millimeters.
 class VoronoiPoint2 {
   const VoronoiPoint2(this.x, this.y);
   final double x;
@@ -33,6 +28,12 @@ class VoronoiVertex2 {
   final int? incidentEdgeId;
   final VoronoiVertexCategory category;
 
+  VoronoiVertex2 withPoint(VoronoiPoint2 value) => VoronoiVertex2(
+        point: value,
+        incidentEdgeId: incidentEdgeId,
+        category: category,
+      );
+
   VoronoiVertex2 withCategory(VoronoiVertexCategory value) => VoronoiVertex2(
         point: point,
         incidentEdgeId: incidentEdgeId,
@@ -45,12 +46,14 @@ class VoronoiCell2 {
     required this.sourceIndex,
     required this.sourceCategory,
     this.incidentEdgeId,
+    this.degenerate = false,
     this.category = VoronoiCellCategory.unknown,
   });
 
   final int sourceIndex;
   final VoronoiSourceCategory sourceCategory;
   final int? incidentEdgeId;
+  final bool degenerate;
   final VoronoiCellCategory category;
 
   bool get containsSegment => sourceCategory == VoronoiSourceCategory.segment;
@@ -60,17 +63,12 @@ class VoronoiCell2 {
         sourceIndex: sourceIndex,
         sourceCategory: sourceCategory,
         incidentEdgeId: incidentEdgeId,
+        degenerate: degenerate,
         category: value,
       );
 }
 
 /// Source-shaped Boost.Polygon half-edge representation.
-///
-/// Infinite Boost edges have one null endpoint in each oriented half-edge;
-/// supporting that is required by `annotate_inside_outside()` because those
-/// edges seed the Outside classification. `rotNextId` is Boost
-/// `edge_type::rot_next()`. `nextId` / `prevId` preserve the CCW cell boundary
-/// ordering used by `compute_segment_cell_range()` and repair diagnostics.
 class VoronoiHalfEdge2 {
   const VoronoiHalfEdge2({
     required this.id,
