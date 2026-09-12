@@ -58,11 +58,11 @@ class SourceExtrusionRegionSegment2<T> {
 /// Source-shaped Polyline/Polygon/Arachne subset of
 /// `Algorithm/LineSegmentation/LineSegmentation.cpp`.
 ///
-/// Pinned QIDI carries subject indexes through Clipper-Z. `clipper2 0.0.3`
-/// exposes the same auxiliary Z channel, so this port encodes the source
-/// `ZAttributes` bits directly instead of reconstructing endpoint identity by
-/// geometric projection after clipping. Clip endpoints that survive as clip
-/// points are remapped to the nearest subject line exactly like the source.
+/// QIDI carries subject indexes through Clipper-Z. `clipper2 0.0.3` exposes a
+/// Z callback as well, so intersection points use the same 32-bit ZAttributes
+/// layout. The Dart port currently drops the input Z on some surviving open
+/// terminal endpoints; [_repairLostSubjectVertexZ] restores only those points
+/// whose decoded source index is inconsistent with their exact XY coordinate.
 class SourceLineSegmentation2 {
   const SourceLineSegmentation2._();
 
@@ -78,7 +78,7 @@ class SourceLineSegmentation2 {
     }
     _validateDefaultClipIndex(defaultClipIndex);
 
-    final subjectPath = _subjectPath(subject.points, isClosed: false);
+    final subjectPath = _subjectPath(subject.points);
     final ranges = _subjectSegmentation(
       subjectPath,
       clipGroups,
@@ -143,10 +143,9 @@ class SourceLineSegmentation2 {
     _validateDefaultClipIndex(defaultClipIndex);
 
     // Closed Arachne ExtrusionLine already duplicates its closing point.
-    final subjectPath = _subjectPath(
-      [for (final junction in subject.junctions) junction.p],
-      isClosed: false,
-    );
+    final subjectPath = _subjectPath([
+      for (final junction in subject.junctions) junction.p,
+    ]);
     final ranges = _subjectSegmentation(
       subjectPath,
       clipGroups,
@@ -282,7 +281,7 @@ class SourceLineSegmentation2 {
         _requireAdjacentSubjectIndexes(edge1BottomZ, edge1TopZ);
         return _SourceZAttributes2(
           isNewPoint: true,
-          pointIndex: mathMin(
+          pointIndex: _minInt(
             edge1BottomZ.pointIndex,
             edge1TopZ.pointIndex,
           ),
@@ -292,7 +291,7 @@ class SourceLineSegmentation2 {
         _requireAdjacentSubjectIndexes(edge2BottomZ, edge2TopZ);
         return _SourceZAttributes2(
           isNewPoint: true,
-          pointIndex: mathMin(
+          pointIndex: _minInt(
             edge2BottomZ.pointIndex,
             edge2TopZ.pointIndex,
           ),
@@ -309,7 +308,7 @@ class SourceLineSegmentation2 {
     if (solution == null) return const [];
 
     final ranges = <_SourceLineRegionRange2>[];
-    for (final intersection in [...solution.closed, ...solution.open]) {
+    for (final intersection in solution.open) {
       final range = _createLineRegionRange(
         intersection,
         subject,
@@ -329,8 +328,18 @@ class SourceLineSegmentation2 {
 
     final normalized = <c2.Point64>[...intersection];
     for (var index = 0; index < normalized.length; index++) {
-      final point = normalized[index];
-      final z = _SourceZAttributes2.decode(point.z);
+      var point = normalized[index];
+      var z = _SourceZAttributes2.decode(point.z);
+
+      if (!z.isClipPoint && !z.isNewPoint) {
+        final repaired = _repairLostSubjectVertexZ(point, z, subject);
+        if (repaired != null) {
+          normalized[index] = repaired;
+          point = repaired;
+          z = _SourceZAttributes2.decode(repaired.z);
+        }
+      }
+
       if (!z.isClipPoint) continue;
 
       final subjectLineIndex = _findClosestLineToPoint(subject, point);
@@ -358,7 +367,9 @@ class SourceLineSegmentation2 {
     final endZ = _SourceZAttributes2.decode(normalized.last.z);
     final beginIndex = beginZ.pointIndex;
     final endIndex = endZ.pointIndex;
-    if (beginIndex > subject.length || endIndex > subject.length) return null;
+    if (beginIndex >= subject.length || endIndex >= subject.length) return null;
+    if (beginZ.isNewPoint && beginIndex + 1 >= subject.length) return null;
+    if (endZ.isNewPoint && endIndex + 1 >= subject.length) return null;
 
     final beginT = beginZ.isNewPoint
         ? _projectPointOnLine(
@@ -382,6 +393,36 @@ class SourceLineSegmentation2 {
       endIndex: endIndex,
       endT: endT,
       clipIndex: regionIndex,
+    );
+  }
+
+  static c2.Point64? _repairLostSubjectVertexZ(
+    c2.Point64 point,
+    _SourceZAttributes2 z,
+    c2.Path64 subject,
+  ) {
+    if (z.pointIndex < subject.length) {
+      final indexed = subject[z.pointIndex];
+      if (indexed.x == point.x && indexed.y == point.y) return null;
+    }
+
+    int? exactIndex;
+    for (var index = 0; index < subject.length; index++) {
+      final candidate = subject[index];
+      if (candidate.x != point.x || candidate.y != point.y) continue;
+      if (exactIndex != null) {
+        // Ambiguous equal-XY endpoints (for example a closed seam) retain the
+        // Z supplied by Clipper rather than inventing a source index.
+        return null;
+      }
+      exactIndex = index;
+    }
+    if (exactIndex == null) return null;
+
+    return c2.Point64(
+      point.x,
+      point.y,
+      _SourceZAttributes2(pointIndex: exactIndex).encode(),
     );
   }
 
@@ -648,27 +689,15 @@ class SourceLineSegmentation2 {
   static int _sourceLerpWidth(int a, int b, double t) =>
       ((1.0 - t) * a + t * b).truncate();
 
-  static c2.Path64 _subjectPath(
-    List<SourcePoint2> points, {
-    required bool isClosed,
-  }) {
-    final output = <c2.Point64>[];
-    for (var index = 0; index < points.length; index++) {
-      final point = points[index];
-      output.add(c2.Point64(
-        point.x,
-        point.y,
-        _SourceZAttributes2(pointIndex: index).encode(),
-      ));
-    }
-    if (isClosed && points.isNotEmpty) {
-      output.add(c2.Point64(
-        points.first.x,
-        points.first.y,
-        _SourceZAttributes2(pointIndex: points.length).encode(),
-      ));
-    }
-    return output;
+  static c2.Path64 _subjectPath(List<SourcePoint2> points) {
+    return [
+      for (var index = 0; index < points.length; index++)
+        c2.Point64(
+          points[index].x,
+          points[index].y,
+          _SourceZAttributes2(pointIndex: index).encode(),
+        ),
+    ];
   }
 
   static c2.Paths64 _clipPaths(List<SourceExPolygon2> expolygons) {
@@ -726,7 +755,7 @@ class SourceLineSegmentation2 {
     }
   }
 
-  static int mathMin(int a, int b) => a < b ? a : b;
+  static int _minInt(int a, int b) => a < b ? a : b;
 }
 
 class _SourceZAttributes2 {
