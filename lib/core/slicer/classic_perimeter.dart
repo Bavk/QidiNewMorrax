@@ -9,6 +9,8 @@ import '../geometry/source_geometry.dart';
 import '../geometry/source_medial_axis.dart';
 import '../geometry/source_polygon.dart';
 import '../geometry/thick_polyline.dart';
+import 'classic_perimeter_top_fill.dart';
+import 'classic_top_one_wall_context.dart';
 import 'extrusion_covered_geometry.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
@@ -24,6 +26,7 @@ class ClassicPerimeterSettings {
     this.externalPerimeterFlow,
     this.solidInfillFlow,
     this.hasGapFill = false,
+    this.sparseInfillDensityPercent = 100,
     this.filterOutGapFill = 0,
     this.surfaceSimplifyResolution = 0,
     this.extraPerimeters = 0,
@@ -52,6 +55,11 @@ class ClassicPerimeterSettings {
 
   /// Source `has_gap_fill` gate.
   final bool hasGapFill;
+
+  /// Source `sparse_infill_density.value`. The classic shell executes one
+  /// additional iteration for gap discovery only when gap fill is enabled and
+  /// sparse infill density is non-zero.
+  final double sparseInfillDensityPercent;
 
   /// Source `filter_out_gap_fill` configuration value in millimeters.
   final double filterOutGapFill;
@@ -89,6 +97,9 @@ class ClassicPerimeterResult {
     required this.gapFillPolylines,
     required this.gapFillExtrusions,
     required this.effectiveLoopCount,
+    this.topFills = const [],
+    this.fillClip = const [],
+    this.topFillApplied = false,
   });
 
   final List<ClassicPerimeterLoop> loops;
@@ -112,6 +123,13 @@ class ClassicPerimeterResult {
   final List<ExtrusionEntity2> gapFillExtrusions;
 
   final int effectiveLoopCount;
+
+  /// Source `top_fills` and `fill_clip` carried out of the shell-loop so the
+  /// final verified fill-boundary block can consume them after gap-fill has
+  /// finished mutating [innerRegion].
+  final List<ExPolygon2> topFills;
+  final List<ExPolygon2> fillClip;
+  final bool topFillApplied;
 }
 
 /// Ports the onion-shell / thin-wall / gap-fill portion of
@@ -139,6 +157,7 @@ class ClassicPerimeterShellGenerator {
     List<ExPolygon2> surfaces,
     ClassicPerimeterSettings settings, {
     required int layerIndex,
+    SourceClassicTopOneWallContext2? topOneWall,
   }) {
     _validate(settings);
     if (surfaces.isEmpty || settings.wallLoops <= 0) {
@@ -157,6 +176,20 @@ class ClassicPerimeterShellGenerator {
     if (settings.alternateExtraWall && layerIndex.isOdd && !settings.spiralVase) {
       requestedLoopNumber++;
     }
+
+    // Pinned QIDI source changes the island's loop_number before any shell
+    // geometry is generated. Preserve `upper_slices == nullptr` separately
+    // from a non-null empty slice set: the latter belongs to the in-loop Alltop
+    // producer instead of this topmost gate.
+    final topContext = topOneWall;
+    if (requestedLoopNumber > 0 &&
+        topContext != null &&
+        ((topContext.type != SourceTopOneWallType2.none &&
+                topContext.upperSlices == null) ||
+            (topContext.onlyOneWallFirstLayer && layerIndex == 0))) {
+      requestedLoopNumber = 0;
+    }
+
     if (requestedLoopNumber < 0) {
       return ClassicPerimeterResult(
         loops: const [],
@@ -205,6 +238,9 @@ class ClassicPerimeterShellGenerator {
     final thinWalls = <ThickPolyline2>[];
     final gaps = <ExPolygon2>[];
     var effectiveLoopNumber = requestedLoopNumber;
+    var topFills = <ExPolygon2>[];
+    var fillClip = <ExPolygon2>[];
+    var topFillApplied = false;
 
     for (var i = 0;; i++) {
       var offsets = <ExPolygon2>[];
@@ -350,6 +386,44 @@ class ClassicPerimeterShellGenerator {
       // smaller-width outer loops are output loops only and are deliberately
       // NOT fed back into subsequent inner-perimeter generation.
       last = offsets;
+
+      // This must remain inside the shell loop. Pinned source mutates `last`
+      // here, then the next iteration computes its inner perimeter from that
+      // modified geometry and may reduce loop_number if no region survives.
+      if (i == 0 &&
+          i != requestedLoopNumber &&
+          topContext != null &&
+          topContext.type == SourceTopOneWallType2.allTop &&
+          topContext.upperSlices != null) {
+        final topResult = const SourceClassicTopFillAllTop2().produce(
+          last: last,
+          loopNumber: requestedLoopNumber,
+          settings: SourceClassicTopFillSettings2(
+            wallLoops: settings.wallLoops,
+            externalPerimeterWidthMm: settings.externalPerimeterWidth,
+            externalPerimeterSpacingMm: settings.externalPerimeterSpacing,
+            perimeterWidthMm: settings.perimeterWidth,
+            perimeterSpacingMm: settings.perimeterSpacing,
+            sparseInfillLineWidthMm: topContext.sparseInfillLineWidthMm,
+            topAreaThresholdPercent: topContext.topAreaThresholdPercent,
+            hasGapFill: settings.hasGapFill,
+          ),
+          upperSlices: topContext.upperSlices,
+          lowerSlices: topContext.lowerSlices,
+        );
+        last = topResult.last;
+        topFills = topResult.topFills;
+        fillClip = topResult.fillClip;
+        topFillApplied = topResult.applied;
+      }
+
+      // Literal source stop condition. Without this, an unnecessary next
+      // offset can collapse `last` even though source already stopped after the
+      // final requested wall.
+      if (i == requestedLoopNumber &&
+          (!settings.hasGapFill || settings.sparseInfillDensityPercent == 0)) {
+        break;
+      }
     }
 
     final thinWallExtrusions = <ExtrusionEntity2>[];
@@ -439,6 +513,9 @@ class ClassicPerimeterShellGenerator {
       gapFillPolylines: List.unmodifiable(gapFillPolylines),
       gapFillExtrusions: List.unmodifiable(gapFillExtrusions),
       effectiveLoopCount: effectiveLoopNumber + 1,
+      topFills: List.unmodifiable(topFills),
+      fillClip: List.unmodifiable(fillClip),
+      topFillApplied: topFillApplied,
     );
   }
 
@@ -536,10 +613,13 @@ class ClassicPerimeterShellGenerator {
         'fill converts MedialAxis ThickPolylines with solid_infill_flow.',
       );
     }
-    if (settings.filterOutGapFill < 0 ||
+    if (!settings.sparseInfillDensityPercent.isFinite ||
+        settings.sparseInfillDensityPercent < 0 ||
+        settings.filterOutGapFill < 0 ||
         settings.surfaceSimplifyResolution < 0) {
       throw ArgumentError(
-        'filterOutGapFill and surfaceSimplifyResolution must be >= 0',
+        'sparseInfillDensityPercent, filterOutGapFill and '
+        'surfaceSimplifyResolution must be finite and >= 0',
       );
     }
   }
