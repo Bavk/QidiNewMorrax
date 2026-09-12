@@ -284,13 +284,15 @@ class SourceClassicNoBridge2 {
       }
     }
 
-    var result = clipper.intersectionEx(
-      _flatten(last),
-      _flatten(
-        clipper.offset2Ex(
-          filtered,
-          _unscale(-perimeterSpacing / 2.0),
-          _unscale(bridgedInfillMargin + perimeterSpacing / 2.0),
+    final result = List<ExPolygon2>.of(
+      clipper.intersectionEx(
+        _flatten(last),
+        _flatten(
+          clipper.offset2Ex(
+            filtered,
+            _unscale(-perimeterSpacing / 2.0),
+            _unscale(bridgedInfillMargin + perimeterSpacing / 2.0),
+          ),
         ),
       ),
     );
