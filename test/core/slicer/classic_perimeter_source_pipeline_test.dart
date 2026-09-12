@@ -4,6 +4,7 @@ import 'package:qidi_flow_flutter/core/geometry/point.dart';
 import 'package:qidi_flow_flutter/core/geometry/polygon.dart';
 import 'package:qidi_flow_flutter/core/slicer/classic_perimeter.dart';
 import 'package:qidi_flow_flutter/core/slicer/classic_perimeter_source_pipeline.dart';
+import 'package:qidi_flow_flutter/core/slicer/classic_wall_sequence.dart';
 import 'package:qidi_flow_flutter/core/slicer/extrusion_entity.dart';
 import 'package:qidi_flow_flutter/core/slicer/flow.dart';
 
@@ -83,6 +84,84 @@ void main() {
     expect(outer.isCounterClockwise, true);
   });
 
+  test('outer-inner wall sequence is applied after traversal', () {
+    final result = generator.generate(
+      [ExPolygon2(contour: rectangle(0, 0, 20, 20))],
+      settings(),
+      layerIndex: 1,
+    );
+
+    final entities = SourceClassicPerimeterPipeline2.buildNoOverhangExtrusions(
+      result: result,
+      externalPerimeterFlow: externalFlow,
+      smallerExternalPerimeterFlow: smallerExternalFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: 0.2,
+      wallSequence: SourceWallSequence2.outerInner,
+      layerId: 1,
+    );
+
+    expect(entities, hasLength(2));
+    expect(entities[0].role, ExtrusionRole.externalPerimeter);
+    expect(entities[1].role, ExtrusionRole.perimeter);
+    expect((entities[0] as ExtrusionLoop2).isCounterClockwise, true);
+    expect((entities[1] as ExtrusionLoop2).isCounterClockwise, true);
+  });
+
+  test('outer-only brim forces outer-first ordering on first layer', () {
+    final result = generator.generate(
+      [ExPolygon2(contour: rectangle(0, 0, 20, 20))],
+      settings(),
+      layerIndex: 0,
+    );
+
+    final entities = SourceClassicPerimeterPipeline2.buildNoOverhangExtrusions(
+      result: result,
+      externalPerimeterFlow: externalFlow,
+      smallerExternalPerimeterFlow: smallerExternalFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: 0.2,
+      wallSequence: SourceWallSequence2.innerOuter,
+      layerId: 0,
+      brimOuterOnly: true,
+      brimWidth: 5,
+    );
+
+    expect(entities, hasLength(2));
+    expect(entities[0].role, ExtrusionRole.externalPerimeter);
+    expect(entities[1].role, ExtrusionRole.perimeter);
+  });
+
+  test('inner-outer-inner places source second wall after external wall', () {
+    final result = generator.generate(
+      [ExPolygon2(contour: rectangle(0, 0, 30, 30))],
+      settings(wallLoops: 3),
+      layerIndex: 1,
+    );
+
+    final entities = SourceClassicPerimeterPipeline2.buildNoOverhangExtrusions(
+      result: result,
+      externalPerimeterFlow: externalFlow,
+      smallerExternalPerimeterFlow: smallerExternalFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: 0.2,
+      wallSequence: SourceWallSequence2.innerOuterInner,
+      layerId: 1,
+    );
+
+    expect(entities, hasLength(3));
+    expect(entities.map((entity) => entity.role), [
+      ExtrusionRole.perimeter,
+      ExtrusionRole.externalPerimeter,
+      ExtrusionRole.perimeter,
+    ]);
+    final secondWall = entities[2] as ExtrusionLoop2;
+    expect(
+      secondWall.loopRole & ExtrusionLoopRoles.secondPerimeter,
+      ExtrusionLoopRoles.secondPerimeter,
+    );
+  });
+
   test('shell hole is reconstructed as child and prints before contour', () {
     final hole = rectangle(5, 5, 15, 15).reversed();
     final result = generator.generate(
@@ -138,7 +217,10 @@ void main() {
     );
 
     expect(entities, isNotEmpty);
-    expect(entities.every((entity) => entity.role == ExtrusionRole.externalPerimeter), true);
+    expect(
+      entities.every((entity) => entity.role == ExtrusionRole.externalPerimeter),
+      true,
+    );
     expect(entities.every((entity) => entity.length > 0), true);
     expect(result.thinWalls, hasLength(evidenceCount));
     expect(result.thinWalls.first.firstPoint, evidenceFirst);
