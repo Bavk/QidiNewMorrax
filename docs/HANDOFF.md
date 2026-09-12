@@ -16,12 +16,12 @@ Do not infer completion from visual similarity, compilation, or common-case test
 
 Latest validated code checkpoint:
 
-- code commit `0d52a4272197bbbaa5a6c799023eed4c59dc0362` (`test: cover Arachne process branch plan`);
-- `.github/workflows/flutter-parity.yml` run `34718196236` (#346);
+- code commit `90eec08b5c8f6474bbbfa78d1e71f3996d2246e0` (`test: integrate Arachne surface wall generation`);
+- `.github/workflows/flutter-parity.yml` run `34718370244` (#353);
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **618/618 passed**;
+- `flutter test --reporter expanded` → **638/638 passed**;
 - job conclusion → **success**.
 
 Important checkpoints leading here:
@@ -32,7 +32,8 @@ Important checkpoints leading here:
 - `5c77305...` / run #330: polygon construction is composed into skeletal variable-width toolpaths, 584/584 green;
 - `f23293e...` / run #340: full represented `WallToolPaths::generate()` source-order composition is green, 604/604;
 - `4832008...` + `9ac38dc...`: `computePointCellRange()` secondary-edge assertion corrected to pinned `!is_secondary()` semantics and frozen by regression coverage;
-- `41c8ffe...` + `0d52a42...` / run #346: first source-shaped `PerimeterGenerator::process_arachne()` orchestration slice, 618/618 green.
+- `41c8ffe...` + `0d52a42...` / run #346: first source-shaped `PerimeterGenerator::process_arachne()` orchestration slice, 618/618 green;
+- `3fcb49d...` + `90eec08...` / run #353: non-separated per-surface Arachne processing now composes simplify/offset, circle-compensation topology mapping, real `WallToolPaths`, and inner-contour output, 638/638 green.
 
 ## Current represented classic surface → extrusion path — scoped parity verified
 
@@ -69,23 +70,23 @@ The Arachne dependency chain has moved past the old graph-construction blocker:
 - the `computePointCellRange()` secondary-edge invariant now matches pinned C++ (`vertex0 == sourcePoint || !edge.secondary`), with an explicit regression fixture;
 - real square polygon fixtures execute Boost Voronoi → Arachne half-edge construction and retain reciprocal twin / chain-start invariants;
 - post-construction `SkeletalTrapezoidation::generateToolpaths()` composes source order through central classification, bead-count propagation, transition/rib generation and all seven represented `generateSegments()` stages;
-- `WallToolPaths::generate()` now composes prepared outline → beading strategy → skeletal generation → stitch → small-line removal → inner-contour extraction → simplify → empty-path removal, including early-return state and hole-compensation gate;
+- `WallToolPaths::generate()` composes prepared outline → beading strategy → skeletal generation → stitch → small-line removal → inner-contour extraction → simplify → empty-path removal, including early-return state and hole-compensation gate;
 - the represented real-square path reaches variable-width Arachne lines and `WallToolPaths` output under CI.
 
-This is still **not full Arachne `PerimeterGenerator::process_arachne()` parity**. The first orchestration slice now freezes the source one-wall gates, normal-vs-separate generation decision, exact precise-outer-wall `wall_0_inset`, `loop_number + 1` inset count, no-wall early skip, and normal/one-wall handoff into the composed `WallToolPaths::generate()` path. The `Alltop` separate-wall clipping/recombination branch is intentionally exposed as an unfinished seam instead of being approximated.
+This is still **not full Arachne `PerimeterGenerator::process_arachne()` parity**. The represented orchestration now covers source one-wall gates, normal-vs-separate generation planning, exact precise-outer-wall `wall_0_inset`, `loop_number + 1` inset count, no-wall early skip, per-surface simplify/outer offset, circle-compensation topology/flag mapping, normal/topmost-one-wall generation through real `WallToolPaths`, and returned inner contour. The `Alltop` separate-wall branch is still intentionally rejected/exposed instead of approximated.
 
 ## Fuzzy / Arachne scope retained
 
-The 618-test suite re-runs all previously verified fuzzy evidence: exact `FuzzySkinType` policy; one Classic RNG stream; MT19937/libstdc++ `[0,1)` oracles; pinned libnoise Perlin/Billow/RidgedMulti/Voronoi; Polygon/Polyline fuzzy geometry and painted-region LineSegmentation; source ZAttributes compatibility; source-shaped Arachne `ExtrusionLine`; `Displacement`, `Extrusion`, `Combined` seeded C++ goldens; and region-aware Arachne fuzzy composition.
+The 638-test suite re-runs all previously verified fuzzy evidence: exact `FuzzySkinType` policy; one Classic RNG stream; MT19937/libstdc++ `[0,1)` oracles; pinned libnoise Perlin/Billow/RidgedMulti/Voronoi; Polygon/Polyline fuzzy geometry and painted-region LineSegmentation; source ZAttributes compatibility; source-shaped Arachne `ExtrusionLine`; `Displacement`, `Extrusion`, `Combined` seeded C++ goldens; and region-aware Arachne fuzzy composition.
 
 ## First unfinished priority
 
-Continue pinned `PerimeterGenerator::process_arachne()` from the explicit `separateWallGeneration` seam:
+Continue pinned `PerimeterGenerator::process_arachne()` from the explicit `Alltop` separate-wall seam:
 
 1. port/compose the `Alltop` one-wall area decision around `should_enable_top_one_wall()`, preserving null/non-null upper-slice behavior, bbox pruning, offsets and clipping order;
 2. reproduce the separate first-wall generation, `top_fills` / remainder split, second `WallToolPaths` generation and exact recombination into perimeter toolpaths and inner contour;
 3. compose source wall-path conversion/order (`getRegionOrder`, blocked-order nearest candidate handling, `InnerOuterInner` adjustment and `traverse_extrusions`) without normalizing source tie-breaking;
-4. compose `add_infill_contour_for_arachne()` and the final `fill_surfaces` / `fill_no_overlap` boundary for normal, one-wall and separate-wall branches;
+4. integrate the represented Arachne infill-contour boundary into final `fill_surfaces` / `fill_no_overlap` behavior for normal, one-wall and separate-wall branches;
 5. add independent C++/source goldens for complete per-surface polygon → Arachne walls → ordered extrusion/fill-boundary output, including holes, top-one-wall and circle-compensation cases;
 6. only then promote the represented `process_arachne()` slice beyond `port_started`.
 
