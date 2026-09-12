@@ -1,100 +1,126 @@
 # Symbol-level 1:1 migration traceability
 
-This ledger complements `original_file_manifest.json`. The file manifest prevents source files/assets from disappearing; this document tracks **behavior/symbol replacement**.
+This ledger complements `original_file_manifest.json`. The file manifest prevents source files/assets from disappearing; this document tracks **source symbol / behavior replacement**.
 
-Status meanings are authoritative from `PARITY_CONTRACT.md`:
+Status meanings come from `PARITY_CONTRACT.md`:
 
-- `pending` — no real Dart replacement yet.
-- `port_started` — only part of the source behavior exists.
-- `implemented_unverified` — intended Dart replacement exists but source/reference parity has not actually run and passed.
-- `parity_verified` — required source behavior has passing translated/differential reference tests.
-- `runtime_asset_verified` — data preservation was byte-for-byte or explicitly canonically verified.
+- `pending` — no real Dart replacement yet;
+- `port_started` — only part of the source behavior exists;
+- `implemented_unverified` — intended Dart implementation exists but required source/reference tests have not actually run and passed;
+- `parity_verified` — required source behavior has passing translated/differential tests;
+- `runtime_asset_verified` — preserved data was verified byte-for-byte or by an explicit canonical transformation.
 
-**No executable source symbol listed below is `parity_verified` yet because the current GitHub Actions jobs are failing before a runner/steps are allocated and this environment has no Flutter/Dart SDK.**
+**No executable source symbol below is `parity_verified` yet.** The current environment has no Flutter/Dart SDK and checked GitHub Actions jobs fail before runner allocation (`steps=[]`, `runner_id=0`).
 
 ## Numeric / geometry foundation
 
 | Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
 |---|---|---|---|---|---|
-| `src/libslic3r/libslic3r.h` | `SCALING_FACTOR=0.00001`, `EPSILON=1e-4`, scaled-coordinate semantics | `lib/core/geometry/source_geometry.dart` `Slic3rUnits` | `test/core/geometry/source_geometry_test.dart` | `implemented_unverified` | Integer `coord_t` domain is now explicit; mm doubles are boundary/UI representations, not the exact slicer geometry domain. |
-| `src/libslic3r/Point.hpp`, `Point.cpp` | integer point rotation and rounding used by geometry | `SourcePoint2.rotated()` | source-derived Line regression tests | `implemented_unverified` | Uses C++ `round()`-compatible away-from-zero implementation for rotation. |
-| `src/libslic3r/Line.hpp`, `Line.cpp` | `length`, `orientation`, `direction`, `distance_to`, `perp_distance_to`, `parallel_to`, `perpendicular_to`, finite/infinite intersection | `SourceLine2` | translated `tests/libslic3r/test_geometry.cpp` Line cases | `implemented_unverified` | Preserves integer coordinate rounding/truncation where represented. |
-| `src/libslic3r/Polygon.*`, `ExPolygon.*` | source-coordinate polygon / expolygon boundary representation used by medial axis | `lib/core/geometry/source_polygon.dart` | medial-axis postprocess fixtures | `port_started` | Only current required subset exists; full Polygon/ExPolygon API still pending. |
-| `src/libslic3r/Polyline.hpp`, `Polyline.cpp` | `ThickPolyline`, `thicklines`, `reverse`, `rebase_at`, `get_width_at` | `lib/core/geometry/thick_polyline.dart` | `test/core/geometry/thick_polyline_test.dart` | `implemented_unverified` | Uses integer `SourcePoint2`; width vector invariant `2*N-2` preserved. |
+| `src/libslic3r/libslic3r.h` | `SCALING_FACTOR=0.00001`, `EPSILON=1e-4`, `SCALED_EPSILON=10` | `lib/core/geometry/source_geometry.dart` `Slic3rUnits` | `source_geometry_test.dart` | `implemented_unverified` | Exact slicer domain is integer `coord_t`; mm doubles are boundary/UI representations. |
+| `Point.hpp/.cpp` | integer Point storage, rotate rounding used by geometry | `SourcePoint2` | translated Line rotation-sensitive fixtures | `implemented_unverified` | Rotation uses C++ `round()` compatible away-from-zero behavior. |
+| `Line.hpp/.cpp` | vector/length/orientation/direction/distance/perp-distance/parallel/perpendicular/finite+infinite intersection subset | `SourceLine2` | translated `tests/libslic3r/test_geometry.cpp` Line cases | `implemented_unverified` | Integer result casts/truncation represented; source overflow-range guard still needs dedicated coverage. |
+| `MultiPoint.cpp`, `Polyline.hpp/.cpp` | Polyline point constructor, QIDI append join-dedup, reverse, length, lines, linear clip/extend | `lib/core/geometry/source_polyline.dart` | `source_polyline_test.dart` | `implemented_unverified` | Constructor preserves existing adjacent duplicates; append only suppresses equal join endpoint. |
+| QIDI `Polyline` additions | ArcFitter / `PathFittingData`, fitting-aware reverse/clip/split/simplify | no complete replacement | explicit `UnsupportedError` for arc simplify | `pending` | Must be ported; no silent linearization accepted. |
+| `Polygon.*`, `ExPolygon.*` | source-coordinate polygon/expolygon boundary subset used by medial axis/surfaces | `lib/core/geometry/source_polygon.dart` | medial-axis/surface fixtures | `port_started` | Full Polygon/ExPolygon API still pending. |
+| `Polyline.hpp/.cpp` | `ThickPolyline`, `thicklines`, `reverse`, `rebase_at`, `get_width_at`, width cardinality | `lib/core/geometry/thick_polyline.dart` | `thick_polyline_test.dart` | `implemented_unverified` | Points are integer source coords; widths are scaled `coordf_t`. |
 
 ## Clipper / boolean / offset geometry
 
 | Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
 |---|---|---|---|---|---|
-| source Clipper + `src/libslic3r/ClipperUtils.*` | union/difference/intersection/xor facade | `lib/core/geometry/clipper_geometry.dart` | initial translated `test_clipper_utils.cpp` cases | `implemented_unverified` | Current backend is pure-Dart Clipper2. Source uses Clipper 6.x + custom ClipperUtils semantics; every discrepancy must be fixed or the required algorithm ported directly. |
-| `ClipperUtils` | `offset_ex`, holes, `offset2_ex`, opening/closing, default miter limit | `ClipperGeometry` | initial translated `test_clipper_offset.cpp` cases | `implemented_unverified` | Source `SCALING_FACTOR` and default miter limit 3.0 represented. Full original regression suite still pending. |
+| source Clipper + `ClipperUtils.*` | union/difference/intersection/xor facade | `lib/core/geometry/clipper_geometry.dart` | initial translated `test_clipper_utils.cpp` | `implemented_unverified` | Current backend is pure-Dart Clipper2. Source uses Clipper 6.x plus custom semantics; replacement remains provisional until full source regression coverage. |
+| `ClipperUtils.*` | offsets, holes, `offset2`, opening/closing, default miter limit | `ClipperGeometry` | initial translated `test_clipper_offset.cpp` | `implemented_unverified` | Source scaling represented. Exact source-coordinate facade still needs broader integration/reference proof. |
 
-## Medial axis / thin-wall dependencies
-
-| Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
-|---|---|---|---|---|---|
-| `src/libslic3r/Geometry/Voronoi.hpp` | source-shaped vertex/cell/half-edge model consumed by MedialAxis | `lib/core/geometry/voronoi_topology.dart` | `medial_axis_core_test.dart` handcrafted topology fixtures | `port_started` | Boost segment-Voronoi **construction, repair and annotation are still pending**. No substitute skeletonizer is accepted. |
-| `src/libslic3r/Geometry/MedialAxis.cpp` | `validate_edge()` | `lib/core/geometry/medial_axis_core.dart` | `test/core/geometry/medial_axis_core_test.dart` | `implemented_unverified` | Preserves PI/8 facing-edge rule, scaled epsilon, width filtering and source point conversion. |
-| same | `process_edge_neighbors()` and active-edge chain traversal | `MedialAxisCore.buildFromTopology()` | chain/end-point fixtures | `implemented_unverified` | Requires real Boost-compatible topology constructor before end-to-end parity can be assessed. |
-| `src/libslic3r/ExPolygon.cpp` | `ExPolygon::medial_axis()` endpoint extension, short-branch pruning and reconnect pass after raw build | `lib/core/geometry/medial_axis_postprocess.dart` | `test/core/geometry/medial_axis_postprocess_test.dart` | `implemented_unverified` | Now entirely in source `coord_t` units; contour extension line casts are preserved. |
-| `src/libslic3r/Geometry/Voronoi.cpp` | `construct_voronoi`, `repair_voronoi`, inside/outside annotation / vertex categories | none complete | none | `pending` | Immediate dependency before `detect_thin_wall` can be enabled. |
-| Boost.Polygon segment Voronoi behavior used by source | segment Voronoi construction and curved/primary edge semantics | none complete | source/reference fixtures pending | `pending` | Must reproduce source behavior in Dart; old native Boost cannot be runtime backend. |
-
-## Flow / extrusion / G-code numeric foundation
+## Medial axis / thin-wall dependency chain
 
 | Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
 |---|---|---|---|---|---|
-| `src/libslic3r/Flow.hpp`, `Flow.cpp` | role auto width, rounded rectangle spacing, bridge spacing, `mm3_per_mm`, `with_width`, `with_height`, `with_spacing`, `with_cross_section`, flow ratio | `lib/core/slicer/flow.dart` | translated `tests/fff_print/test_flow.cpp` math fixtures + source-formula tests | `implemented_unverified` | Source quirks intentionally retained, including supplied `with_cross_section()` formulas. |
-| `Flow.cpp` | config width fallback / percentage resolution | `Flow.resolveExtrusionWidth()` | `flow_test.dart` fallback/percentage fixtures | `implemented_unverified` | Includes initial-layer zero fallback behavior. |
-| `src/libslic3r/Extruder.cpp` | E/mm3 conversion, E state, retract/unretract, restart extra, relative-E behavior, used filament, speed fallback | `lib/core/gcode/extruder.dart` `ExtruderState` | `test/core/gcode/extruder_test.dart` | `implemented_unverified` | QIDI two-channel shared-extruder shape represented. |
-| `src/libslic3r/PrintConfig.cpp` | `get_config_index_base`, filament variant resolution subset | `QidiConfigVariantResolver` | variant resolver tests | `implemented_unverified` | Full PrintConfig schema/expression pipeline remains pending. |
-| native GCode pipeline | Flow cross-section + Extruder E/mm3 conversion used for extrusion length | `lib/core/gcode/gcode_writer.dart` basic writer | existing writer tests | `port_started` | Basic writer now uses source Flow/Extruder math but native GCode state/templates/retraction/cooling/path logic are still missing. |
+| `Geometry/Voronoi.hpp` | source-shaped segment/cell/vertex/half-edge data consumed by MedialAxis | `voronoi_topology.dart` | handcrafted topology fixtures | `port_started` | Construction/repair/annotation still missing. Voronoi doubles are in scaled source-coordinate units. |
+| `Geometry/MedialAxis.cpp` | `validate_edge()` | `medial_axis_core.dart` | `medial_axis_core_test.dart` | `implemented_unverified` | PI/8 rule, scaled epsilon, width filtering and lrint-compatible vertex conversion represented. |
+| same | valid-edge selection + `process_edge_neighbors()` traversal | `MedialAxisCore.buildFromTopology()` | chain/end-point fixtures | `implemented_unverified` | Requires real Boost-compatible topology builder for end-to-end parity. |
+| `ExPolygon.cpp` | `ExPolygon::medial_axis()` endpoint extension, short-branch pruning and reconnect post-pass | `medial_axis_postprocess.dart` | `medial_axis_postprocess_test.dart` | `implemented_unverified` | Runs in source coord units; extension line casts represented. |
+| `Geometry/Voronoi.cpp/.hpp` | `construct_voronoi`, `repair_voronoi`, inside/outside/on-contour annotation/categories | none complete | pending | `pending` | Immediate blocker for real thin-wall/gap-fill. |
+| Boost.Polygon behavior used by source | segment Voronoi construction and primary/curved edge semantics | none complete | source/reference fixtures pending | `pending` | Must be reproduced in Dart; old Boost/native code cannot be runtime backend. |
 
-## Surface / slicer semantic model
+## Flow / extrusion numeric foundation
 
 | Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
 |---|---|---|---|---|---|
-| `src/libslic3r/Surface.hpp`, `Surface.cpp` | `SurfaceType`, flags, defaults, conversion helpers, `surfaces_could_merge`, type colors | `lib/core/slicer/surface.dart` | `test/core/slicer/surface_test.dart` | `implemented_unverified` | `stPerimeter` classification and merge predicate represented exactly. |
-| supplied QIDI `Surface` additions | `counter_circle_compensation`, `holes_circle_compensation`; copy/assignment omission quirks | `Surface2.sourceCopy*`, `sourceAssignFrom()` | `surface_test.dart` | `implemented_unverified` | Source copy constructors reset omitted compensation fields; assignment leaves destination compensation untouched. |
-| `src/libslic3r/PerimeterGenerator.cpp` | `process_classic()` onion-shell subset | `lib/core/slicer/classic_perimeter.dart` | `test/core/slicer/classic_perimeter_test.dart` | `port_started` | Constants/formulas represented for initial insets, QIDI narrow external width, alternate extra wall, spiral-vase island selection. Thin wall/gap-fill branch remains deliberately unsupported. |
-| same | `detect_thin_wall`, medial-axis extraction, gap fill, remaining path ordering/overhang behavior | none complete | pending | `pending` | Do not remove `UnsupportedError` until the real source dependencies above are integrated and reference-tested. |
-| Arachne | all Arachne wall generation | none complete | pending | `pending` | Full source module required. |
+| `Flow.hpp/.cpp` | role auto width, rounded-rectangle spacing, bridge spacing, `mm3_per_mm`, width/height/spacing/cross-section/ratio mutations | `lib/core/slicer/flow.dart` | translated `tests/fff_print/test_flow.cpp` math cases | `implemented_unverified` | Supplied source formula quirks intentionally retained. |
+| `Flow.cpp` | config extrusion-width fallback and percentage resolution | `Flow.resolveExtrusionWidth()` | `flow_test.dart` | `implemented_unverified` | Includes initial-layer fallback behavior. |
+| `Extruder.cpp` | E/mm3, E state, retract/unretract/restart-extra, used filament, speed fallback | `lib/core/gcode/extruder.dart` | `extruder_test.dart` | `implemented_unverified` | QIDI shared-extruder two-channel shape represented. |
+| `PrintConfig.cpp` subset | QIDI `get_config_index_base`, filament variant resolution | `QidiConfigVariantResolver` | variant resolver tests | `implemented_unverified` | Full PrintConfig schema/expression pipeline pending. |
+| native GCode pipeline | basic volume conversion uses source Flow + Extruder math | `gcode_writer.dart` foundation | writer tests | `port_started` | Native GCode state/templates/retract/travel/cooling/speed/acceleration still pending. |
+
+## Surface semantic model
+
+| Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
+|---|---|---|---|---|---|
+| `Surface.hpp/.cpp` | SurfaceType ordering, flags, defaults, conversion helpers, merge predicate, colors | `lib/core/slicer/surface.dart` | `surface_test.dart` | `implemented_unverified` | `stPerimeter` classification represented exactly. |
+| supplied QIDI Surface members | circle compensation members and copy/assignment omission quirks | `Surface2.sourceCopy*`, `sourceAssignFrom()` | `surface_test.dart` | `implemented_unverified` | Copy resets omitted compensation fields; assignment leaves destination values untouched. |
+
+## ExtrusionEntity semantic model
+
+| Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
+|---|---|---|---|---|---|
+| `ExtrusionEntity.hpp` | exact `ExtrusionRole` ordering; perimeter/infill/solid/bridge/support classifiers | `lib/core/slicer/extrusion_entity.dart` | `extrusion_entity_test.dart` | `implemented_unverified` | Includes `erFlush`, `erMixed`, sentinel `erCount`. |
+| `ExtrusionEntity.cpp` | `role_to_string` / `string_to_role` | `extrusionRoleToString`, `extrusionRoleFromString` | role-string tests | `implemented_unverified` | Source English labels retained exactly. |
+| `ExtrusionEntity` base | `customize_flag`, `cooling_node`, virtual flags/contracts subset | `ExtrusionEntity2` | clone/collection fixtures | `port_started` | Coverage/polygon APIs and some utility methods remain open. |
+| `ExtrusionPath` | fields/defaults, copy, reverse, role, can-reverse, force-no-extrusion, overhang/curve clamps, volume, `can_merge()` comparison set | `ExtrusionPath2` | path tests | `implemented_unverified` | `total_volume()` uses floating source length × `SCALING_FACTOR`; can-merge intentionally ignores polyline/overhang/customize/cooling. |
+| `ExtrusionPathSloped` | slope state/interpolation; inherited base clone slicing quirk | `ExtrusionPathSloped2` | clone type fixture | `implemented_unverified` | Source does not override clone, so clone becomes base ExtrusionPath; preserved. |
+| `ExtrusionPathOriented` | non-reversible oriented path and type-preserving clone | `ExtrusionPathOriented2` | clone type fixture | `implemented_unverified` | Explicit Dart clone preserves oriented dynamic type. |
+| `ExtrusionMultiPath` | path vector, single-path canReverse inheritance, vector ctor default reverse, reverse/order, continuous as-polyline, volume | `ExtrusionMultiPath2` | multipath tests | `implemented_unverified` | Explicit source copy ctor resets base customize/cooling; preserved. |
+| `ExtrusionLoop` subset | path container, role, winding, reverse, polygon/as-polyline, volume, speed-discontinuity role | `ExtrusionLoop2` | loop/collection tests | `port_started` | split/clip/seam/overhang utility methods still pending. |
+| `ExtrusionEntityCollection.*` | role mixing, no-sort/can-sort/can-reverse, recursive count, reverse semantics, flatten/preserve-ordering, volume | `ExtrusionEntityCollection2` | translated `test_extrusion_entity.cpp` flatten cases | `implemented_unverified` | Source copy ctor resets base customize/cooling; loops are not individually reversed during collection reverse. |
+| helper filtering | supportTransition included when filtering supportMaterial | `filterByExtrusionRole()` | filter fixture | `implemented_unverified` | Dart ownership differs, but behavioral selection is source-shaped. |
+| `ExtrusionPath::polygons_covered_by_width/spacing` | exact path coverage geometry | none exact | pending | `pending` | Depends on verified exact-source boolean/offset geometry. |
+| `ExtrusionLoop` remaining | `split_at_vertex`, `split_at`, clipping, seam-angle/overhang methods, fitting metadata preservation | none complete | pending | `pending` | ArcFitter-aware Polyline split is a dependency. |
+
+## Classic perimeter
+
+| Source | Source symbol / behavior | Dart replacement | Reference tests | Status | Notes |
+|---|---|---|---|---|---|
+| `PerimeterGenerator.cpp` | `process_classic()` onion-shell formula subset | `classic_perimeter.dart` | `classic_perimeter_test.dart` | `port_started` | Includes tolerances 0.4 / QIDI 0.22, first/internal insets, alternate wall, spiral-vase island subset. |
+| same | `detect_thin_wall`, medial-axis extraction, gap fill, remaining path/overhang/order logic | no complete integration | pending | `pending` | `UnsupportedError` remains intentional until exact dependencies are ready. |
+| Arachne source modules | variable-width wall generation | none complete | pending | `pending` | Full module required. |
 
 ## Model/project formats
 
 | Source behavior | Dart replacement | Status | Notes |
 |---|---|---|---|
-| STL ASCII/binary import | `lib/core/model_io/stl_parser.dart` | `port_started` | Existing Dart tests; full source error/repair semantics still need traceability. |
-| OBJ import | `lib/core/model_io/obj_parser.dart` | `port_started` | Source parity coverage incomplete. |
-| AMF / ZIP.AMF | `lib/core/model_io/amf_parser.dart` | `port_started` | Units/constellation implemented; full source behavior still to verify. |
-| package-aware 3MF with external models/components/build transforms and unknown entry retention | `three_mf_parser.dart`, `three_mf_writer.dart` | `port_started` | Full project/QIDI/Bambu metadata serialization parity still open. |
-| STEP + source build-enabled Assimp formats | none complete | `pending` | Must be implemented in Dart, not delegated to old native importer. |
+| STL ASCII/binary | `stl_parser.dart` | `port_started` | Existing tests; full source repair/warning behavior not fully mapped. |
+| OBJ | `obj_parser.dart` | `port_started` | Source parity coverage incomplete. |
+| AMF / ZIP.AMF | `amf_parser.dart` | `port_started` | Units/constellation represented; full parity open. |
+| package-aware 3MF | `three_mf_parser.dart`, `three_mf_writer.dart` | `port_started` | External parts/components/build transforms/unknown entry retention represented; full project metadata persistence open. |
+| STEP and source-enabled Assimp formats | none complete | `pending` | Must be reimplemented in Dart; old native importer cannot be runtime backend. |
 
-## Device / UI / profiles
+## Device / profiles / UI / calibration / OS
 
-These areas already have Flutter/Dart foundations but still require finer symbol-level mapping before they can move beyond `port_started`:
+Existing Flutter foundations remain `port_started` and need finer symbol mapping:
 
-- local QIDI SSDP discovery;
-- Moonraker JSON-RPC and object subscription;
+- QIDI SSDP discovery;
+- Moonraker JSON-RPC/subscriptions;
 - typed/raw printer state;
-- QIDI/Klipper commands;
-- QIDI Box commands;
+- QIDI/Klipper commands and QIDI Box operations;
 - files/timelapse;
-- profile loading/inheritance/`compatible_printers`;
+- profile inheritance/`compatible_printers`;
 - PO localization;
-- Prepare/Preview/Device Flutter screens.
+- Prepare/Preview/Device shell and interactions.
 
-Cloud/P2P/account, camera, HMS, firmware/update, every device capability matrix, complete UI state/action parity, every calibration flow and desktop integration remain open.
+Still major pending areas include cloud/P2P/account, camera, HMS, firmware/update, complete device matrices, every calibration flow, complete editor/project behavior, exact UI state/workflow parity and desktop integration/release.
 
-## Rule for updating this file
+## Validation status
 
-For every meaningful port batch:
+GitHub workflow exists but checked jobs fail before runner allocation; no steps execute. See `VALIDATION.md`. Therefore authored tests are not execution evidence yet.
 
-1. identify exact original source file + symbol/branch;
-2. list exact Dart symbol;
-3. list translated/differential reference tests;
-4. keep status at `port_started` or `implemented_unverified` until tests **actually run**;
-5. record any source quirk intentionally preserved;
-6. add pending dependent symbols discovered during the port.
+## Mandatory update rule
 
-A source file being “covered” is not sufficient if some functions/branches in it remain unmapped.
+Every meaningful development batch must:
+
+1. identify exact source file + symbol/branch;
+2. identify exact Dart symbol;
+3. add/translate source/reference tests;
+4. keep status `port_started`/`implemented_unverified` until tests actually run;
+5. record source quirks intentionally preserved;
+6. add newly discovered dependencies/pending symbols;
+7. update `docs/HANDOFF.md`, this ledger, and `MIGRATION_STATUS.md` before ending.
