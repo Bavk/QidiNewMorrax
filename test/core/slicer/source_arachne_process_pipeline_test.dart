@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
@@ -92,6 +95,125 @@ SourceArachneProcessPipelineSettings2 _settings({
     solidInfillSpacingSource: 40000,
     infillWallOverlap: const SourceFloatOrPercent2.percent(20),
   );
+}
+
+SourceArachneProcessPipelineSettings2 _pinnedCliSettings({
+  required int layerId,
+  required List<SourcePolygon2>? upperSlices,
+  required SourceTopOneWallType2 topOneWallType,
+  required bool onlyOneWallFirstLayer,
+}) {
+  const size = 2000000;
+  const spacing = 35707;
+  final wallFlow = _flow(0.4);
+  final surfaceSettings = SourceArachneSurfaceProcessSettings2(
+    planning: SourceArachneProcessPlanningSettings2(
+      wallLoops: 2,
+      alternateExtraWall: false,
+      spiralVase: false,
+      preciseOuterWall: false,
+      wallSequence: SourceWallSequence2.innerOuter,
+      onlyOneWallFirstLayer: onlyOneWallFirstLayer,
+      topOneWallType: topOneWallType,
+      upperSlices: upperSlices,
+      extPerimeterWidth: 40000,
+      extPerimeterSpacing: spacing,
+      minNozzleDiameterMm: 0.4,
+      minBeadWidthPercent: 85,
+      minFeatureSizePercent: 25,
+      wallTransitionLengthPercent: 100,
+      wallTransitionAngleDeg: 10,
+      wallTransitionFilterDeviationPercent: 25,
+      wallDistributionCount: 1,
+    ),
+    surfaceSimplifyResolutionSource: 1000,
+    perimeterSpacing: spacing,
+    perimeterWidth: 40000,
+    layerHeightMm: 0.2,
+    topAreaThresholdPercent: 200,
+    lowerSlices: [_square(0, size)],
+  );
+  return SourceArachneProcessPipelineSettings2(
+    surfaceSettings: surfaceSettings,
+    traversalSettings: SourceArachneExtrusionTraversalSettings2(
+      perimeterFlow: wallFlow,
+      externalPerimeterFlow: wallFlow,
+      fuzzyConfig: const SourceFuzzySkinNoRegionConfig2(
+        type: SourceFuzzySkinType2.none,
+        fuzzySkinFirstLayer: true,
+        thicknessMm: 0.1,
+        pointDistanceMm: 0.4,
+        noiseType: SourceFuzzyNoiseType2.classic,
+      ),
+      layerId: layerId,
+      sliceZMm: (layerId + 1) * 0.2,
+      detectOverhangWall: true,
+      lowerLayerPolygons: [_square(-20000, size + 20000)],
+      overhangFlow: wallFlow,
+      nozzleDiameterMm: 0.4,
+      enableOverhangSpeed: false,
+      outerWallLineWidthMm: 0,
+    ),
+    externalMixedSpacingSource: spacing,
+    solidInfillSpacingSource: spacing,
+    infillWallOverlap: const SourceFloatOrPercent2.percent(15),
+  );
+}
+
+Map<String, dynamic> _pinnedCliOracle() =>
+    jsonDecode(
+      File(
+        'test/fixtures/source_arachne_process_bambustudio_f2b55a5a.json',
+      ).readAsStringSync(),
+    ) as Map<String, dynamic>;
+
+(double, double) _spanMm(ExtrusionEntity2 entity) {
+  final points = <SourcePoint2>[];
+  entity.collectPoints(points);
+  if (points.isEmpty) throw StateError('oracle wall has no points');
+  var minX = points.first.x;
+  var maxX = points.first.x;
+  var minY = points.first.y;
+  var maxY = points.first.y;
+  for (final point in points.skip(1)) {
+    if (point.x < minX) minX = point.x;
+    if (point.x > maxX) maxX = point.x;
+    if (point.y < minY) minY = point.y;
+    if (point.y > maxY) maxY = point.y;
+  }
+  return (
+    Slic3rUnits.unscale(maxX - minX),
+    Slic3rUnits.unscale(maxY - minY),
+  );
+}
+
+ExtrusionEntity2 _roleEntity(
+  ExtrusionEntityCollection2 collection,
+  ExtrusionRole role,
+) =>
+    collection.entities.singleWhere((entity) => entity.role == role);
+
+void _expectLoopMatchesCliOracle(
+  ExtrusionEntity2 entity,
+  Map<String, dynamic> oracle, {
+  required double coordinateToleranceMm,
+}) {
+  expect(entity, isA<ExtrusionLoop2>());
+  final span = _spanMm(entity);
+  expect(
+    span.$1,
+    closeTo((oracle['bbox_width_mm'] as num).toDouble(), coordinateToleranceMm),
+  );
+  expect(
+    span.$2,
+    closeTo((oracle['bbox_height_mm'] as num).toDouble(), coordinateToleranceMm),
+  );
+  final expectedWidth = (oracle['line_width_mm'] as num).toDouble();
+  final loop = entity as ExtrusionLoop2;
+  expect(loop.paths, isNotEmpty);
+  for (final path in loop.paths) {
+    expect(path.width, closeTo(expectedWidth, 0.00002));
+  }
 }
 
 void main() {
@@ -204,5 +326,128 @@ void main() {
       globalNodes.every((node) => node.loopId >= 0),
       isTrue,
     );
+  });
+
+  test('pinned BambuStudio CLI oracle matches interior two-wall Arachne layer', () {
+    const size = 2000000;
+    final oracleRoot = _pinnedCliOracle();
+    final oracle = (oracleRoot['oracles'] as Map<String, dynamic>)[
+        'interior_two_wall'] as Map<String, dynamic>;
+    final tolerance =
+        (oracleRoot['gcode_serialization_tolerance_mm'] as num).toDouble();
+    final loops = <ExtrusionEntityCollection2>[];
+    final fillSurfaces = <Surface2>[];
+    final fillNoOverlap = <SourceExPolygon2>[];
+
+    final result = SourceArachneProcessPipeline2.processSurface(
+      surface: _surface(size: size),
+      settings: _pinnedCliSettings(
+        layerId: 1,
+        upperSlices: [_square(0, size)],
+        topOneWallType: SourceTopOneWallType2.allTop,
+        onlyOneWallFirstLayer: false,
+      ),
+      layerIndex: 1,
+      random: _NoRandom(),
+      loops: loops,
+      fillSurfaces: fillSurfaces,
+      fillNoOverlap: fillNoOverlap,
+    );
+
+    expect(
+      result.extrusionCollection.entities.map((entity) => entity.role).toList(),
+      [ExtrusionRole.perimeter, ExtrusionRole.externalPerimeter],
+    );
+    _expectLoopMatchesCliOracle(
+      _roleEntity(result.extrusionCollection, ExtrusionRole.perimeter),
+      oracle['inner_wall'] as Map<String, dynamic>,
+      coordinateToleranceMm: tolerance,
+    );
+    _expectLoopMatchesCliOracle(
+      _roleEntity(result.extrusionCollection, ExtrusionRole.externalPerimeter),
+      oracle['outer_wall'] as Map<String, dynamic>,
+      coordinateToleranceMm: tolerance,
+    );
+    expect(result.surfaceResult.totalPerimeters, hasLength(2));
+    expect(fillSurfaces, isNotEmpty);
+    expect(fillNoOverlap, isNotEmpty);
+  });
+
+  test('pinned BambuStudio CLI oracle matches topmost one-wall Arachne layer', () {
+    const size = 2000000;
+    final oracleRoot = _pinnedCliOracle();
+    final oracle = (oracleRoot['oracles'] as Map<String, dynamic>)[
+        'topmost_one_wall'] as Map<String, dynamic>;
+    final tolerance =
+        (oracleRoot['gcode_serialization_tolerance_mm'] as num).toDouble();
+    final loops = <ExtrusionEntityCollection2>[];
+    final fillSurfaces = <Surface2>[];
+    final fillNoOverlap = <SourceExPolygon2>[];
+
+    final result = SourceArachneProcessPipeline2.processSurface(
+      surface: _surface(size: size),
+      settings: _pinnedCliSettings(
+        layerId: 4,
+        upperSlices: null,
+        topOneWallType: SourceTopOneWallType2.allTop,
+        onlyOneWallFirstLayer: false,
+      ),
+      layerIndex: 4,
+      random: _NoRandom(),
+      loops: loops,
+      fillSurfaces: fillSurfaces,
+      fillNoOverlap: fillNoOverlap,
+    );
+
+    expect(
+      result.extrusionCollection.entities.map((entity) => entity.role).toList(),
+      [ExtrusionRole.externalPerimeter],
+    );
+    _expectLoopMatchesCliOracle(
+      result.extrusionCollection.entities.single,
+      oracle['outer_wall'] as Map<String, dynamic>,
+      coordinateToleranceMm: tolerance,
+    );
+    expect(result.surfaceResult.plan.generateOneWallByTopMost, isTrue);
+    expect(result.surfaceResult.totalPerimeters, hasLength(1));
+  });
+
+  test('pinned BambuStudio CLI oracle matches first-layer one-wall gate', () {
+    const size = 2000000;
+    final oracleRoot = _pinnedCliOracle();
+    final oracle = (oracleRoot['oracles'] as Map<String, dynamic>)[
+        'first_layer_one_wall'] as Map<String, dynamic>;
+    final tolerance =
+        (oracleRoot['gcode_serialization_tolerance_mm'] as num).toDouble();
+    final loops = <ExtrusionEntityCollection2>[];
+    final fillSurfaces = <Surface2>[];
+    final fillNoOverlap = <SourceExPolygon2>[];
+
+    final result = SourceArachneProcessPipeline2.processSurface(
+      surface: _surface(size: size),
+      settings: _pinnedCliSettings(
+        layerId: 0,
+        upperSlices: [_square(0, size)],
+        topOneWallType: SourceTopOneWallType2.none,
+        onlyOneWallFirstLayer: true,
+      ),
+      layerIndex: 0,
+      random: _NoRandom(),
+      loops: loops,
+      fillSurfaces: fillSurfaces,
+      fillNoOverlap: fillNoOverlap,
+    );
+
+    expect(
+      result.extrusionCollection.entities.map((entity) => entity.role).toList(),
+      [ExtrusionRole.externalPerimeter],
+    );
+    _expectLoopMatchesCliOracle(
+      result.extrusionCollection.entities.single,
+      oracle['outer_wall'] as Map<String, dynamic>,
+      coordinateToleranceMm: tolerance,
+    );
+    expect(result.surfaceResult.plan.generateOneWallByFirstLayer, isTrue);
+    expect(result.surfaceResult.totalPerimeters, hasLength(1));
   });
 }
