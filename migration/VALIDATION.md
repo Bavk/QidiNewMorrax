@@ -17,64 +17,72 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34688064516` (#230) executed code commit `ffc005e678d0cf1e6d4000e6c9a842620700ddbe` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34689260162` (#244) executed code commit `1f9d7010b52f48f56286d0b5b2772de352b865a9` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+288: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+311: All tests passed!`**;
 - job conclusion — **success**.
 
-## Why #230 supersedes #229
+## New fuzzy evidence in this checkpoint
 
-Run #229 (`34683822158`) failed three newly added fuzzy `*Exact2` tests. Those failures were investigated against pinned `BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad` source rather than accepted as Dart regressions.
+### Structured noise
 
-Literal `FuzzySkin.cpp` inspection established that spacing and Classic/Uniform displacement both call the same function-local thread-local `random_value()`. The failed tests had incorrectly assumed independent RNG engines. Commit `ffc005e` therefore:
+Run #239 (`34688786051`) first validated the direct Dart `bambulab/libnoise@v1.0.0` subset and all-noise classic fuzzy path at **298/298 passing**. Run #244 re-executed those fixtures and additionally validated region composition.
 
-- removed the false duplicate `*Exact2` implementation/tests;
-- restored one shared `SourceFuzzyUnitRandom2` call stream;
-- added a direct `SourceFuzzyMt19937Random2` engine port;
-- froze standard MT19937 seed-5489 word output;
-- froze libstdc++ `uniform_real_distribution<double>(0,1)` values against a C++ oracle;
-- preserved source Classic sampling/displacement call order;
-- removed an invented float32 displacement boundary and invented polygon cleanup not present in pinned `FuzzySkin.cpp`;
-- passed explicit `layerId` through fuzzy traversal instead of carrying it through fake overhang state.
+Executed structured-noise evidence includes:
 
-## Fuzzy evidence executed in #230
+- libnoise integer value hash and gradient hash behavior;
+- exact source 256-vector gradient table;
+- `MakeInt32Range` signed `fmod` semantics;
+- source cube-lower behavior at zero/negative integer boundaries;
+- Perlin/Billow/RidgedMulti octave formulas;
+- Voronoi cell displacement fixtures;
+- source `max(0.01, fuzzy_skin_scale)` behavior;
+- deterministic `slice_z` participation;
+- deterministic noise consuming `random_value()` only for spacing;
+- Perlin geometry flowing through apply/traversal/full represented classic loop output.
 
-The green suite directly includes fixtures for:
+### LineSegmentation / painted classic fuzzy
 
-- `FuzzySkinType` ordering and `should_fuzzify()` behavior;
-- first-layer suppression;
-- `None` vs `Disabled_fuzzy` overhang-slowdown distinction;
-- `NoiseType` ordering (`Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi`);
-- MT19937 standard seeded output;
-- libstdc++ double `[0,1)` oracle values;
-- Classic initial spacing, 0.75 point-distance minimum, carried leftover distance and shared RNG call order;
-- perpendicular displacement and source integer truncation behavior;
-- pinned fallback repeated-penultimate-point quirk;
-- literal closed `fuzzy_polygon()` fallback duplicate behavior;
-- no-region fuzzy application identity/Classic dispatch;
-- recursive Classic fuzzy perimeter traversal order;
-- explicit first-layer identity without overhang state;
-- represented Classic fuzzy/overhang slowdown integration through the no-region perimeter pipeline.
+Run #244 executed and passed fixtures for:
 
-These are scoped parity claims only.
+- empty/default polyline segmentation;
+- one stripe producing default/painted/default ranges;
+- multiple disjoint region groups and default gaps;
+- one region covering the entire open polyline;
+- QIDI `Point` scalar-truncation behavior in range endpoint interpolation;
+- region-value mapping;
+- polygon closure by repeating the first source point;
+- full polygon coverage preserving distinct closing source index despite equal XY coordinates;
+- one painted region selecting whole-polygon fuzzy config;
+- multiple painted runs fuzzified as independent open polylines and rejoined;
+- identity region reconstruction without RNG consumption;
+- nonempty `perimeter_regions` disabling intermediate overhang speed grading for base `None`;
+- painted Perlin geometry applied before classic loop wrapping.
 
-## Other evidence re-exercised by #230
+The current Dart Clipper2 package has no Clipper-Z callback. The implemented Polyline/Polygon LineSegmentation subset therefore reconstructs source `(line_index,t)` endpoint attributes by projection onto the source integer polyline using QIDI's 10-coordinate threshold. This compatibility seam is covered by the tests above; the Arachne ExtrusionLine overload remains unported.
 
-The same 288-test run re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
+## Earlier fuzzy correction retained
 
-No fixture was weakened or skipped to make #230 green.
+Run #230 remains the source of the corrected Classic RNG model: pinned `FuzzySkin.cpp` uses one function-local thread-local `random_value()` stream for spacing and Classic displacement. The false independent-RNG `*Exact2` branch was removed. #244 re-executed the MT19937/libstdc++ and Classic call-order regressions.
+
+## Other evidence re-exercised by #244
+
+The same 311-test run re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
+
+No fixture was skipped or rewritten to accept incorrect Dart output. The failing #241 region run led to a source-shaped closing-index reconstruction fix and removal of an unrelated role assumption from the slowdown test while retaining the actual slowdown contract assertion.
 
 ## Not proven by this checkpoint
 
-Run #230 does **not** prove:
+Run #244 does **not** prove:
 
-- Perlin/Billow/RidgedMulti/Voronoi fuzzy noise-module implementation;
-- painted/per-region fuzzy `LineSegmentation` or region transitions;
-- Arachne fuzzy `Displacement`/`Extrusion`/`Combined` behavior;
-- exact platform-level reproduction of `random_device` / thread-id nondeterministic seed selection;
-- complete classic perimeter/fill stages or Arachne;
+- Arachne `ExtrusionJunction` / `ExtrusionLine` fuzzy behavior;
+- `FuzzySkinMode::Displacement`, `Extrusion`, or `Combined`;
+- Arachne/extrusion-line LineSegmentation overload and region composition;
+- every pathological overlap/hole/degenerate LineSegmentation case;
+- exact platform-level `random_device` / thread-id nondeterministic seed selection;
+- complete classic perimeter/fill stages or Arachne wall generation;
 - complete Clipper/Boost regression spaces beyond represented fixtures;
 - complete G-code state/templates/travel/retraction/cooling/acceleration/multimaterial behavior;
 - all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;

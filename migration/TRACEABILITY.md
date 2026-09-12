@@ -4,26 +4,27 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger re
 
 ## Current validation checkpoint
 
-- code: `ffc005e678d0cf1e6d4000e6c9a842620700ddbe`;
-- workflow: `.github/workflows/flutter-parity.yml` run `34688064516` (#230);
+- code: `1f9d7010b52f48f56286d0b5b2772de352b865a9`;
+- workflow: `.github/workflows/flutter-parity.yml` run `34689260162` (#244);
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
-- tests: **288/288 passed**;
+- tests: **311/311 passed**;
 - conclusion: **success**.
 
-Run #229 is superseded: its three failures belonged to a false independent fuzzy-RNG interpretation. The pinned source uses one `random_value()` stream; commit `ffc005e` removed the duplicate `*Exact2` path and is the green replacement checkpoint.
+Run #239 independently validated the libnoise/structured-noise batch at 298/298. Run #244 adds represented Polyline/Polygon LineSegmentation, painted classic fuzzy composition, closed-polygon endpoint reconstruction and real region-aware slowdown gating.
 
 ## Core geometry / Boost / Clipper
 
 | Source scope | Dart replacement | Evidence | Status | Remaining |
 |---|---|---|---|---|
-| libslic3r integer coordinate domain / Point / Line / represented Polygon APIs | `Slic3rUnits`, `SourcePoint2`, `SourceLine2`, `SourcePolygon2` | source-formula and translated geometry fixtures in #230 | `parity_verified` | Broader Polygon/ExPolygon APIs remain open. |
-| Polyline / ArcFitter / Circle represented subset | `SourcePolyline2`, fitting/circle/arc helpers | regression/oracle fixtures in #230 | `parity_verified` | Later consumers may expose more source branches. |
+| libslic3r integer coordinate domain / Point / Line / represented Polygon APIs | `Slic3rUnits`, `SourcePoint2`, `SourceLine2`, `SourcePolygon2` | source-formula and translated geometry fixtures in #244 | `parity_verified` | Broader Polygon/ExPolygon APIs remain open. |
+| Polyline / ArcFitter / Circle represented subset | `SourcePolyline2`, fitting/circle/arc helpers | regression/oracle fixtures in #244 | `parity_verified` | Later consumers may expose more source branches. |
 | ThickPolyline / MedialAxis represented subset | `ThickPolyline2`, source MedialAxis ports | direct + end-to-end thin-wall/gap fixtures | `parity_verified` | Other consumers remain open. |
 | Boost.Polygon 1.83 robust predicates/Fortune/Voronoi represented subset | direct Dart Boost/Voronoi port | C++ oracle and regression fixtures | `parity_verified` | Broader source input matrix remains open. |
 | Clipper/ClipperUtils represented boolean/offset/open-subject subset | Dart Clipper2 adapters + source compatibility shims | translated and source-coordinate fixtures | `parity_verified` | Full QIDI/Clipper regression space remains `port_started`. |
+| LineSegmentation Polyline/Polygon subset | `SourceLineSegmentation2` | stripe/gap/full-cover/lerp/polygon-close fixtures in #244 | `parity_verified` (scoped) | ExtrusionLine/Arachne overload and broader region topology remain open. |
 
-Implementation constraints remain literal: Boost unsigned/ULP boundaries use `BigInt` where needed; PPP robust-cross-product operand order stays source-identical; QIDI/Clipper adapter quirks must not be simplified without a source oracle.
+Implementation constraints remain literal: Boost unsigned/ULP boundaries use `BigInt` where needed; PPP robust-cross-product operand order stays source-identical; QIDI/Clipper adapter quirks must not be simplified without a source oracle. Because Dart Clipper2 exposes no Clipper-Z callback, LineSegmentation reconstructs source `(line_index,t)` endpoint attributes by projection with the source 10-coordinate threshold.
 
 ## Slicer semantic model
 
@@ -44,14 +45,13 @@ Implementation constraints remain literal: Boost unsigned/ULP boundaries use `Bi
 | nesting / shortest-path chain / recursive traversal / wall sequence | source-shaped Dart traversal helpers | ordering/winding/reversal fixtures | `parity_verified` | Higher-level config branches open. |
 | lower support series / distance boundary | `SourceClassicOverhangSupport2` | float32/scaling/offset fixtures | `parity_verified` | Broader Clipper inputs open. |
 | no-speed + speed-graded overhang | splitter/degree/traversal/pipeline helpers | source mapping/smoothing/role/flow fixtures | `parity_verified` | Other process stages remain open. |
-| fuzzy policy | `SourceFuzzySkinPolicy2` | enum, first-layer, `None`/`Disabled_fuzzy`, slowdown fixtures in #230 | `parity_verified` (scoped) | Painted regions and non-Classic noise open. |
-| Classic no-region fuzzy geometry | `SourceFuzzySkinGeometry2` | sampling, leftover, perpendicular displacement, fallback, polygon fixtures in #230 | `parity_verified` (scoped) | Non-Classic noise and region segmentation open. |
-| fuzzy RNG topology | `SourceFuzzyUnitRandom2`, `SourceFuzzyMt19937Random2` | standard MT19937 words + libstdc++ double C++ oracle + shared-call-order fixture | `parity_verified` (scoped) | Exact platform random-device/thread-id seed selection is nondeterministic and not claimed. |
-| Classic fuzzy recursive integration | `SourceClassicFuzzyPerimeterTraversal2`, `SourceClassicFuzzyPerimeterPipeline2` | first-layer/no-overhang, recursion and slowdown interaction fixtures in #230 | `parity_verified` (no-region Classic scope) | Per-region segmentation, non-Classic noise, Arachne fuzzy open. |
-| Perlin/Billow/RidgedMulti/Voronoi fuzzy modules | not yet implemented | enum only | `pending` | First unfinished fuzzy priority. |
-| painted/per-region `LineSegmentation` | not implemented | rejection fixture only | `pending` | Required before region-aware fuzzy claim. |
-| Arachne fuzzy extrusion-line modes | not implemented | none | `pending` | `Displacement`, `Extrusion`, `Combined`. |
-| remaining fill-surface/fill-no-overlap/later classic stages | partial | incomplete | `port_started` | Continue after current fuzzy branch. |
+| fuzzy policy + region-aware slowdown | `SourceFuzzySkinPolicy2`, fuzzy traversal | enum/first-layer/None-vs-Disabled/region emptiness fixtures in #244 | `parity_verified` (scoped) | Arachne interaction open. |
+| Classic fuzzy geometry/RNG | `SourceFuzzySkinGeometry2`, `SourceFuzzyMt19937Random2` | sampling/fallback/MT19937/libstdc++ fixtures | `parity_verified` (scoped) | Exact platform random-device seed choice not claimed. |
+| libnoise Perlin/Billow/RidgedMulti/Voronoi | `SourceLibNoise*2` + pinned vector table | value/gradient/hash/octave/Voronoi fixtures; #239/#244 | `parity_verified` (scoped) | More source-oracle points may expand coverage. |
+| all-noise classic fuzzy composition | `SourceFuzzySkinGeometry2.fuzzyPolyline/fuzzyPolygon` | scale clamp, slice_z, deterministic RNG-consumption and pipeline fixtures | `parity_verified` (scoped) | Arachne fuzzy modes open. |
+| painted/per-region classic fuzzy | `SourceLineSegmentation2`, `SourceFuzzySkinApply2`, region-aware traversal/pipeline | single/full/multi/identity painted fixtures and classic traversal in #244 | `parity_verified` (scoped) | Arachne extrusion-line segmentation overload open. |
+| Arachne fuzzy extrusion-line modes | not implemented | source located; no Dart checkpoint | `pending` | `ExtrusionJunction`, `ExtrusionLine`, Displacement/Extrusion/Combined. |
+| remaining fill-surface/fill-no-overlap/later classic stages | partial | incomplete | `port_started` | Continue after fuzzy Arachne boundary. |
 | Arachne wall generator | not ported | none | `pending` | Full source port required. |
 
 ## G-code / formats / device / UI

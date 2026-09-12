@@ -14,73 +14,67 @@ Do not infer completion from visual similarity, compilation, or common-case test
 
 ## Current validated checkpoint — 2026-09-12
 
-Corrected fuzzy code checkpoint:
+Latest validated code checkpoint:
 
-- code commit `ffc005e678d0cf1e6d4000e6c9a842620700ddbe` (`fix: align fuzzy skin rng with pinned source`);
-- `.github/workflows/flutter-parity.yml` run `34688064516` (#230);
+- code commit `1f9d7010b52f48f56286d0b5b2772de352b865a9` (`test: assert fuzzy region slowdown contract only`);
+- `.github/workflows/flutter-parity.yml` run `34689260162` (#244);
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **288/288 passed**;
+- `flutter test --reporter expanded` → **311/311 passed**;
 - job conclusion → **success**.
 
-Run #229 had failed three newly introduced `*Exact2` tests. Literal inspection of pinned `FuzzySkin.cpp` proved those tests encoded a false independent-RNG model. The corrective commit removed that duplicate branch and restored source semantics; #230 is the validating replacement checkpoint.
+Important immediately preceding fuzzy milestones:
 
-## Critical fuzzy correction
-
-Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
-
-Literal `FuzzySkin.cpp` facts:
-
-- `random_value()` owns one function-local thread-local `std::mt19937` plus one `uniform_real_distribution<double>(0,1)`;
-- `NoiseType::Classic` is `UniformNoise`, whose `GetValue()` calls that **same** `random_value()` and maps it to `[-1,1)`;
-- spacing and Classic displacement therefore share one random stream in call order;
-- Classic displacement remains `double` in this pinned file; there is no separate float32 displacement boundary;
-- pinned `fuzzy_polygon()` calls closed `fuzzy_polyline()` directly; there is no extra same-neighbor cleanup in this file.
-
-The separate spacing/displacement `*Exact2` implementation was false parity and has been removed. `SourceFuzzyMt19937Random2` now ports MT19937 plus libstdc++ double-distribution composition, with seeded C++ oracle values in the green test suite. Production Classic fuzzy uses a per-isolate nondeterministically seeded stream.
-
-The correction also removes the artificial coupling of fuzzy layer identity to overhang state: `SourceClassicFuzzyPerimeterTraversal2` receives explicit `layerId`, so first-layer suppression is correct even when overhang detection is off.
+- `9e798bb1e11872534f5903e5ad77b3dec8910413` / run #239: direct Dart libnoise v1.0.0 subset + structured fuzzy noise, **298/298**, green;
+- `a1ad0e44d44a55d642cff2c872e39c37458fb284`: source-shaped Polyline/Polygon `LineSegmentation` + region-aware classic fuzzy composition;
+- `46a82407603fe7fa6d534940d803182f331de271`: corrected duplicate closing-point source-index reconstruction for fully covered polygons;
+- `1f9d7010...` / run #244: region-aware classic fuzzy pipeline green end-to-end.
 
 ## Current represented classic fuzzy scope — scoped parity verified
 
-Run #230 verifies the represented no-painted-region Classic branch:
+Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`; pinned noise dependency: `bambulab/libnoise@v1.0.0`.
 
-- `FuzzySkinType`: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy`;
-- `NoiseType`: `Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi` ordering;
-- `should_fuzzify()` including first-layer gating;
-- `fuzzy_skin_allows_overhang_slowdown()` distinction between `None` and `Disabled_fuzzy`;
-- Classic `fuzzy_polyline()` / `fuzzy_polygon()` sampling and perpendicular displacement;
-- source fallback quirk for fewer than three generated points;
-- one-stream RNG call order;
-- direct MT19937 + libstdc++ seeded oracle;
-- recursive classic perimeter traversal order with explicit layer identity;
-- represented Classic fuzzy/overhang slowdown composition in the no-region classic pipeline.
+The represented classic fuzzy path now covers:
 
-This is a scoped parity claim only. Non-Classic noise, painted regions and Arachne fuzzy modes remain open.
+- `FuzzySkinType`: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy` and first-layer gating;
+- exact `fuzzy_skin_allows_overhang_slowdown()` distinction between `None` and `Disabled_fuzzy`, including nonempty `perimeter_regions`;
+- `NoiseType`: `Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi`;
+- source one-stream `random_value()` topology, direct MT19937 and libstdc++ `[0,1)` double composition;
+- Classic displacement plus deterministic libnoise `Perlin`, `Billow`, `RidgedMulti` and `Voronoi` modules;
+- exact `fuzzy_skin_scale` clamp/frequency, octave, persistence, Voronoi displacement and `slice_z` input behavior represented by the current tests;
+- closed and open fuzzy polyline sampling, carried leftover distance, source coordinate truncation and fallback quirks;
+- Polyline/Polygon `LineSegmentation` range construction, default gaps, clip ordering, source point lerp and closed-polygon duplicate endpoint identity for represented fixtures;
+- painted/per-region config selection and per-segment open fuzzy-polyline application;
+- recursive classic perimeter traversal and overhang-speed gating with real region emptiness.
+
+The current Dart Clipper2 dependency does not expose Clipper-Z callbacks. `SourceLineSegmentation2` therefore reconstructs the source `(line_index,t)` endpoint attributes by projecting Clipper results back onto the integer source polyline using QIDI's `SCALED_EPSILON = 10` threshold. This adapter boundary is regression-tested and must not be casually simplified.
+
+This remains a scoped parity claim. The whole fuzzy subsystem is not complete until Arachne branches and broader source-oracle cases are covered.
 
 ## First unfinished priority
 
-Continue fuzzy skin with the first missing source branch, in this order:
+The next fuzzy dependency is Arachne `fuzzy_extrusion_line()` from pinned `FuzzySkin.cpp`:
 
-1. port `get_noise_module()` dependencies for **Perlin**, **Billow**, **RidgedMulti**, and **Voronoi**, preserving source frequency/scale, octave, persistence, displacement, coordinate and `slice_z` semantics;
-2. add deterministic C++/source oracle fixtures for those noise modules before integrating them into `SourceFuzzySkinGeometry2`;
-3. port painted/per-region `LineSegmentation` and per-segment config selection used by `apply_fuzzy_skin()`; never fuzzify the whole loop as a substitute;
-4. then port Arachne `fuzzy_extrusion_line()` including `Displacement`, `Extrusion`, and `Combined` width/position rules.
+1. introduce/port the source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine` subset needed by fuzzy skin, preserving `p`, width `w`, `perimeter_index`, closure behavior and integer-coordinate casts;
+2. port `FuzzySkinMode::Displacement`, `Extrusion`, and `Combined` exactly, including `scaled(0.01)` minimum extrusion width and the Combined half-radius position shift;
+3. preserve the same `random_value()` spacing topology and structured-noise `GetValue(unscale(pa.x), unscale(pa.y), slice_z)` calls;
+4. add source-oracle fixtures for width/position values and closed-line front/back synchronization;
+5. then integrate the Arachne line-segmentation overload used for per-region configs rather than substituting polygon segmentation.
 
-Only after those branches and corresponding CI evidence should fuzzy skin receive a broader parity claim.
+After that, continue the next unresolved `process_classic()` fill-surface/fill-no-overlap/later stages and broader Arachne wall generation in dependency order.
 
 ## Numeric/source invariants
 
 - slicer coordinates use `SCALING_FACTOR = 0.00001` mm (100000 source units/mm);
 - preserve source integer geometry until the source converts units;
-- keep Boost.Polygon 1.83 operand/bit semantics, including `BigInt` boundaries already required by the Dart port;
+- keep Boost.Polygon 1.83 operand/bit semantics, including existing `BigInt` boundaries;
 - keep QIDI/Clipper compatibility quirks frozen by existing regression tests;
 - never replace a source oddity with a cleaner algorithm without an independent source oracle.
 
 ## Other major open areas
 
-All top-level gates remain open. Major remaining work includes later classic perimeter/fill stages, Arachne, fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, full G-code state/templates/travel/retract/cooling/multimaterial behavior, project/profile round trips and STEP/source-enabled import formats, scene/editor and Preview parity, Device/cloud/P2P/account/camera/HMS/firmware, calibration, desktop integration, full UI/localization/accessibility, runtime asset publication/verification, and exhaustive reference/differential tests.
+All top-level gates remain open. Major remaining work includes later classic perimeter/fill stages, full Arachne, fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, full G-code state/templates/travel/retract/cooling/multimaterial behavior, project/profile round trips and STEP/source-enabled import formats, scene/editor and Preview parity, Device/cloud/P2P/account/camera/HMS/firmware, calibration, desktop integration, full UI/localization/accessibility, runtime asset publication/verification, and exhaustive reference/differential tests.
 
 ## Working discipline
 
