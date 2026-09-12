@@ -124,12 +124,18 @@ SourceArachneProcessPipelineSettings2 _settings() {
   );
 }
 
-List<ExtrusionRole> _compressedRoles(ExtrusionLoop2 loop) {
+List<ExtrusionRole> _cyclicRoleBands(ExtrusionLoop2 loop) {
   final roles = <ExtrusionRole>[];
   for (final path in loop.paths) {
     if (roles.isEmpty || roles.last != path.role) roles.add(path.role);
   }
-  return roles;
+  if (roles.length > 1 && roles.first == roles.last) roles.removeLast();
+  final overhang = roles.indexOf(ExtrusionRole.overhangPerimeter);
+  if (overhang <= 0) return roles;
+  return [
+    ...roles.skip(overhang),
+    ...roles.take(overhang),
+  ];
 }
 
 Iterable<SourcePoint2> _pointsForRole(
@@ -187,21 +193,15 @@ void main() {
     final inner = result.extrusionCollection.entities[0] as ExtrusionLoop2;
     final outer = result.extrusionCollection.entities[1] as ExtrusionLoop2;
 
+    // CLI seam placement may rebase a closed loop inside a supported band.
+    // Compare the source process role bands cyclically, not by start vertex.
     expect(
-      _compressedRoles(inner),
-      [
-        ExtrusionRole.perimeter,
-        ExtrusionRole.overhangPerimeter,
-        ExtrusionRole.perimeter,
-      ],
+      _cyclicRoleBands(inner),
+      [ExtrusionRole.overhangPerimeter, ExtrusionRole.perimeter],
     );
     expect(
-      _compressedRoles(outer),
-      [
-        ExtrusionRole.externalPerimeter,
-        ExtrusionRole.overhangPerimeter,
-        ExtrusionRole.externalPerimeter,
-      ],
+      _cyclicRoleBands(outer),
+      [ExtrusionRole.overhangPerimeter, ExtrusionRole.externalPerimeter],
     );
 
     final innerOracle = oracle['inner_wall'] as Map<String, dynamic>;
