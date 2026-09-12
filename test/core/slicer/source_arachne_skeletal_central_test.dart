@@ -183,6 +183,8 @@ void main() {
     end.$2.data.setIsCentral(true);
 
     final downhill = pair(maximum, node(20, 0, 5));
+    downhill.$1.data.setIsCentral(false);
+    downhill.$2.data.setIsCentral(false);
     downhill.$2.next = downhill.$1;
     maximum.incidentEdge = downhill.$1;
 
