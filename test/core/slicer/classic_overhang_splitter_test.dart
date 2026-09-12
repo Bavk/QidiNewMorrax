@@ -3,6 +3,7 @@ import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polyline.dart';
 import 'package:qidi_flow_flutter/core/slicer/classic_overhang_splitter.dart';
+import 'package:qidi_flow_flutter/core/slicer/classic_overhang_support.dart';
 import 'package:qidi_flow_flutter/core/slicer/extrusion_entity.dart';
 import 'package:qidi_flow_flutter/core/slicer/flow.dart';
 
@@ -120,5 +121,76 @@ void main() {
     expect(paths.single.role, ExtrusionRole.overhangPerimeter);
     expect(paths.single.getOverhangDegree(), 5);
     expect(paths.single.mm3PerMm, closeTo(overhangFlow.mm3PerMm, 1e-12));
+  });
+
+  test('speed grading keeps front-supported perimeter at degree zero', () {
+    final support = [box(-50000, -50000, 250000, 250000)];
+    final paths = splitter.splitWithSpeedGrading(
+      polygon: box(0, 0, 200000, 200000),
+      lowerPolygonsSeries: [support, support],
+      overhangDistBoundary: const SourceOverhangDistanceBoundary2(0, 200000),
+      supportedRole: ExtrusionRole.externalPerimeter,
+      supportedFlow: supportedFlow,
+      overhangFlow: overhangFlow,
+      layerHeight: 0.2,
+    );
+
+    expect(paths, hasLength(1));
+    expect(paths.single.role, ExtrusionRole.externalPerimeter);
+    expect(paths.single.overhangDegree, 0);
+    expect(paths.single.mm3PerMm, closeTo(supportedFlow.mm3PerMm, 1e-12));
+    expect(paths.single.width, supportedFlow.width);
+    expect(paths.single.height, 0.2);
+  });
+
+  test('speed grading assigns intermediate degrees with normal wall flow', () {
+    final paths = splitter.splitWithSpeedGrading(
+      polygon: box(0, 0, 200000, 200000),
+      lowerPolygonsSeries: [
+        [box(-50000, -50000, 100000, 250000)],
+        [box(-50000, -50000, 250000, 250000)],
+      ],
+      overhangDistBoundary: const SourceOverhangDistanceBoundary2(0, 200000),
+      supportedRole: ExtrusionRole.externalPerimeter,
+      supportedFlow: supportedFlow,
+      overhangFlow: overhangFlow,
+      layerHeight: 0.2,
+    );
+
+    expect(paths, isNotEmpty);
+    expect(
+      paths.every((path) => path.role == ExtrusionRole.externalPerimeter),
+      true,
+    );
+    expect(
+      paths.any((path) => path.overhangDegree > 0 && path.overhangDegree < 5),
+      true,
+    );
+    expect(paths.any((path) => path.overhangDegree == 0), true);
+    for (final path in paths) {
+      expect(path.mm3PerMm, closeTo(supportedFlow.mm3PerMm, 1e-12));
+      expect(path.width, supportedFlow.width);
+      expect(path.height, 0.2);
+    }
+  });
+
+  test('speed grading leaves fully unsupported run on overhang flow', () {
+    final remote = [box(300000, 300000, 400000, 400000)];
+    final paths = splitter.splitWithSpeedGrading(
+      polygon: box(0, 0, 100000, 100000),
+      lowerPolygonsSeries: [remote, remote],
+      overhangDistBoundary: const SourceOverhangDistanceBoundary2(0, 200000),
+      supportedRole: ExtrusionRole.perimeter,
+      supportedFlow: supportedFlow,
+      overhangFlow: overhangFlow,
+      layerHeight: 0.2,
+    );
+
+    expect(paths, hasLength(1));
+    expect(paths.single.role, ExtrusionRole.overhangPerimeter);
+    expect(paths.single.getOverhangDegree(), 5);
+    expect(paths.single.mm3PerMm, closeTo(overhangFlow.mm3PerMm, 1e-12));
+    expect(paths.single.width, overhangFlow.width);
+    expect(paths.single.height, overhangFlow.height);
   });
 }
