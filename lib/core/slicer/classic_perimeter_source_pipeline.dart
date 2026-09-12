@@ -5,6 +5,7 @@ import '../geometry/thick_polyline.dart';
 import 'classic_perimeter.dart';
 import 'classic_perimeter_loop_tree.dart';
 import 'classic_perimeter_traversal.dart';
+import 'classic_wall_sequence.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
 
@@ -62,6 +63,10 @@ class SourceClassicPerimeterPipeline2 {
     required Flow smallerExternalPerimeterFlow,
     required Flow perimeterFlow,
     required double layerHeight,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    int layerId = 0,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
   }) {
     final thinWalls = <ThickPolyline2>[
       for (final value in result.thinWalls)
@@ -73,7 +78,7 @@ class SourceClassicPerimeterPipeline2 {
         ),
     ];
 
-    return SourceClassicPerimeterTraversal2.traverseNoOverhang(
+    final traversed = SourceClassicPerimeterTraversal2.traverseNoOverhang(
       loops: buildLoopTree(result),
       thinWalls: thinWalls,
       settings: SourceClassicPerimeterTraversalSettings2(
@@ -83,6 +88,20 @@ class SourceClassicPerimeterPipeline2 {
         layerHeight: layerHeight,
       ),
     );
+
+    // Keep the same owned entity instances produced by traversal. Constructing
+    // ExtrusionEntityCollection2 from [traversed] would clone them, while the
+    // C++ classic path reorders the existing pointer collection in place.
+    final collection = ExtrusionEntityCollection2();
+    collection.entities.addAll(traversed);
+    SourceClassicWallSequence2.adjust(
+      collection,
+      wallSequence: wallSequence,
+      layerId: layerId,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+    return List.unmodifiable(collection.entities);
   }
 
   static SourcePolygon2 _toSourcePolygon(Polygon2 polygon) => SourcePolygon2(
