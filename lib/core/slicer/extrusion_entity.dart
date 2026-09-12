@@ -283,7 +283,7 @@ class ExtrusionPath2 extends ExtrusionEntity2 {
 
   void setOverhangDegree(int overhang) {
     if (isPerimeterRole(role) || isSupportRole(role)) {
-      overhangDegree = overhang < 0 ? 0 : (overhang > 10 ? 10 : overhang);
+      overhangDegree = overhang < 0 ? 0.0 : (overhang > 10 ? 10.0 : overhang.toDouble());
     }
   }
 
