@@ -5,6 +5,7 @@ import 'point.dart';
 import 'polygon.dart';
 import 'source_geometry.dart';
 import 'source_polygon.dart';
+import 'source_polyline.dart';
 
 enum PolygonFillRule { evenOdd, nonZero, positive, negative }
 enum PolygonJoinType { square, round, miter }
@@ -65,6 +66,24 @@ class ClipperGeometry {
     if (subject.isEmpty && clip.isEmpty) return const [];
     return _booleanEx(c2.ClipType.xor, subject, clip, fillRule: fillRule);
   }
+
+  /// Exact integer-domain shape of QIDI `intersection_pl_2()`.
+  ///
+  /// The source `Clipper2Utils.cpp` adds [subject] as open subjects, [clip] as
+  /// closed clip paths, executes Clipper2 with NonZero fill and appends closed
+  /// solution paths before open solution paths to the returned `Polylines`.
+  List<SourcePolyline2> intersectionSourceOpenPolylines(
+    List<SourcePolyline2> subject,
+    List<SourcePolygon2> clip,
+  ) =>
+      _clipSourceOpenPolylines(c2.ClipType.intersection, subject, clip);
+
+  /// Exact integer-domain shape of QIDI `diff_pl_2()`.
+  List<SourcePolyline2> differenceSourceOpenPolylines(
+    List<SourcePolyline2> subject,
+    List<SourcePolygon2> clip,
+  ) =>
+      _clipSourceOpenPolylines(c2.ClipType.difference, subject, clip);
 
   /// Integer-domain port of the source `offset(Polyline, delta)` primitive.
   ///
@@ -264,6 +283,40 @@ class ClipperGeometry {
       joinType: joinType,
       miterLimit: miterLimit,
     );
+  }
+
+  List<SourcePolyline2> _clipSourceOpenPolylines(
+    c2.ClipType clipType,
+    List<SourcePolyline2> subject,
+    List<SourcePolygon2> clip,
+  ) {
+    if (subject.isEmpty) return const [];
+
+    final clipper = c2.Clipper64();
+    clipper.addOpenSubjects([
+      for (final polyline in subject)
+        [
+          for (final point in polyline.points) c2.Point64(point.x, point.y),
+        ],
+    ]);
+    clipper.addClips([
+      for (final polygon in clip)
+        [
+          for (final point in polygon.points) c2.Point64(point.x, point.y),
+        ],
+    ]);
+
+    final solution = clipper.execute(clipType, c2.FillRule.nonZero);
+    if (solution == null) return const [];
+
+    // Preserve QIDI `Paths64_to_polylines` concatenation order exactly:
+    // closed solution first, then open solution.
+    return List.unmodifiable([
+      for (final path in [...solution.closed, ...solution.open])
+        SourcePolyline2([
+          for (final point in path) SourcePoint2(point.x, point.y),
+        ]),
+    ]);
   }
 
   List<ExPolygon2> _booleanEx(
