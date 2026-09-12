@@ -11,6 +11,7 @@ import 'package:qidi_flow_flutter/core/slicer/source_arachne_overhang.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_fuzzy_skin_apply.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_fuzzy_skin_geometry.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_fuzzy_skin_policy.dart';
+import 'package:qidi_flow_flutter/core/slicer/source_loop_node.dart';
 
 class EmptyRandom implements SourceFuzzyUnitRandom2 {
   @override
@@ -69,6 +70,8 @@ SourceArachneExtrusionTraversalSettings2 settings({
   bool enableOverhangSpeed = false,
   bool zDirectionOutwallSpeedContinuous = false,
   List<SourcePolygon2> lowerLayerPolygons = const [],
+  List<SourceLoopNode2>? loopNodes,
+  double outerWallLineWidthMm = 0,
 }) =>
     SourceArachneExtrusionTraversalSettings2(
       perimeterFlow: perimeterFlow(),
@@ -82,6 +85,8 @@ SourceArachneExtrusionTraversalSettings2 settings({
       nozzleDiameterMm: 0.4,
       enableOverhangSpeed: enableOverhangSpeed,
       zDirectionOutwallSpeedContinuous: zDirectionOutwallSpeedContinuous,
+      loopNodes: loopNodes,
+      outerWallLineWidthMm: outerWallLineWidthMm,
     );
 
 void main() {
@@ -303,14 +308,14 @@ void main() {
     expect(multi.paths.last.overhangDegree, 6);
   });
 
-  test('QIDI outwall-node producer is rejected until composed', () {
+  test('QIDI outwall-node producer requires global source storage', () {
     expect(
       () => SourceArachneExtrusionTraversal2.traverse(
         orderedExtrusions: const [],
         settings: settings(zDirectionOutwallSpeedContinuous: true),
         random: EmptyRandom(),
       ),
-      throwsUnsupportedError,
+      throwsArgumentError,
     );
   });
 }
