@@ -17,58 +17,56 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34693713324` (#254) executed code commit `5a4d8b65e177ce6fe196594c4263d3f962a90422` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34694164752` (#260) executed code commit `ae218afee234afa92f7ef2967d61db8485a82d5a` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+340: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+351: All tests passed!`**;
 - job conclusion — **success**.
 
-## Classic final fill-boundary evidence
+## Classic source-order fill process evidence
 
-Run #252 (`34691194040`) first validated `SourceClassicFillBoundary2` at **333/333** tests, and #254 re-executed the same fixtures. The represented evidence covers:
+Run #260 is the first green run containing the current represented classic per-island fill process as one composition. `SourceClassicPerimeterFillProcess2` executes the verified stages in pinned source order:
 
-- no-perimeter, one-perimeter and two-or-more-perimeter inset choices;
-- absolute `infill_wall_overlap`;
-- percentage `infill_wall_overlap` using the pinned `FloatOrPercent::get_abs_value()` arithmetic;
-- the C++ floating-point/truncation oracle where the represented 20% case produces **7999** source units rather than an idealized 8000;
-- `min_perimeter_infill_spacing = coord_t(solid_infill_spacing * (1 - INSET_OVERLAP_TOLERANCE))`;
-- source `offset2_ex()` collapse for `infill_exp`;
-- represented `stInternal` fill-surface output;
-- both `fill_no_overlap` source branches;
-- top-fill growth/intersection/union consumer behavior;
-- odd source-unit spacing truncation.
+1. shell settings / pre-shell top-one-wall gate;
+2. classic onion-shell generation;
+3. in-loop `TopOneWallType::Alltop` immediately after the first `last = offsets`;
+4. source final-wall stop, with an extra iteration only when gap discovery is required;
+5. thin-wall / gap-fill processing and subtraction from `last`;
+6. final `not_filled_exp` → `fill_surfaces` / `fill_no_overlap` construction.
 
-Run #251 initially failed only the percent-overlap expectation. The implementation had produced 7999; a standalone C++ oracle of the literal pinned formula confirmed 7999, so the test was corrected to the source result rather than changing the implementation.
+Five end-to-end process fixtures passed in #260:
 
-## Classic `TopOneWallType::Alltop` producer evidence
+- ordinary two-wall shell feeding final fill geometry;
+- topmost `upper_slices == nullptr` forcing one wall before shell generation;
+- non-null empty upper slices entering Alltop and yielding the represented top-fill-only output;
+- percentage wall overlap preserving the source **7999** truncation quirk end-to-end;
+- zero wall loops leaving the entire represented island for fill.
 
-Run #254 is the first green run containing `SourceClassicTopFillAllTop2`. Its seven new fixtures cover:
+## Top-one-wall shell ordering evidence
 
-- source gate behavior for `loop_number == 0`;
-- pinned scalar order for configured `wall_loops=2`: `offset_top_surface = 94500`, `min_width_top_surface = 4500`, and represented final fill-clip delta `0` under the test flows;
-- non-null empty upper slices treating the represented island as entirely top surface;
-- `temp_gap` re-union when gap fill is enabled;
-- non-null empty lower slices exercising the bridge-checker path and source `1.5 * max(ext_perimeter_spacing, perimeter_width)` growth;
-- literal `clip_clipper_polygons_with_subject_bbox()` pruning of a far-away upper polygon;
-- composition of produced `top_fills` / `fill_clip` into `SourceClassicFillBoundary2`.
+Run #258 (`34694064452`) first validated six source-order integration fixtures at **346/346** total tests, and #260 re-ran them:
 
-The implementation preserves source numeric boundaries relevant to this batch:
+- pinned `TopOneWallType` order `None, Alltop, Topmost`;
+- null upper slices force one wall before shell generation;
+- `only_one_wall_first_layer` affects layer zero but not layer one;
+- non-null empty upper slices run Alltop inside the first shell iteration and can collapse the following inner shell;
+- full upper coverage preserves the next wall;
+- zero sparse infill density skips the source extra gap-discovery iteration.
 
-- `SCALING_FACTOR = 0.00001` and `SCALED_EPSILON = 10`;
-- configured `wall_loops` is distinct from current `loop_number`;
-- scale → unscale → multiply → scale/truncate order for `offset_top_surface`;
-- implicit `float` delta conversion at `offset()` / `offset_ex()` call boundaries;
-- represented `ApplySafetyOffset::Yes` clip growth by `ClipperSafetyOffset == 10` source units;
-- sparse-infill half-width remains a macro-style double expression before the final float offset call.
+Run #257 had already shown the integration code itself did not regress the prior 340-test suite before these six fixtures were added.
 
-### Why #253 failed before #254
+## Standalone Alltop producer and fill-boundary evidence
 
-Run #253 (`34693536191`) did not expose a source-semantic or geometry mismatch. Analyzer found one compile error in the newly added helper: `SourcePolygon2` has a non-const constructor, but the short-polygon return used `const SourcePolygon2([])`. That prevented the new test file from loading while the previous 333 tests still ran. Commit `5a4d8b65e177ce6fe196594c4263d3f962a90422` changed only that expression to `SourcePolygon2(const [])`. Run #254 then passed all **340/340** tests with the original new geometry/scalar expectations unchanged.
+Run #254 (`34693713324`) first validated `SourceClassicTopFillAllTop2` at **340/340** total tests. Covered behavior includes source scalar order for `offset_top_surface`, `top_area_threshold`, bbox pruning, implicit float offset boundaries, represented 10-unit safety offset, `temp_gap`, lower-slice bridge merge, `top_fills`, `fill_clip`, mutated `last`, optional gap-fill re-union, and composition into the final boundary helper.
+
+Run #252 (`34691194040`) first validated `SourceClassicFillBoundary2` at **333/333** total tests. It covers zero/one/multiple-wall inset choice, absolute/percentage wall overlap, `min_perimeter_infill_spacing`, `offset2_ex` collapse, `stInternal` output, both no-overlap branches and top-fill consumer behavior.
+
+A literal C++ oracle confirmed the represented percentage-overlap floating-point result: 20% of the source `ratio_over` becomes **7999** source units after binary-double evaluation, `scale_`, and `coord_t` truncation. The Dart implementation was not changed to produce an idealized 8000.
 
 ## Earlier Arachne / fuzzy evidence retained
 
-Run #254 re-executed all previously green Arachne/fuzzy evidence from run #249 and later checkpoints:
+Run #260 re-executed all previously green Arachne/fuzzy evidence from run #249 and later checkpoints:
 
 - one shared Classic `random_value()` stream and direct MT19937/libstdc++ double fixtures;
 - direct libnoise v1.0.0 value/gradient/vector-table/Perlin/Billow/RidgedMulti/Voronoi behavior;
@@ -81,13 +79,16 @@ Run #254 re-executed all previously green Arachne/fuzzy evidence from run #249 a
 - Arachne width interpolation, full-cover path, painted-region fuzzy application and seam behavior;
 - recursive classic fuzzy traversal and region-aware overhang slowdown policy.
 
-The same run also re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
+The same run re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
 
 ## Not proven by this checkpoint
 
-Run #254 does **not** prove:
+Run #260 does **not** prove:
 
-- exact source-order integration of the pre-shell one-wall gate, the verified `Alltop` producer, subsequent shell-loop collapse, gap-fill mutation and final fill-boundary block as one `process_classic()` execution;
+- `PerimeterGenerator::process_no_bridge(all_surfaces, ...)` or the complete source surface preprocessing that precedes the represented per-island process;
+- conditional classic surface simplification resolution and `chain_expolygons` island ordering;
+- per-surface `extra_perimeters` propagation from `Surface` through the process wrapper;
+- QIDI circle-compensation metadata consumption, including `holes_circle_compensation` centroid matching and split-island disable behavior;
 - full Arachne wall generation around the represented fuzzy helper;
 - every pathological overlap/hole/degenerate LineSegmentation or top-fill clipping case;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;

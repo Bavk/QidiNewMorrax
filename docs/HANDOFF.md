@@ -16,68 +16,57 @@ Do not infer completion from visual similarity, compilation, or common-case test
 
 Latest validated code checkpoint:
 
-- code commit `5a4d8b65e177ce6fe196594c4263d3f962a90422` (`fix: compile classic top-fill source polygon`);
-- `.github/workflows/flutter-parity.yml` run `34693713324` (#254);
+- code commit `ae218afee234afa92f7ef2967d61db8485a82d5a` (`test: cover classic fill process source order`);
+- `.github/workflows/flutter-parity.yml` run `34694164752` (#260);
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **340/340 passed**;
+- `flutter test --reporter expanded` → **351/351 passed**;
 - job conclusion → **success**.
 
-The immediately preceding classic-fill checkpoints are also important:
+Important checkpoints leading here:
 
-- `549a731ebcf88b22f96359caa5a1d7419ea381a8` added the final classic `fill_surfaces` / `fill_no_overlap` boundary construction;
-- `9ba4f919af5f7b339c7e22345c81ff297ede0aa2` froze the source C++ floating-point quirk where 20% of the represented `ratio_over` becomes **7999**, not an idealized 8000, after `scale_` and `coord_t` truncation; run `34691194040` (#252) was green with **333/333** tests;
-- `aff2a3edc2720430f8e33376f097f1ebbf7f9628` added the pinned `TopOneWallType::Alltop` producer for `top_fills`, `fill_clip` and the source mutation of `last`;
-- run #253 failed only because that new file invoked the non-const `SourcePolygon2` constructor with an accidental `const`; no geometry expectation failed. Commit `5a4d8b6` removed only that compile typo, and run #254 passed all **340/340** tests.
+- `7c1c5d1f56a287cb812df3b511484851277d460f` / run #249: represented Arachne fuzzy modes plus direct Clipper-Z LineSegmentation, 325/325 green;
+- `9ba4f919af5f7b339c7e22345c81ff297ede0aa2` / run #252: final represented classic `fill_surfaces` / `fill_no_overlap` boundary, including the source 20% overlap result **7999** rather than idealized 8000, 333/333 green;
+- `5a4d8b65e177ce6fe196594c4263d3f962a90422` / run #254: represented `TopOneWallType::Alltop` producer, 340/340 green;
+- `7e51f78e9f6742320587999e980b04ff9947d6b9` / run #258: exact source-order top-one-wall shell integration, 346/346 green;
+- `ae218af...` / run #260: composed shell → in-loop Alltop → gap-fill mutation → final fill-boundary process, 351/351 green.
 
-Earlier fuzzy/Arachne checkpoint `7c1c5d1f56a287cb812df3b511484851277d460f` / run #249 remains fully contained in the current suite.
-
-## Current represented classic fill scope — scoped parity verified
+## Current represented classic fill process — scoped parity verified
 
 Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
 
-`SourceClassicFillBoundary2` now covers the represented post-perimeter boundary block of `PerimeterGenerator::process_classic()`:
+The represented `PerimeterGenerator::process_classic()` fill path now covers, in source order:
 
-- zero/one/two-or-more wall inset selection;
-- absolute and percent `infill_wall_overlap` with source `get_abs_value()` arithmetic and `coord_t` truncation;
-- `simplify_p → union_ex` represented boundary;
-- `min_perimeter_infill_spacing = coord_t(solid_infill_spacing * 0.6)`;
-- source `offset2_ex()` construction of internal `fill_surfaces`;
-- distinct `fill_no_overlap` branches and their overlap threshold;
-- top-fill growth/intersection/union consumer behavior;
-- intentional integer-vs-double-vs-float boundaries covered by regression tests.
+- configured wall count + surface extra/alternate-wall equivalent inputs represented by the shell settings;
+- exact pre-shell one-wall gate for topmost/bottom-most and `only_one_wall_first_layer` behavior, preserving `upper_slices == nullptr` versus a non-null empty upper-slice set;
+- classic onion-shell generation, QIDI smaller external perimeter, thin-wall and represented gap-fill paths;
+- source final-wall stop: the extra shell iteration exists only for gap discovery when gap fill is enabled and sparse infill density is non-zero;
+- `TopOneWallType::Alltop` producer immediately after the first `last = offsets`, so its mutated `last` drives subsequent shell offsets and may reduce effective wall count;
+- literal bbox pruning used by that producer, source `float` offset boundaries, represented `ApplySafetyOffset::Yes`, lower-slice bridge merge, `temp_gap`, `top_fills`, `fill_clip` and optional gap-fill re-union;
+- gap-fill subtraction from `last` before final fill construction;
+- final `not_filled_exp` preparation, wall-overlap resolution, `fill_surfaces` and `fill_no_overlap` construction;
+- end-to-end zero-wall, one-wall, two-wall, topmost, Alltop and percentage-overlap fixtures;
+- the pinned floating-point quirk where the represented 20% overlap resolves to **7999** source units end-to-end.
 
-`SourceClassicTopFillAllTop2` now covers the represented `TopOneWallType::Alltop` producer executed after the first perimeter offset:
-
-- exact gate inputs represented by `loop_number > 0` and non-null `upper_slices` (the helper itself represents `i == 0` and `Alltop`);
-- source `config->wall_loops` vs current `loop_number` distinction;
-- `offset_top_surface` scale → unscale → multiply → scale/truncate order;
-- `top_area_threshold` minimum width arithmetic;
-- literal `clip_clipper_polygons_with_subject_bbox()` side-mask pruning with `SCALED_EPSILON`-inflated `last` bounds;
-- implicit `float` boundaries on `offset()` / `offset_ex()` deltas;
-- `ApplySafetyOffset::Yes` represented 10-source-unit clip growth;
-- top/non-top split, `temp_gap`, `inner_polygons`, lower-slice bridge checker and merge;
-- final `top_fills`, `fill_clip`, `last = intersection_ex(...)`, and optional gap-fill re-union;
-- composition into the verified final fill-boundary helper.
-
-This is still a scoped claim. The producer is deliberately not called after a completed shell as a fake approximation: pinned source executes it **inside** the first shell iteration and its mutated `last` feeds subsequent iterations.
+The process wrapper is `SourceClassicPerimeterFillProcess2`. Its scope deliberately ends before the surrounding source surface preprocessing, loop traversal/extrusion conversion, loop-node metadata and later infill generation.
 
 ## Fuzzy / Arachne scope retained
 
-The current 340-test suite re-runs the previously verified fuzzy subset: exact source `FuzzySkinType` policy, one Classic RNG stream, direct MT19937/libstdc++ `[0,1)`, pinned libnoise Perlin/Billow/RidgedMulti/Voronoi, Polygon/Polyline sampling and painted-region LineSegmentation, source ZAttributes compatibility, source-shaped Arachne `ExtrusionLine`, all three `FuzzySkinMode` variants, seeded C++ position/width goldens and region-aware Arachne fuzzy application.
+The 351-test suite re-runs all previously verified fuzzy evidence: exact `FuzzySkinType` policy; one Classic RNG stream; MT19937/libstdc++ `[0,1)` oracles; pinned libnoise Perlin/Billow/RidgedMulti/Voronoi; Polygon/Polyline fuzzy geometry and painted-region LineSegmentation; source ZAttributes compatibility; source-shaped Arachne `ExtrusionLine`; `Displacement`, `Extrusion`, `Combined` seeded C++ goldens; and region-aware Arachne fuzzy composition.
 
-The direct Clipper-Z compatibility remains explicit: Dart Clipper2 open-path orientation/terminal-Z differences are normalized only at the adapter boundary; closed source wrap behavior is retained.
+This remains scoped. It does not prove the full Arachne wall generator or every pathological clipping topology.
 
 ## First unfinished priority
 
-Integrate the now-verified classic fill pieces at their exact source positions instead of composing them post hoc:
+Continue the source block immediately **before** the now-verified per-island classic fill process:
 
-1. port the pre-shell one-wall gate exactly: after extra/alternate wall calculation, if `loop_number > 0` and either `(top_one_wall_type != None && upper_slices == nullptr)` or `(only_one_wall_first_layer && layer_id == 0)`, force `loop_number = 0`;
-2. invoke the verified `Alltop` producer immediately after the first source `last = std::move(offsets)` when `i == 0 && i != loop_number`, so its mutated `last` drives the next inner-perimeter iteration and later loop collapse can still reduce the effective loop count;
-3. carry `top_fills` / `fill_clip` through the classic shell result and feed them, after gap-fill mutation, into the verified `SourceClassicFillBoundary2` block;
-4. add end-to-end fixtures for topmost/no-upper-slices, first-layer-one-wall, mixed upper coverage, lower-slice bridge merge, gap-fill re-union and final `fill_surfaces` / `fill_no_overlap` output;
-5. only then continue remaining classic process integration and broader Arachne wall generation.
+1. port `PerimeterGenerator::process_no_bridge(all_surfaces, perimeter_spacing, ext_perimeter_width)` for counterbore-hole sacrificial bridge handling, with translated/source fixtures;
+2. port conditional `surface_simplify_resolution`: `0.2 * m_scaled_resolution` only when arc fitting is enabled and fuzzy skin is `None`, otherwise `m_scaled_resolution`;
+3. port `chain_expolygons(surface_exp)` island ordering and propagate each `Surface::extra_perimeters` into the per-island wall count instead of relying only on global settings;
+4. carry QIDI circle-compensation metadata: `counter_circle_compensation`, `holes_circle_compensation` centroid matching with source `eps = 1000`, and disable counter compensation when simplification/union splits an island into more than one ExPolygon;
+5. feed those prepared ordered islands into `SourceClassicPerimeterFillProcess2` and add source-order end-to-end fixtures;
+6. after this preprocessing boundary is verified, continue remaining classic traversal/metadata integration and then broader Arachne wall generation.
 
 ## Numeric/source invariants
 
@@ -90,7 +79,7 @@ Integrate the now-verified classic fill pieces at their exact source positions i
 
 ## Other major open areas
 
-All top-level gates remain **OPEN**. Major remaining work includes full classic process integration, full Arachne wall generation, fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, full G-code state/templates/travel/retract/cooling/multimaterial behavior, project/profile round trips and STEP/source-enabled import formats, scene/editor and Preview parity, Device/cloud/P2P/account/camera/HMS/firmware, calibration, desktop integration, full UI/localization/accessibility, runtime asset publication/verification, and exhaustive reference/differential tests.
+All top-level gates remain **OPEN**. Major remaining work includes source surface preprocessing and remaining classic process integration, full Arachne wall generation, fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, full G-code state/templates/travel/retract/cooling/multimaterial behavior, project/profile round trips and STEP/source-enabled import formats, scene/editor and Preview parity, Device/cloud/P2P/account/camera/HMS/firmware, calibration, desktop integration, full UI/localization/accessibility, runtime asset publication/verification, and exhaustive reference/differential tests.
 
 ## Working discipline
 
