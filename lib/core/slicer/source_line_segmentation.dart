@@ -427,6 +427,10 @@ class SourceLineSegmentation2 {
   }
 
   static bool _needReverse(c2.Path64 intersection, c2.Path64 subject) {
+    final subjectWraps = subject.length > 1 &&
+        subject.first.x == subject.last.x &&
+        subject.first.y == subject.last.y;
+
     for (var index = 1; index < intersection.length; index++) {
       final previous = intersection[index - 1];
       final current = intersection[index];
@@ -436,11 +440,20 @@ class SourceLineSegmentation2 {
 
       final maxPointIndex = subject.length - 1;
       var validOrder = previousZ.pointIndex <= currentZ.pointIndex;
-      if (currentZ.pointIndex == maxPointIndex && previousZ.pointIndex == 0) {
-        validOrder = false;
-      }
-      if (currentZ.pointIndex == 0 && previousZ.pointIndex == maxPointIndex) {
-        validOrder = true;
+      // Pinned LineSegmentation has these seam exceptions unconditionally.
+      // ClipperLib_Z returns open paths in source order, so they do not affect
+      // non-closed subjects there. Dart Clipper2 may reverse an open result;
+      // restrict the seam exception to geometry that can actually wrap so the
+      // resulting order matches the pinned ClipperLib_Z contract.
+      if (subjectWraps) {
+        if (currentZ.pointIndex == maxPointIndex &&
+            previousZ.pointIndex == 0) {
+          validOrder = false;
+        }
+        if (currentZ.pointIndex == 0 &&
+            previousZ.pointIndex == maxPointIndex) {
+          validOrder = true;
+        }
       }
 
       if (!validOrder && _sourcePoint(previous) != _sourcePoint(current)) {
