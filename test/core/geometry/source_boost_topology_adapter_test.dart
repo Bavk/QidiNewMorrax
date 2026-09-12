@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_boost_topology_adapter.dart';
 import 'package:qidi_flow_flutter/core/geometry/voronoi_topology.dart';
-import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 
 void main() {
   test('square segment topology keeps Boost order and maps 8/9 to Segment', () {

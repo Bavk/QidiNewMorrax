@@ -1,6 +1,5 @@
 import '../geometry/clipper_geometry.dart';
 import '../geometry/expolygon.dart';
-import '../geometry/point.dart';
 import '../geometry/polygon.dart';
 import '../geometry/source_geometry.dart';
 import '../geometry/source_medial_axis.dart';
@@ -123,7 +122,6 @@ class ClassicPerimeterShellGenerator {
     }
 
     // Literal source scaled values from `Flow::scaled_width/spacing()`.
-    final perimeterWidth = _scale(settings.perimeterWidth);
     final perimeterSpacing = _scale(settings.perimeterSpacing);
     final extPerimeterWidth = _scale(settings.externalPerimeterWidth);
     final extPerimeterSpacing = _scale(settings.externalPerimeterSpacing);

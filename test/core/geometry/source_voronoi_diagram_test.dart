@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_voronoi_diagram.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_voronoi_utils.dart';
 import 'package:qidi_flow_flutter/core/geometry/voronoi_topology.dart';

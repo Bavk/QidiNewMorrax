@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_voronoi_annotation.dart';
 import 'package:qidi_flow_flutter/core/geometry/voronoi_topology.dart';
 

@@ -46,10 +46,7 @@ class ThreeMfParser {
     final entries = <String, Uint8List>{};
     for (final file in archive.files) {
       if (!file.isFile) continue;
-      final content = file.content;
-      final raw = content is Uint8List
-          ? Uint8List.fromList(content)
-          : Uint8List.fromList((content as List).cast<int>());
+      final raw = Uint8List.fromList(file.content);
       entries[_normalizeArchivePath(file.name)] = raw;
     }
 
