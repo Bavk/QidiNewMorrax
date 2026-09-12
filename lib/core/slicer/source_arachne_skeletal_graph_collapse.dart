@@ -13,16 +13,20 @@ extension SourceArachneSkeletalGraphCollapse2
     SourceArachneSTHalfEdge2? cursor = edges.isEmpty ? null : edges.first;
 
     while (cursor != null) {
-      if (!_containsIdentical(edges, cursor)) {
+      // `cursor` is reassigned by `safelyRemoveEdge`, so Dart deliberately does
+      // not promote it for the whole loop body. Source `edge_it` itself is the
+      // stable iterator for this iteration; freeze the equivalent object now.
+      final current = cursor!;
+      if (!_containsIdentical(edges, current)) {
         throw StateError('collapseSmallEdges cursor is no longer in graph');
       }
 
-      if (cursor.prev != null) {
-        cursor = _successorOf(edges, cursor);
+      if (current.prev != null) {
+        cursor = _successorOf(edges, current);
         continue;
       }
 
-      final quadStart = cursor;
+      final quadStart = current;
       var quadEnd = quadStart;
       while (quadEnd.next != null) {
         quadEnd = quadEnd.next!;
@@ -138,7 +142,7 @@ extension SourceArachneSkeletalGraphCollapse2
       }
 
       if (!cursorUpdated) {
-        cursor = _successorOf(edges, cursor!);
+        cursor = _successorOf(edges, current);
       }
     }
   }
