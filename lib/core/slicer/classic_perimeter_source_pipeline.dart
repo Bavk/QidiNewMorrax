@@ -102,7 +102,7 @@ class SourceClassicPerimeterPipeline2 {
     bool brimOuterOnly = false,
     double brimWidth = 0,
   }) {
-    final traversalSettings = SourceClassicPerimeterTraversalSettings2(
+    final traversalSettings = _traversalSettings(
       externalPerimeterFlow: externalPerimeterFlow,
       smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
       perimeterFlow: perimeterFlow,
@@ -124,10 +124,45 @@ class SourceClassicPerimeterPipeline2 {
     );
   }
 
-  /// Same source branch as [buildExtrusionsWithoutSpeedGrading], but constructs
-  /// the three lower-polygon series and distance boundaries exactly where
-  /// `PerimeterGenerator::process_classic()` does instead of requiring callers
-  /// to precompute them.
+  /// Same source overhang path with the intermediate classic slowdown degrees
+  /// enabled. [overhangSettings] must include the selected wall's source
+  /// distance boundary; [SourceClassicPerimeterOverhangSettings2.fromLowerSlices]
+  /// supplies all three automatically.
+  static List<ExtrusionEntity2> buildExtrusionsWithSpeedGrading({
+    required ClassicPerimeterResult result,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required double layerHeight,
+    required SourceClassicPerimeterOverhangSettings2 overhangSettings,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
+  }) {
+    final traversalSettings = _traversalSettings(
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: layerHeight,
+    );
+    final traversed = SourceClassicPerimeterTraversal2.traverseWithSpeedGrading(
+      loops: buildLoopTree(result),
+      thinWalls: _cloneThinWalls(result),
+      settings: traversalSettings,
+      overhangSettings: overhangSettings,
+    );
+    return _applyWallSequence(
+      traversed,
+      wallSequence: wallSequence,
+      layerId: overhangSettings.layerId,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+  }
+
+  /// Constructs the three lower-polygon series and distance boundaries exactly
+  /// where `PerimeterGenerator::process_classic()` does, then runs the no-speed
+  /// overhang branch.
   static List<ExtrusionEntity2> buildExtrusionsFromLowerSlicesWithoutSpeedGrading({
     required ClassicPerimeterResult result,
     required Flow externalPerimeterFlow,
@@ -143,8 +178,7 @@ class SourceClassicPerimeterPipeline2 {
     bool brimOuterOnly = false,
     double brimWidth = 0,
   }) {
-    final overhangSettings =
-        SourceClassicPerimeterOverhangSettings2.fromLowerSlices(
+    final overhangSettings = _overhangSettingsFromLowerSlices(
       overhangFlow: overhangFlow,
       externalPerimeterFlow: externalPerimeterFlow,
       smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
@@ -166,6 +200,82 @@ class SourceClassicPerimeterPipeline2 {
       brimWidth: brimWidth,
     );
   }
+
+  /// Full represented classic overhang-speed branch from raw lower slices:
+  /// source float lower-series generation, source distance boundaries,
+  /// supported/zero/intermediate/unsupported splitting, degree terracing,
+  /// recursive traversal, and final wall-sequence adjustment.
+  static List<ExtrusionEntity2> buildExtrusionsFromLowerSlicesWithSpeedGrading({
+    required ClassicPerimeterResult result,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required Flow overhangFlow,
+    required double layerHeight,
+    required List<SourcePolygon2>? lowerSlices,
+    required double wallNozzleDiameter,
+    required int layerId,
+    int raftLayers = 0,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
+  }) {
+    final overhangSettings = _overhangSettingsFromLowerSlices(
+      overhangFlow: overhangFlow,
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      lowerSlices: lowerSlices,
+      wallNozzleDiameter: wallNozzleDiameter,
+      layerId: layerId,
+      raftLayers: raftLayers,
+    );
+    return buildExtrusionsWithSpeedGrading(
+      result: result,
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: layerHeight,
+      overhangSettings: overhangSettings,
+      wallSequence: wallSequence,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+  }
+
+  static SourceClassicPerimeterTraversalSettings2 _traversalSettings({
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required double layerHeight,
+  }) =>
+      SourceClassicPerimeterTraversalSettings2(
+        externalPerimeterFlow: externalPerimeterFlow,
+        smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+        perimeterFlow: perimeterFlow,
+        layerHeight: layerHeight,
+      );
+
+  static SourceClassicPerimeterOverhangSettings2 _overhangSettingsFromLowerSlices({
+    required Flow overhangFlow,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required List<SourcePolygon2>? lowerSlices,
+    required double wallNozzleDiameter,
+    required int layerId,
+    required int raftLayers,
+  }) =>
+      SourceClassicPerimeterOverhangSettings2.fromLowerSlices(
+        overhangFlow: overhangFlow,
+        externalPerimeterFlow: externalPerimeterFlow,
+        smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+        perimeterFlow: perimeterFlow,
+        lowerSlices: lowerSlices,
+        wallNozzleDiameter: wallNozzleDiameter,
+        layerId: layerId,
+        raftLayers: raftLayers,
+      );
 
   static List<ThickPolyline2> _cloneThinWalls(ClassicPerimeterResult result) =>
       <ThickPolyline2>[
