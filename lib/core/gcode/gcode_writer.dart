@@ -1,6 +1,5 @@
-import 'dart:math' as math;
-
 import '../geometry/point.dart';
+import 'extruder.dart';
 import '../slicer/flow.dart';
 import '../slicer/toolpath.dart';
 
@@ -33,10 +32,10 @@ class GCodePrintSettings {
 /// Minimal deterministic G-code writer for the pure-Dart basic toolpath.
 ///
 /// This remains a migration foundation rather than the final source-equivalent
-/// GCode pipeline. Its bead cross-section calculation now uses the exact
-/// mathematical model from the supplied `libslic3r/Flow.cpp`; machine start /
+/// GCode pipeline. Its bead cross-section calculation uses source `Flow.cpp`
+/// and E/mm3 conversion uses the source `Extruder.cpp` formula. Machine start /
 /// end templates, roles, retraction, acceleration, cooling and the native
-/// Extruder/GCode state machine remain explicitly pending.
+/// GCode state machine remain explicitly pending.
 class GCodeWriter {
   const GCodeWriter();
 
@@ -124,8 +123,11 @@ class GCodeWriter {
       height: settings.layerHeight,
       nozzleDiameter: settings.nozzleDiameter,
     );
-    final filamentArea = math.pi * math.pow(settings.filamentDiameter / 2, 2);
-    return distance * flow.mm3PerMm / filamentArea * settings.flowMultiplier;
+    final ePerMm3 = ExtruderState.ePerMm3For(
+      filamentDiameter: settings.filamentDiameter,
+      filamentFlowRatio: settings.flowMultiplier,
+    );
+    return distance * flow.mm3PerMm * ePerMm3;
   }
 
   int _feed(double mmPerSecond) => (mmPerSecond * 60).round();
