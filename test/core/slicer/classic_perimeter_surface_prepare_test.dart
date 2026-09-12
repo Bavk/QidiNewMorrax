@@ -172,9 +172,12 @@ void main() {
 
     expect(item.counterCircleCompensation, isTrue);
     expect(item.compensationHoleCenters, hasLength(1));
+    // The supplied C++ centroid returns Point(Vec2d), which uses lrint. This is
+    // intentionally different from SourcePoint2.fromMm(), whose boundary is
+    // truncation and maps 5.0 mm to 499999 in this source-grid fixture.
     expect(
       item.compensationHoleCenters.single,
-      SourcePoint2.fromMm(5, 5),
+      const SourcePoint2(500000, 500000),
     );
     expect(item.isCompensationHole(hole), isTrue);
     expect(item.isCompensationHole(rectangle(7, 7, 8, 8).reversed()), isFalse);
