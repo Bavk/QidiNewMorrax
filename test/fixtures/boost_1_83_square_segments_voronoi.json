@@ -1,0 +1,52 @@
+{
+  "boost_version": "1.83.0",
+  "input_segments": [
+    [[0, 0], [1000, 0]],
+    [[1000, 0], [1000, 1000]],
+    [[1000, 1000], [0, 1000]],
+    [[0, 1000], [0, 0]]
+  ],
+  "vertices": [
+    {"x": 0, "y": 0, "incident": 7},
+    {"x": -0.0, "y": 1000, "incident": 11},
+    {"x": 1000, "y": -0.0, "incident": 17},
+    {"x": 500, "y": 500, "incident": 19},
+    {"x": 1000, "y": 1000, "incident": 23}
+  ],
+  "cells": [
+    {"source_index": 0, "source_category": 1, "incident": 4, "degenerate": false},
+    {"source_index": 3, "source_category": 9, "incident": 10, "degenerate": false},
+    {"source_index": 2, "source_category": 2, "incident": 8, "degenerate": false},
+    {"source_index": 0, "source_category": 8, "incident": 17, "degenerate": false},
+    {"source_index": 2, "source_category": 9, "incident": 23, "degenerate": false},
+    {"source_index": 0, "source_category": 2, "incident": 14, "degenerate": false},
+    {"source_index": 1, "source_category": 8, "incident": 20, "degenerate": false},
+    {"source_index": 1, "source_category": 2, "incident": 22, "degenerate": false}
+  ],
+  "edges": [
+    {"v0": 0, "v1": -1, "cell": 0, "twin": 1, "next": 4, "prev": 4, "rot_next": 5, "primary": false, "linear": true, "finite": false},
+    {"v0": -1, "v1": 0, "cell": 1, "twin": 0, "next": 7, "prev": 2, "rot_next": 3, "primary": false, "linear": true, "finite": false},
+    {"v0": 1, "v1": -1, "cell": 1, "twin": 3, "next": 1, "prev": 10, "rot_next": 11, "primary": false, "linear": true, "finite": false},
+    {"v0": -1, "v1": 1, "cell": 2, "twin": 2, "next": 8, "prev": 8, "rot_next": 9, "primary": false, "linear": true, "finite": false},
+    {"v0": -1, "v1": 0, "cell": 0, "twin": 5, "next": 0, "prev": 0, "rot_next": 1, "primary": false, "linear": true, "finite": false},
+    {"v0": 0, "v1": -1, "cell": 3, "twin": 4, "next": 12, "prev": 6, "rot_next": 7, "primary": false, "linear": true, "finite": false},
+    {"v0": 3, "v1": 0, "cell": 3, "twin": 7, "next": 5, "prev": 17, "rot_next": 16, "primary": true, "linear": true, "finite": true},
+    {"v0": 0, "v1": 3, "cell": 1, "twin": 6, "next": 10, "prev": 1, "rot_next": 0, "primary": true, "linear": true, "finite": true},
+    {"v0": 1, "v1": -1, "cell": 2, "twin": 9, "next": 3, "prev": 3, "rot_next": 2, "primary": false, "linear": true, "finite": false},
+    {"v0": -1, "v1": 1, "cell": 4, "twin": 8, "next": 11, "prev": 23, "rot_next": 22, "primary": false, "linear": true, "finite": false},
+    {"v0": 3, "v1": 1, "cell": 1, "twin": 11, "next": 2, "prev": 7, "rot_next": 6, "primary": true, "linear": true, "finite": true},
+    {"v0": 1, "v1": 3, "cell": 4, "twin": 10, "next": 19, "prev": 9, "rot_next": 8, "primary": true, "linear": true, "finite": true},
+    {"v0": -1, "v1": 2, "cell": 3, "twin": 13, "next": 17, "prev": 5, "rot_next": 4, "primary": false, "linear": true, "finite": false},
+    {"v0": 2, "v1": -1, "cell": 5, "twin": 12, "next": 14, "prev": 14, "rot_next": 15, "primary": false, "linear": true, "finite": false},
+    {"v0": -1, "v1": 2, "cell": 5, "twin": 15, "next": 13, "prev": 13, "rot_next": 12, "primary": false, "linear": true, "finite": false},
+    {"v0": 2, "v1": -1, "cell": 6, "twin": 14, "next": 20, "prev": 16, "rot_next": 17, "primary": false, "linear": true, "finite": false},
+    {"v0": 3, "v1": 2, "cell": 6, "twin": 17, "next": 15, "prev": 18, "rot_next": 19, "primary": true, "linear": true, "finite": true},
+    {"v0": 2, "v1": 3, "cell": 3, "twin": 16, "next": 6, "prev": 12, "rot_next": 13, "primary": true, "linear": true, "finite": true},
+    {"v0": 4, "v1": 3, "cell": 6, "twin": 19, "next": 16, "prev": 20, "rot_next": 21, "primary": true, "linear": true, "finite": true},
+    {"v0": 3, "v1": 4, "cell": 4, "twin": 18, "next": 23, "prev": 11, "rot_next": 10, "primary": true, "linear": true, "finite": true},
+    {"v0": -1, "v1": 4, "cell": 6, "twin": 21, "next": 18, "prev": 15, "rot_next": 14, "primary": false, "linear": true, "finite": false},
+    {"v0": 4, "v1": -1, "cell": 7, "twin": 20, "next": 22, "prev": 22, "rot_next": 23, "primary": false, "linear": true, "finite": false},
+    {"v0": -1, "v1": 4, "cell": 7, "twin": 23, "next": 21, "prev": 21, "rot_next": 20, "primary": false, "linear": true, "finite": false},
+    {"v0": 4, "v1": -1, "cell": 4, "twin": 22, "next": 9, "prev": 19, "rot_next": 18, "primary": false, "linear": true, "finite": false}
+  ]
+}
