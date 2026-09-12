@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "bambulab/BambuStudio",
+    "commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+    "workflow_run": 34298498452,
+    "artifact_id": 10085378329,
+    "artifact_name": "BambuStudio_ubuntu-24.04_V02.08.03.66",
+    "artifact_zip_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+    "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+    "cli_version": "02.08.03.66"
+  },
+  "profile": {
+    "machine": "Bambu Lab X1 Carbon 0.4 nozzle",
+    "filament": "Bambu PLA Basic @BBL X1C",
+    "process": "0.20mm Standard @BBL X1C",
+    "wall_generator": "arachne",
+    "wall_loops": 2,
+    "line_width_mm": 0.4,
+    "outer_wall_line_width_mm": 0.0,
+    "inner_wall_line_width_mm": 0.4,
+    "layer_height_mm": 0.2,
+    "resolution_mm": 0.01,
+    "top_one_wall_type": "all top",
+    "top_area_threshold_percent": 200.0,
+    "wall_transition_length_percent": 100.0,
+    "wall_transition_filter_deviation_percent": 25.0,
+    "wall_transition_angle_deg": 10.0,
+    "wall_distribution_count": 1,
+    "min_bead_width_percent": 85.0,
+    "min_feature_size_percent": 25.0,
+    "wall_sequence": "inner wall/outer wall",
+    "detect_overhang_wall": true,
+    "enable_overhang_speed": false
+  },
+  "gcode_serialization_tolerance_mm": 0.00051,
+  "oracle": {
+    "name": "partial_alltop_layer",
+    "model": "full body x=0..20,y=0..20,z=0..0.4 plus upper half x=0..10,y=0..20,z=0.4..0.6",
+    "layer_index": 1,
+    "z_height_mm": 0.4,
+    "current_slice_model_bbox_mm": [0.0, 20.0, 0.0, 20.0],
+    "upper_slice_model_bbox_mm": [0.0, 10.0, 0.0, 20.0],
+    "feature_sequence": ["Inner wall", "Outer wall"],
+    "inner_wall": {
+      "bbox_width_mm": 8.864,
+      "bbox_height_mm": 18.886,
+      "gcode_absolute_bbox_mm": [90.557, 99.421, 88.557, 107.443],
+      "min_x_from_outer_min_x_mm": 0.357,
+      "max_x_from_outer_min_x_mm": 9.221,
+      "min_y_from_outer_min_y_mm": 0.357,
+      "max_y_from_outer_min_y_mm": 19.243,
+      "line_width_mm": 0.39999
+    },
+    "outer_wall": {
+      "bbox_width_mm": 19.6,
+      "bbox_height_mm": 19.6,
+      "gcode_absolute_bbox_mm": [90.2, 109.8, 88.2, 107.8],
+      "line_width_mm": 0.39999
+    }
+  }
+}
