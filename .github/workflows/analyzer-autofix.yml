@@ -1,0 +1,176 @@
+name: One-shot analyzer cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/analyzer-autofix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix-validate-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FLUTTER_VERSION: '3.47.2'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply exact analyzer fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, expected=1):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{path}: expected {expected} occurrence(s), found {count}: {old!r}')
+              p.write_text(text.replace(old, new))
+
+          replace(
+              'lib/features/device/data/local_device_discovery.dart',
+              '''    final subscription = socket.listen((event) {
+                if (event != RawSocketEvent.read) return;
+                Datagram? datagram;
+                while ((datagram = socket.receive()) != null) {
+                  final raw = utf8.decode(datagram.data, allowMalformed: true);
+                  final parsed = _parseSsdp(raw, datagram.address.address);
+                  if (parsed != null) found[parsed.ip] = parsed;
+                }
+              });''',
+              '''    final subscription = socket.listen((event) {
+                if (event != RawSocketEvent.read) return;
+                while (true) {
+                  final datagram = socket.receive();
+                  if (datagram == null) break;
+                  final raw = utf8.decode(datagram.data, allowMalformed: true);
+                  final parsed = _parseSsdp(raw, datagram.address.address);
+                  if (parsed != null) found[parsed.ip] = parsed;
+                }
+              });''',
+          )
+
+          replace(
+              'lib/core/slicer/extrusion_entity.dart',
+              '''  ExtrusionPathOriented2({
+                required ExtrusionRole role,
+                required double mm3PerMm,
+                required double width,
+                required double height,
+                SourcePolyline2? polyline,
+              }) : super(
+                  role: role,
+                  mm3PerMm: mm3PerMm,
+                  width: width,
+                  height: height,
+                  polyline: polyline,
+                  canReverse: false,
+                );''',
+              '''  ExtrusionPathOriented2({
+                required super.role,
+                required super.mm3PerMm,
+                required super.width,
+                required super.height,
+                super.polyline,
+              }) : super(canReverse: false);''',
+          )
+
+          replace(
+              'lib/features/device/presentation/device_page.dart',
+              '              value: selected != null && controller.devices.contains(selected)\n',
+              '              initialValue: selected != null && controller.devices.contains(selected)\n',
+          )
+          replace(
+              'lib/features/device/presentation/device_page.dart',
+              '''                                if (!mounted) return;
+                                                await showDialog<void>(
+                                                  context: context,''',
+              '''                                if (!mounted) return;
+                                                await showDialog<void>(
+                                                  context: this.context,''',
+          )
+          replace(
+              'lib/features/device/presentation/device_page.dart',
+              '''                                if (!mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(''',
+              '''                                if (!mounted) return;
+                                                ScaffoldMessenger.of(this.context).showSnackBar(''',
+          )
+
+          replace(
+              'lib/features/prepare/presentation/prepare_page.dart',
+              '      value: availableValue,\n',
+              '      initialValue: availableValue,\n',
+          )
+          replace(
+              'lib/features/prepare/presentation/prepare_page.dart',
+              'Colors.white.withOpacity(.18)',
+              'Colors.white.withValues(alpha: .18)',
+          )
+          replace(
+              'lib/features/prepare/presentation/prepare_page.dart',
+              'Colors.white.withOpacity(.35)',
+              'Colors.white.withValues(alpha: .35)',
+          )
+          replace(
+              'lib/features/prepare/presentation/prepare_page.dart',
+              'const Color(0xFF0875EE).withOpacity(.85)',
+              'const Color(0xFF0875EE).withValues(alpha: .85)',
+          )
+
+          replace(
+              'lib/features/preview/presentation/preview_page.dart',
+              '_ToolpathPainter(layer: current!),',
+              '_ToolpathPainter(layer: current),',
+          )
+          replace(
+              'lib/features/preview/presentation/preview_page.dart',
+              'Colors.white.withOpacity(.18)',
+              'Colors.white.withValues(alpha: .18)',
+          )
+          PY
+
+      - name: Install pinned Flutter from official repository
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+          git config --global --add safe.directory "$HOME/flutter"
+
+      - name: Format and validate
+        shell: bash
+        run: |
+          set -euxo pipefail
+          flutter config --no-analytics
+          dart format \
+            lib/features/device/data/local_device_discovery.dart \
+            lib/core/slicer/extrusion_entity.dart \
+            lib/features/device/presentation/device_page.dart \
+            lib/features/prepare/presentation/prepare_page.dart \
+            lib/features/preview/presentation/preview_page.dart
+          flutter pub get
+          flutter analyze
+          flutter test --reporter expanded
+          git diff --check
+
+      - name: Commit validated cleanup
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            lib/features/device/data/local_device_discovery.dart \
+            lib/core/slicer/extrusion_entity.dart \
+            lib/features/device/presentation/device_page.dart \
+            lib/features/prepare/presentation/prepare_page.dart \
+            lib/features/preview/presentation/preview_page.dart
+          git commit -m 'chore: finish analyzer cleanup'
+          git push origin HEAD:main
