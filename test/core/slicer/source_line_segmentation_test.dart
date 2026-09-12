@@ -167,4 +167,37 @@ void main() {
       SourcePoint2(0, 0),
     ]);
   });
+
+  test('full polygon cover preserves distinct closing source index', () {
+    final polygon = SourcePolygon2(const [
+      SourcePoint2(0, 0),
+      SourcePoint2(100000, 0),
+      SourcePoint2(100000, 100000),
+      SourcePoint2(0, 100000),
+    ]);
+    final cover = SourceExPolygon2(
+      contour: SourcePolygon2(const [
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(110000, -10000),
+        SourcePoint2(110000, 110000),
+        SourcePoint2(-10000, 110000),
+      ]),
+    );
+    final result = SourceLineSegmentation2.polygonSegmentation(
+      subject: polygon,
+      clipGroups: [
+        [cover],
+      ],
+    );
+
+    expect(result, hasLength(1));
+    expect(result.single.clipIndex, 1);
+    expect(result.single.polyline.points, const [
+      SourcePoint2(0, 0),
+      SourcePoint2(100000, 0),
+      SourcePoint2(100000, 100000),
+      SourcePoint2(0, 100000),
+      SourcePoint2(0, 0),
+    ]);
+  });
 }
