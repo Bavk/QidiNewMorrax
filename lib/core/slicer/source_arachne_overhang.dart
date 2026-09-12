@@ -20,6 +20,37 @@ import 'variable_width.dart';
 class SourceArachneOverhang2 {
   const SourceArachneOverhang2._();
 
+  /// Direct represented contract of source `clip_extrusion()`.
+  ///
+  /// The returned ThickPolylines retain source-coordinate widths interpolated
+  /// through Clipper Z at newly created intersection points.
+  static List<ThickPolyline2> clipExtrusionWidths({
+    required SourceArachneExtrusionLine2 extrusion,
+    required List<SourcePolygon2> clipPolygons,
+    required bool intersection,
+  }) {
+    if (extrusion.junctions.length < 2) {
+      throw StateError('Pinned clip_extrusion requires >= 2 junctions');
+    }
+    final subject = <c2.Point64>[
+      for (final junction in extrusion.junctions)
+        c2.Point64(junction.p.x, junction.p.y, junction.w),
+    ];
+    final clips = <c2.Path64>[
+      for (final polygon in clipPolygons)
+        if (polygon.points.length >= 3)
+          [
+            for (final point in polygon.points)
+              c2.Point64(point.x, point.y, 0),
+          ],
+    ];
+    return _clipExtrusion(
+      subject,
+      clips,
+      intersection ? c2.ClipType.intersection : c2.ClipType.difference,
+    );
+  }
+
   static List<ExtrusionPath2> splitWithoutSpeedGrading({
     required SourceArachneExtrusionLine2 extrusion,
     required List<SourcePolygon2> lowerLayerPolygons,
@@ -63,28 +94,15 @@ class SourceArachneOverhang2 {
       }
     }
 
-    final subject = <c2.Point64>[
-      for (final junction in extrusion.junctions)
-        c2.Point64(junction.p.x, junction.p.y, junction.w),
-    ];
-    final clips = <c2.Path64>[
-      for (final polygon in clippedLower)
-        if (polygon.points.length >= 3)
-          [
-            for (final point in polygon.points)
-              c2.Point64(point.x, point.y, 0),
-          ],
-    ];
-
-    final supported = _clipExtrusion(
-      subject,
-      clips,
-      c2.ClipType.intersection,
+    final supported = clipExtrusionWidths(
+      extrusion: extrusion,
+      clipPolygons: clippedLower,
+      intersection: true,
     );
-    final unsupported = _clipExtrusion(
-      subject,
-      clips,
-      c2.ClipType.difference,
+    final unsupported = clipExtrusionWidths(
+      extrusion: extrusion,
+      clipPolygons: clippedLower,
+      intersection: false,
     );
 
     final variableWidth = SourceVariableWidth2();
