@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import '../geometry/thick_polyline.dart';
 import 'source_arachne_extrusion_line.dart';
@@ -14,7 +15,7 @@ extension SourceArachneExtrusionLineVariableWidth2
       throw StateError('Pinned to_thick_polyline requires at least 2 junctions');
     }
 
-    final points = <dynamic>[];
+    final points = <SourcePoint2>[];
     final widths = <double>[];
     points.add(junctions[0].p);
     widths.add(junctions[0].w.toDouble());
@@ -32,9 +33,10 @@ extension SourceArachneExtrusionLineVariableWidth2
     }
 
     return ThickPolyline2(
-      points: points.cast(),
-      widths: widths,
-      endpoints: (true, true),
+      points: points,
+      width: widths,
+      startIsEndpoint: true,
+      endIsEndpoint: true,
     );
   }
 
