@@ -25,6 +25,58 @@ class SourcePolygon2 {
 
   SourcePolygon2 reversed() => SourcePolygon2(points.reversed);
 
+  /// Source `Polygon::contains()` delegates to Clipper1 `PointInPolygon()` and
+  /// treats a boundary hit (-1) as inside by default.
+  bool contains(SourcePoint2 point, {bool borderResult = true}) {
+    final result = pointInPolygon(point);
+    if (result == -1) return borderResult;
+    return result.isOdd;
+  }
+
+  /// Clipper1-shaped point-in-polygon result: 0 outside, +1 inside, -1 on the
+  /// polygon boundary. The crossing test is division-free and uses BigInt for
+  /// the determinant so Dart does not introduce signed-64 overflow where the
+  /// source uses integer geometry.
+  int pointInPolygon(SourcePoint2 point) {
+    if (points.length < 3) return 0;
+
+    var inside = false;
+    var a = points.last;
+    for (final b in points) {
+      if (_pointOnSegment(point, a, b)) return -1;
+
+      if ((a.y > point.y) != (b.y > point.y)) {
+        final dx = BigInt.from(b.x - a.x);
+        final py = BigInt.from(point.y - a.y);
+        final px = BigInt.from(point.x - a.x);
+        final dy = BigInt.from(b.y - a.y);
+        final cross = dx * py - px * dy;
+        if ((cross > BigInt.zero) == (b.y > a.y)) {
+          inside = !inside;
+        }
+      }
+      a = b;
+    }
+    return inside ? 1 : 0;
+  }
+
+  bool _pointOnSegment(
+    SourcePoint2 point,
+    SourcePoint2 a,
+    SourcePoint2 b,
+  ) {
+    final abx = BigInt.from(b.x - a.x);
+    final aby = BigInt.from(b.y - a.y);
+    final apx = BigInt.from(point.x - a.x);
+    final apy = BigInt.from(point.y - a.y);
+    if (abx * apy - aby * apx != BigInt.zero) return false;
+
+    return point.x >= math.min(a.x, b.x) &&
+        point.x <= math.max(a.x, b.x) &&
+        point.y >= math.min(a.y, b.y) &&
+        point.y <= math.max(a.y, b.y);
+  }
+
   List<SourceLine2> lines() {
     if (points.length < 2) return const [];
     return List<SourceLine2>.generate(
