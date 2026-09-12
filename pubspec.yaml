@@ -1,0 +1,104 @@
+name: qidi_flow_flutter
+description: Pure Flutter/Dart rewrite of Qidi Flow, preserving QIDI profiles/resources and progressively porting slicer/device behavior.
+publish_to: none
+version: 2.7.2+60
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+flutter:
+  uses-material-design: true
+  assets:
+    - 'assets/generated/'
+    - 'assets/po/'
+    - 'assets/po/cs/'
+    - 'assets/po/de/'
+    - 'assets/po/en/'
+    - 'assets/po/es/'
+    - 'assets/po/fr/'
+    - 'assets/po/hu/'
+    - 'assets/po/it/'
+    - 'assets/po/ja/'
+    - 'assets/po/ko/'
+    - 'assets/po/nl/'
+    - 'assets/po/pl/'
+    - 'assets/po/pt-BR/'
+    - 'assets/po/ru/'
+    - 'assets/po/sv/'
+    - 'assets/po/tr/'
+    - 'assets/po/uk/'
+    - 'assets/po/zh_cn/'
+    - 'assets/po/zh_TW/'
+    - 'assets/resources/calib/filament_flow/'
+    - 'assets/resources/calib/pressure_advance/'
+    - 'assets/resources/calib/retraction/'
+    - 'assets/resources/calib/temperature_tower/'
+    - 'assets/resources/calib/vfa/'
+    - 'assets/resources/calib/volumetric_speed/'
+    - 'assets/resources/cert/'
+    - 'assets/resources/dailytip/'
+    - 'assets/resources/data/'
+    - 'assets/resources/flush/'
+    - 'assets/resources/fonts/'
+    - 'assets/resources/i18n/cs/'
+    - 'assets/resources/i18n/de/'
+    - 'assets/resources/i18n/en/'
+    - 'assets/resources/i18n/es/'
+    - 'assets/resources/i18n/fr/'
+    - 'assets/resources/i18n/hu/'
+    - 'assets/resources/i18n/it/'
+    - 'assets/resources/i18n/ja/'
+    - 'assets/resources/i18n/ko/'
+    - 'assets/resources/i18n/nl/'
+    - 'assets/resources/i18n/pl/'
+    - 'assets/resources/i18n/pt_BR/'
+    - 'assets/resources/i18n/ru/'
+    - 'assets/resources/i18n/sv/'
+    - 'assets/resources/i18n/tr/'
+    - 'assets/resources/i18n/uk/'
+    - 'assets/resources/i18n/zh_cn/'
+    - 'assets/resources/i18n/zh_TW/'
+    - 'assets/resources/images/'
+    - 'assets/resources/info/'
+    - 'assets/resources/model/'
+    - 'assets/resources/printers/'
+    - 'assets/resources/profiles/'
+    - 'assets/resources/profiles/Q Series/'
+    - 'assets/resources/profiles/Q Series/filament/'
+    - 'assets/resources/profiles/Q Series/machine/'
+    - 'assets/resources/profiles/Q Series/process/'
+    - 'assets/resources/profiles/thumbnail/'
+    - 'assets/resources/profiles/X 3 Series/'
+    - 'assets/resources/profiles/X 3 Series/filament/'
+    - 'assets/resources/profiles/X 3 Series/machine/'
+    - 'assets/resources/profiles/X 3 Series/process/'
+    - 'assets/resources/profiles/X 4 Series/'
+    - 'assets/resources/profiles/X 4 Series/filament/'
+    - 'assets/resources/profiles/X 4 Series/machine/'
+    - 'assets/resources/profiles/X 4 Series/process/'
+    - 'assets/resources/profiles/X 5 Series/'
+    - 'assets/resources/profiles/X 5 Series/filament/'
+    - 'assets/resources/profiles/X 5 Series/machine/'
+    - 'assets/resources/profiles/X 5 Series/process/'
+    - 'assets/resources/shaders/110/'
+    - 'assets/resources/shaders/140/'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  archive: ^4.0.2
+  collection: ^1.18.0
+  file_picker: ^8.1.7
+  http: ^1.2.2
+  intl: ^0.20.2
+  shared_preferences: ^2.3.5
+  vector_math: ^2.1.4
+  web_socket_channel: ^3.0.1
+  xml: ^6.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
