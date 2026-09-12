@@ -54,9 +54,7 @@ class _DevicePageState extends State<DevicePage> {
               const SizedBox(height: 10),
               TextField(
                 controller: name,
-                decoration: const InputDecoration(
-                  labelText: 'Name (optional)',
-                ),
+                decoration: const InputDecoration(labelText: 'Name (optional)'),
               ),
             ],
           ),
@@ -85,9 +83,8 @@ class _DevicePageState extends State<DevicePage> {
       await action();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -117,7 +114,10 @@ class _DevicePageState extends State<DevicePage> {
             ],
           ),
         const Divider(),
-        _DeviceTabBar(index: tab, onChanged: (value) => setState(() => tab = value)),
+        _DeviceTabBar(
+          index: tab,
+          onChanged: (value) => setState(() => tab = value),
+        ),
         const Divider(),
         Expanded(
           child: selected == null
@@ -128,10 +128,10 @@ class _DevicePageState extends State<DevicePage> {
                 )
               : switch (tab) {
                   0 => _OverviewTab(
-                      controller: controller,
-                      device: selected,
-                      run: _run,
-                    ),
+                    controller: controller,
+                    device: selected,
+                    run: _run,
+                  ),
                   1 => _ControlTab(controller: controller, run: _run),
                   2 => _FilesTab(controller: controller, run: _run),
                   _ => _AutomationTab(controller: controller, run: _run),
@@ -168,7 +168,8 @@ class _DeviceHeader extends StatelessWidget {
           SizedBox(
             width: 280,
             child: DropdownButtonFormField<PrinterDevice>(
-              value: selected != null && controller.devices.contains(selected)
+              initialValue:
+                  selected != null && controller.devices.contains(selected)
                   ? selected
                   : null,
               isExpanded: true,
@@ -222,10 +223,7 @@ class _DeviceHeader extends StatelessWidget {
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-                Text(
-                  selected.ip,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(selected.ip, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
             const SizedBox(width: 12),
@@ -258,22 +256,22 @@ class _DeviceTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          children: [
-            for (var i = 0; i < items.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  selected: index == i,
-                  onSelected: (_) => onChanged(i),
-                  avatar: Icon(items[i].$1, size: 17),
-                  label: Text(items[i].$2),
-                ),
-              ),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    child: Row(
+      children: [
+        for (var i = 0; i < items.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: ChoiceChip(
+              selected: index == i,
+              onSelected: (_) => onChanged(i),
+              avatar: Icon(items[i].$1, size: 17),
+              label: Text(items[i].$2),
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _EmptyDevice extends StatelessWidget {
@@ -288,43 +286,43 @@ class _EmptyDevice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.print_outlined, size: 52),
+            const SizedBox(height: 12),
+            Text(
+              'Connect a QIDI printer',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The Flutter port uses the source LAN SSDP discovery and Moonraker command contract.',
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
               children: [
-                const Icon(Icons.print_outlined, size: 52),
-                const SizedBox(height: 12),
-                Text(
-                  'Connect a QIDI printer',
-                  style: Theme.of(context).textTheme.titleLarge,
+                FilledButton.icon(
+                  onPressed: discovering ? null : onDiscover,
+                  icon: const Icon(Icons.radar),
+                  label: const Text('Discover'),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'The Flutter port uses the source LAN SSDP discovery and Moonraker command contract.',
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: discovering ? null : onDiscover,
-                      icon: const Icon(Icons.radar),
-                      label: const Text('Discover'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: onManual,
-                      icon: const Icon(Icons.add_link),
-                      label: const Text('Add by IP'),
-                    ),
-                  ],
+                OutlinedButton.icon(
+                  onPressed: onManual,
+                  icon: const Icon(Icons.add_link),
+                  label: const Text('Add by IP'),
                 ),
               ],
             ),
-          ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _OverviewTab extends StatelessWidget {
@@ -346,7 +344,10 @@ class _OverviewTab extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 900;
-            final camera = _CameraCard(device: device, connected: state.connected);
+            final camera = _CameraCard(
+              device: device,
+              connected: state.connected,
+            );
             final telemetry = _TelemetryCard(
               state: state,
               fileCount: controller.files.length,
@@ -377,9 +378,7 @@ class _OverviewTab extends StatelessWidget {
                   onPressed: state.connected
                       ? () => run(controller.pauseOrResume)
                       : null,
-                  icon: Icon(
-                    state.jobPaused ? Icons.play_arrow : Icons.pause,
-                  ),
+                  icon: Icon(state.jobPaused ? Icons.play_arrow : Icons.pause),
                   label: Text(state.jobPaused ? 'Resume' : 'Pause'),
                 ),
                 OutlinedButton.icon(
@@ -390,23 +389,25 @@ class _OverviewTab extends StatelessWidget {
                   label: const Text('Cancel'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: state.connected ? () => run(controller.home) : null,
+                  onPressed: state.connected
+                      ? () => run(controller.home)
+                      : null,
                   icon: const Icon(Icons.home_outlined),
                   label: const Text('Home'),
                 ),
                 OutlinedButton.icon(
-                  onPressed:
-                      state.connected ? () => run(controller.cooldown) : null,
+                  onPressed: state.connected
+                      ? () => run(controller.cooldown)
+                      : null,
                   icon: const Icon(Icons.ac_unit),
                   label: const Text('Cooldown'),
                 ),
                 OutlinedButton.icon(
-                  onPressed:
-                      state.connected ? () => run(controller.toggleLight) : null,
+                  onPressed: state.connected
+                      ? () => run(controller.toggleLight)
+                      : null,
                   icon: Icon(
-                    state.caseLight
-                        ? Icons.lightbulb
-                        : Icons.lightbulb_outline,
+                    state.caseLight ? Icons.lightbulb : Icons.lightbulb_outline,
                   ),
                   label: Text(state.caseLight ? 'Light off' : 'Light on'),
                 ),
@@ -433,20 +434,20 @@ class _CameraCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: AspectRatio(
-          aspectRatio: 16 / 9,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: connected
-                ? Image.network(
-                    device.snapshotUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const _CameraFallback(),
-                  )
-                : const _CameraFallback(),
-          ),
-        ),
-      );
+    child: AspectRatio(
+      aspectRatio: 16 / 9,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: connected
+            ? Image.network(
+                device.snapshotUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const _CameraFallback(),
+              )
+            : const _CameraFallback(),
+      ),
+    ),
+  );
 }
 
 class _CameraFallback extends StatelessWidget {
@@ -454,18 +455,18 @@ class _CameraFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-        color: const Color(0xFF1D2124),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.videocam_outlined, color: Colors.white70, size: 44),
-              SizedBox(height: 8),
-              Text('Camera snapshot', style: TextStyle(color: Colors.white70)),
-            ],
-          ),
-        ),
-      );
+    color: const Color(0xFF1D2124),
+    child: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.videocam_outlined, color: Colors.white70, size: 44),
+          SizedBox(height: 8),
+          Text('Camera snapshot', style: TextStyle(color: Colors.white70)),
+        ],
+      ),
+    ),
+  );
 }
 
 class _TelemetryCard extends StatelessWidget {
@@ -475,54 +476,49 @@ class _TelemetryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                state.fileName.isEmpty ? 'Printer status' : state.fileName,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 10),
-              LinearProgressIndicator(value: state.progress),
-              const SizedBox(height: 12),
-              _metric('State', state.printState),
-              _metric(
-                'Nozzle',
-                '${state.nozzleTemperature.toStringAsFixed(1)} / ${state.nozzleTarget.toStringAsFixed(0)} °C',
-              ),
-              _metric(
-                'Bed',
-                '${state.bedTemperature.toStringAsFixed(1)} / ${state.bedTarget.toStringAsFixed(0)} °C',
-              ),
-              _metric(
-                'Chamber',
-                '${state.chamberTemperature.toStringAsFixed(1)} / ${state.chamberTarget.toStringAsFixed(0)} °C',
-              ),
-              _metric(
-                'Layer',
-                '${state.currentLayer} / ${state.totalLayer}',
-              ),
-              _metric('Speed', '${state.speedPercent}%'),
-              _metric('Files', '$fileCount'),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            state.fileName.isEmpty ? 'Printer status' : state.fileName,
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
-      );
+          const SizedBox(height: 10),
+          LinearProgressIndicator(value: state.progress),
+          const SizedBox(height: 12),
+          _metric('State', state.printState),
+          _metric(
+            'Nozzle',
+            '${state.nozzleTemperature.toStringAsFixed(1)} / ${state.nozzleTarget.toStringAsFixed(0)} °C',
+          ),
+          _metric(
+            'Bed',
+            '${state.bedTemperature.toStringAsFixed(1)} / ${state.bedTarget.toStringAsFixed(0)} °C',
+          ),
+          _metric(
+            'Chamber',
+            '${state.chamberTemperature.toStringAsFixed(1)} / ${state.chamberTarget.toStringAsFixed(0)} °C',
+          ),
+          _metric('Layer', '${state.currentLayer} / ${state.totalLayer}'),
+          _metric('Speed', '${state.speedPercent}%'),
+          _metric('Files', '$fileCount'),
+        ],
+      ),
+    ),
+  );
 
   Widget _metric(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Expanded(child: Text(label)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(child: Text(label)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ],
+    ),
+  );
 }
 
 class _ControlTab extends StatelessWidget {
@@ -655,47 +651,47 @@ class _TemperatureControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Temperatures', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              Text('Temperatures', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _TempButton(
-                    label: 'Nozzle',
-                    current: state.nozzleTemperature,
-                    target: state.nozzleTarget,
-                    enabled: state.connected,
-                    onSet: (value) =>
-                        run(() => controller.setNozzleTemperature(value)),
-                  ),
-                  _TempButton(
-                    label: 'Bed',
-                    current: state.bedTemperature,
-                    target: state.bedTarget,
-                    enabled: state.connected,
-                    onSet: (value) =>
-                        run(() => controller.setBedTemperature(value)),
-                  ),
-                  _TempButton(
-                    label: 'Chamber',
-                    current: state.chamberTemperature,
-                    target: state.chamberTarget,
-                    enabled: state.connected,
-                    onSet: (value) =>
-                        run(() => controller.setChamberTemperature(value)),
-                  ),
-                ],
+              _TempButton(
+                label: 'Nozzle',
+                current: state.nozzleTemperature,
+                target: state.nozzleTarget,
+                enabled: state.connected,
+                onSet: (value) =>
+                    run(() => controller.setNozzleTemperature(value)),
+              ),
+              _TempButton(
+                label: 'Bed',
+                current: state.bedTemperature,
+                target: state.bedTarget,
+                enabled: state.connected,
+                onSet: (value) =>
+                    run(() => controller.setBedTemperature(value)),
+              ),
+              _TempButton(
+                label: 'Chamber',
+                current: state.chamberTemperature,
+                target: state.chamberTarget,
+                enabled: state.connected,
+                onSet: (value) =>
+                    run(() => controller.setChamberTemperature(value)),
               ),
             ],
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _TempButton extends StatelessWidget {
@@ -714,42 +710,40 @@ class _TempButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => OutlinedButton(
-        onPressed: enabled
-            ? () async {
-                final text = TextEditingController(text: target.round().toString());
-                final value = await showDialog<int>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text('$label target'),
-                    content: TextField(
-                      controller: text,
-                      autofocus: true,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(suffixText: '°C'),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(
-                          context,
-                          int.tryParse(text.text),
-                        ),
-                        child: const Text('Set'),
-                      ),
-                    ],
+    onPressed: enabled
+        ? () async {
+            final text = TextEditingController(text: target.round().toString());
+            final value = await showDialog<int>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('$label target'),
+                content: TextField(
+                  controller: text,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(suffixText: '°C'),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
                   ),
-                );
-                text.dispose();
-                if (value != null) onSet(value);
-              }
-            : null,
-        child: Text(
-          '$label  ${current.toStringAsFixed(1)} / ${target.toStringAsFixed(0)} °C',
-        ),
-      );
+                  FilledButton(
+                    onPressed: () =>
+                        Navigator.pop(context, int.tryParse(text.text)),
+                    child: const Text('Set'),
+                  ),
+                ],
+              ),
+            );
+            text.dispose();
+            if (value != null) onSet(value);
+          }
+        : null,
+    child: Text(
+      '$label  ${current.toStringAsFixed(1)} / ${target.toStringAsFixed(0)} °C',
+    ),
+  );
 }
 
 class _FanControl extends StatefulWidget {
@@ -822,9 +816,7 @@ class _FilesTab extends StatelessWidget {
             children: [
               Text(
                 'Printer files',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
+                style: Theme.of(context).textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w700),
               ),
               const Spacer(),
@@ -844,7 +836,8 @@ class _FilesTab extends StatelessWidget {
                   itemCount: controller.files.length,
                   itemBuilder: (context, index) {
                     final file = controller.files[index];
-                    final path = (file['path'] ?? file['filename'] ?? file['name'])
+                    final path =
+                        (file['path'] ?? file['filename'] ?? file['name'])
                             ?.toString() ??
                         '';
                     final size = file['size'];
@@ -906,9 +899,7 @@ class _AutomationTabState extends State<_AutomationTab> {
       children: [
         Text(
           'Automation & advanced functions',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
+          style: Theme.of(context).textTheme.titleLarge
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
@@ -918,7 +909,10 @@ class _AutomationTabState extends State<_AutomationTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('QIDI Box / materials', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'QIDI Box / materials',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 12),
                 for (var slot = 0; slot < 4; slot++)
                   ListTile(
@@ -933,24 +927,24 @@ class _AutomationTabState extends State<_AutomationTab> {
                         TextButton(
                           onPressed: state.connected
                               ? () => widget.run(
-                                    () => widget.controller.loadSlot(slot),
-                                  )
+                                  () => widget.controller.loadSlot(slot),
+                                )
                               : null,
                           child: const Text('Load'),
                         ),
                         TextButton(
                           onPressed: state.connected
                               ? () => widget.run(
-                                    () => widget.controller.unloadSlot(slot),
-                                  )
+                                  () => widget.controller.unloadSlot(slot),
+                                )
                               : null,
                           child: const Text('Unload'),
                         ),
                         TextButton(
                           onPressed: state.connected
                               ? () => widget.run(
-                                    () => widget.controller.ejectSlot(slot),
-                                  )
+                                  () => widget.controller.ejectSlot(slot),
+                                )
                               : null,
                           child: const Text('Eject'),
                         ),
@@ -958,8 +952,8 @@ class _AutomationTabState extends State<_AutomationTab> {
                           tooltip: 'Read RFID',
                           onPressed: state.connected
                               ? () => widget.run(
-                                    () => widget.controller.refreshRfid(slot),
-                                  )
+                                  () => widget.controller.refreshRfid(slot),
+                                )
                               : null,
                           icon: const Icon(Icons.nfc),
                         ),
@@ -979,17 +973,20 @@ class _AutomationTabState extends State<_AutomationTab> {
               children: [
                 Row(
                   children: [
-                    Text('Timelapses', style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Timelapses',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const Spacer(),
                     OutlinedButton.icon(
                       onPressed: state.connected
                           ? () async {
                               try {
-                                final files =
-                                    await widget.controller.listTimelapses();
+                                final files = await widget.controller
+                                    .listTimelapses();
                                 if (!mounted) return;
                                 await showDialog<void>(
-                                  context: context,
+                                  context: this.context,
                                   builder: (context) => AlertDialog(
                                     title: const Text('Timelapses'),
                                     content: SizedBox(
@@ -1026,7 +1023,7 @@ class _AutomationTabState extends State<_AutomationTab> {
                                 );
                               } catch (error) {
                                 if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                ScaffoldMessenger.of(this.context).showSnackBar(
                                   SnackBar(content: Text(error.toString())),
                                 );
                               }
@@ -1048,7 +1045,10 @@ class _AutomationTabState extends State<_AutomationTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('G-code console', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'G-code console',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: gcode,
@@ -1063,8 +1063,8 @@ class _AutomationTabState extends State<_AutomationTab> {
                 FilledButton.icon(
                   onPressed: state.connected && gcode.text.trim().isNotEmpty
                       ? () => widget.run(
-                            () => widget.controller.sendGcode(gcode.text),
-                          )
+                          () => widget.controller.sendGcode(gcode.text),
+                        )
                       : null,
                   icon: const Icon(Icons.send),
                   label: const Text('Send'),

@@ -177,10 +177,10 @@ class ExtrusionPath2 extends ExtrusionEntity2 {
     bool canReverse = true,
     super.customizeFlag,
     super.coolingNode,
-  })  : polyline = polyline ?? SourcePolyline2(),
-        _role = role,
-        _forceNoExtrusion = forceNoExtrusion,
-        _canReverse = canReverse;
+  }) : polyline = polyline ?? SourcePolyline2(),
+       _role = role,
+       _forceNoExtrusion = forceNoExtrusion,
+       _canReverse = canReverse;
 
   final SourcePolyline2 polyline;
   double overhangDegree;
@@ -194,38 +194,37 @@ class ExtrusionPath2 extends ExtrusionEntity2 {
   bool _forceNoExtrusion;
 
   factory ExtrusionPath2.sourceCopy(ExtrusionPath2 source) => ExtrusionPath2(
-        polyline: source.polyline.copy(),
-        overhangDegree: source.overhangDegree,
-        curveDegree: source.curveDegree,
-        mm3PerMm: source.mm3PerMm,
-        width: source.width,
-        height: source.height,
-        smoothSpeed: source.smoothSpeed,
-        role: source.role,
-        forceNoExtrusion: source._forceNoExtrusion,
-        canReverse: source._canReverse,
-        customizeFlag: source.customizeFlag,
-        coolingNode: source.coolingNode,
-      );
+    polyline: source.polyline.copy(),
+    overhangDegree: source.overhangDegree,
+    curveDegree: source.curveDegree,
+    mm3PerMm: source.mm3PerMm,
+    width: source.width,
+    height: source.height,
+    smoothSpeed: source.smoothSpeed,
+    role: source.role,
+    forceNoExtrusion: source._forceNoExtrusion,
+    canReverse: source._canReverse,
+    customizeFlag: source.customizeFlag,
+    coolingNode: source.coolingNode,
+  );
 
   factory ExtrusionPath2.sourceCopyWithPolyline(
     ExtrusionPath2 source,
     SourcePolyline2 polyline,
-  ) =>
-      ExtrusionPath2(
-        polyline: polyline.copy(),
-        overhangDegree: source.overhangDegree,
-        curveDegree: source.curveDegree,
-        mm3PerMm: source.mm3PerMm,
-        width: source.width,
-        height: source.height,
-        smoothSpeed: source.smoothSpeed,
-        role: source.role,
-        forceNoExtrusion: source._forceNoExtrusion,
-        canReverse: source._canReverse,
-        customizeFlag: source.customizeFlag,
-        coolingNode: source.coolingNode,
-      );
+  ) => ExtrusionPath2(
+    polyline: polyline.copy(),
+    overhangDegree: source.overhangDegree,
+    curveDegree: source.curveDegree,
+    mm3PerMm: source.mm3PerMm,
+    width: source.width,
+    height: source.height,
+    smoothSpeed: source.smoothSpeed,
+    role: source.role,
+    forceNoExtrusion: source._forceNoExtrusion,
+    canReverse: source._canReverse,
+    customizeFlag: source.customizeFlag,
+    coolingNode: source.coolingNode,
+  );
 
   @override
   ExtrusionRole get role => _role;
@@ -278,12 +277,13 @@ class ExtrusionPath2 extends ExtrusionEntity2 {
       destination.addAll(polyline.points);
 
   @override
-  double get totalVolume =>
-      mm3PerMm * Slic3rUnits.unscaleDouble(length);
+  double get totalVolume => mm3PerMm * Slic3rUnits.unscaleDouble(length);
 
   void setOverhangDegree(int overhang) {
     if (isPerimeterRole(role) || isSupportRole(role)) {
-      overhangDegree = overhang < 0 ? 0.0 : (overhang > 10 ? 10.0 : overhang.toDouble());
+      overhangDegree = overhang < 0
+          ? 0.0
+          : (overhang > 10 ? 10.0 : overhang.toDouble());
     }
   }
 
@@ -326,15 +326,13 @@ class ExtrusionSlope2 {
     ExtrusionSlope2 begin,
     ExtrusionSlope2 end,
     double ratio,
-  ) =>
-      ExtrusionSlope2(
-        zRatio: _lerp(begin.zRatio, end.zRatio, ratio),
-        eRatio: _lerp(begin.eRatio, end.eRatio, ratio),
-        speedRecord: _lerp(begin.speedRecord, end.speedRecord, ratio),
-      );
+  ) => ExtrusionSlope2(
+    zRatio: _lerp(begin.zRatio, end.zRatio, ratio),
+    eRatio: _lerp(begin.eRatio, end.eRatio, ratio),
+    speedRecord: _lerp(begin.speedRecord, end.speedRecord, ratio),
+  );
 
-  static double _lerp(double a, double b, double ratio) =>
-      a + (b - a) * ratio;
+  static double _lerp(double a, double b, double ratio) => a + (b - a) * ratio;
 }
 
 class ExtrusionPathSloped2 extends ExtrusionPath2 {
@@ -344,19 +342,19 @@ class ExtrusionPathSloped2 extends ExtrusionPath2 {
     required this.slopeEnd,
     SourcePolyline2? replacementPolyline,
   }) : super(
-          polyline: replacementPolyline?.copy() ?? source.polyline.copy(),
-          overhangDegree: source.overhangDegree,
-          curveDegree: source.curveDegree,
-          mm3PerMm: source.mm3PerMm,
-          width: source.width,
-          height: source.height,
-          smoothSpeed: source.smoothSpeed,
-          role: source.role,
-          forceNoExtrusion: source.isForceNoExtrusion,
-          canReverse: source.canReverse,
-          customizeFlag: source.customizeFlag,
-          coolingNode: source.coolingNode,
-        );
+         polyline: replacementPolyline?.copy() ?? source.polyline.copy(),
+         overhangDegree: source.overhangDegree,
+         curveDegree: source.curveDegree,
+         mm3PerMm: source.mm3PerMm,
+         width: source.width,
+         height: source.height,
+         smoothSpeed: source.smoothSpeed,
+         role: source.role,
+         forceNoExtrusion: source.isForceNoExtrusion,
+         canReverse: source.canReverse,
+         customizeFlag: source.customizeFlag,
+         coolingNode: source.coolingNode,
+       );
 
   final ExtrusionSlope2 slopeBegin;
   final ExtrusionSlope2 slopeEnd;
@@ -370,23 +368,14 @@ class ExtrusionPathSloped2 extends ExtrusionPath2 {
 
 class ExtrusionPathOriented2 extends ExtrusionPath2 {
   ExtrusionPathOriented2({
-    required ExtrusionRole role,
-    required double mm3PerMm,
-    required double width,
-    required double height,
-    SourcePolyline2? polyline,
-  }) : super(
-          role: role,
-          mm3PerMm: mm3PerMm,
-          width: width,
-          height: height,
-          polyline: polyline,
-          canReverse: false,
-        );
+    required super.role,
+    required super.mm3PerMm,
+    required super.width,
+    required super.height,
+    super.polyline,
+  }) : super(canReverse: false);
 
-  factory ExtrusionPathOriented2.sourceCopy(
-    ExtrusionPathOriented2 source,
-  ) {
+  factory ExtrusionPathOriented2.sourceCopy(ExtrusionPathOriented2 source) {
     final copy = ExtrusionPathOriented2(
       role: source.role,
       mm3PerMm: source.mm3PerMm,
@@ -418,8 +407,8 @@ class ExtrusionMultiPath2 extends ExtrusionEntity2 {
     bool canReverse = true,
     super.customizeFlag,
     super.coolingNode,
-  })  : paths = [for (final path in paths) ExtrusionPath2.sourceCopy(path)],
-        _canReverse = canReverse;
+  }) : paths = [for (final path in paths) ExtrusionPath2.sourceCopy(path)],
+       _canReverse = canReverse;
 
   factory ExtrusionMultiPath2.fromSinglePath(ExtrusionPath2 path) =>
       ExtrusionMultiPath2(paths: [path], canReverse: path.canReverse);
@@ -539,11 +528,11 @@ class ExtrusionLoop2 extends ExtrusionEntity2 {
 
   @override
   ExtrusionLoop2 cloneEntity() => ExtrusionLoop2(
-        paths: paths,
-        loopRole: loopRole,
-        customizeFlag: customizeFlag,
-        coolingNode: coolingNode,
-      );
+    paths: paths,
+    loopRole: loopRole,
+    customizeFlag: customizeFlag,
+    coolingNode: coolingNode,
+  );
 
   SourcePolygon2 polygon() {
     final points = <SourcePoint2>[];
@@ -640,8 +629,8 @@ class ExtrusionEntityCollection2 extends ExtrusionEntity2 {
     this.loopNodeRange = const (0, 0),
     super.customizeFlag,
     super.coolingNode,
-  })  : entities = [for (final entity in entities) entity.cloneEntity()],
-        _isReverse = isReverse;
+  }) : entities = [for (final entity in entities) entity.cloneEntity()],
+       _isReverse = isReverse;
 
   final List<ExtrusionEntity2> entities;
   bool noSort;
@@ -680,11 +669,11 @@ class ExtrusionEntityCollection2 extends ExtrusionEntity2 {
 
   @override
   ExtrusionEntityCollection2 cloneEntity() => ExtrusionEntityCollection2(
-        entities: entities,
-        noSort: noSort,
-        isReverse: _isReverse,
-        loopNodeRange: loopNodeRange,
-      );
+    entities: entities,
+    noSort: noSort,
+    isReverse: _isReverse,
+    loopNodeRange: loopNodeRange,
+  );
 
   @override
   void reverse() {
@@ -743,9 +732,8 @@ class ExtrusionEntityCollection2 extends ExtrusionEntity2 {
   }
 
   @override
-  Never asPolyline() => throw StateError(
-        'Calling as_polyline() on a ExtrusionEntityCollection',
-      );
+  Never asPolyline() =>
+      throw StateError('Calling as_polyline() on a ExtrusionEntityCollection');
 
   @override
   void collectPolylines(List<SourcePolyline2> destination) {
@@ -762,9 +750,8 @@ class ExtrusionEntityCollection2 extends ExtrusionEntity2 {
   }
 
   @override
-  Never get length => throw StateError(
-        'Calling length() on a ExtrusionEntityCollection',
-      );
+  Never get length =>
+      throw StateError('Calling length() on a ExtrusionEntityCollection');
 
   @override
   double get totalVolume =>

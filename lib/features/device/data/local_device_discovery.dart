@@ -5,8 +5,9 @@ import 'dart:io';
 import '../domain/printer_device.dart';
 
 class LocalDeviceDiscovery {
-  static final InternetAddress multicastAddress =
-      InternetAddress('239.255.255.250');
+  static final InternetAddress multicastAddress = InternetAddress(
+    '239.255.255.250',
+  );
   static const int port = 5863;
 
   Future<List<PrinterDevice>> discover({
@@ -19,15 +20,17 @@ class LocalDeviceDiscovery {
 
     final subscription = socket.listen((event) {
       if (event != RawSocketEvent.read) return;
-      Datagram? datagram;
-      while ((datagram = socket.receive()) != null) {
+      while (true) {
+        final datagram = socket.receive();
+        if (datagram == null) break;
         final raw = utf8.decode(datagram.data, allowMalformed: true);
         final parsed = _parseSsdp(raw, datagram.address.address);
         if (parsed != null) found[parsed.ip] = parsed;
       }
     });
 
-    const message = 'M-SEARCH * HTTP/1.1\r\n'
+    const message =
+        'M-SEARCH * HTTP/1.1\r\n'
         'HOST: 239.255.255.250:5863\r\n'
         'MAN: "ssdp:discover"\r\n'
         'ST: ssdp:all\r\n'
@@ -59,8 +62,9 @@ class LocalDeviceDiscovery {
       if (cleaned.isEmpty) continue;
       final colon = cleaned.indexOf(':');
       if (colon <= 0) continue;
-      headers[cleaned.substring(0, colon).trim().toLowerCase()] =
-          cleaned.substring(colon + 1).trim();
+      headers[cleaned.substring(0, colon).trim().toLowerCase()] = cleaned
+          .substring(colon + 1)
+          .trim();
     }
     final serial = headers['usn'];
     final location = headers['location'];
@@ -71,8 +75,8 @@ class LocalDeviceDiscovery {
     } catch (_) {}
     if (ip.isEmpty) return null;
     final model = headers['devmodel.qidi.com'] ?? '';
-    final name = headers['devname.qidi.com'] ??
-        (model.isEmpty ? 'QIDI $ip' : model);
+    final name =
+        headers['devname.qidi.com'] ?? (model.isEmpty ? 'QIDI $ip' : model);
     return PrinterDevice(
       id: serial,
       serialNumber: serial,

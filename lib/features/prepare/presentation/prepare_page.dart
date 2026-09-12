@@ -45,7 +45,8 @@ class _PreparePageState extends State<PreparePage> {
       machines = all.where((p) => p.type == 'machine').toList();
       allFilaments = all.where((p) => p.type == 'filament').toList();
       allProcesses = all.where((p) => p.type == 'process').toList();
-      machine = machines.where((p) => p.name.contains('X-Plus 4')).firstOrNull ??
+      machine =
+          machines.where((p) => p.name.contains('X-Plus 4')).firstOrNull ??
           machines.firstOrNull;
       _applyMachineCompatibility(resetSelection: true);
     } catch (e) {
@@ -72,11 +73,13 @@ class _PreparePageState extends State<PreparePage> {
         .where((p) => p.isCompatibleWithPrinter(printerName))
         .toList(growable: false);
     if (resetSelection || filament == null || !filaments.contains(filament)) {
-      filament = filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
+      filament =
+          filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
           filaments.firstOrNull;
     }
     if (resetSelection || process == null || !processes.contains(process)) {
-      process = processes.where((p) => p.name.contains('0.20')).firstOrNull ??
+      process =
+          processes.where((p) => p.name.contains('0.20')).firstOrNull ??
           processes.firstOrNull;
     }
   }
@@ -94,7 +97,8 @@ class _PreparePageState extends State<PreparePage> {
       error = null;
     });
     try {
-      final bytes = file.bytes ??
+      final bytes =
+          file.bytes ??
           (file.path == null ? null : await File(file.path!).readAsBytes());
       if (bytes == null) throw StateError('Could not read ${file.name}');
       mesh = const ModelLoader().load(bytes, file.name);
@@ -318,9 +322,11 @@ class _PreparePageState extends State<PreparePage> {
     QidiProfile? value,
     ValueChanged<QidiProfile?> onChanged,
   ) {
-    final availableValue = value != null && values.contains(value) ? value : null;
+    final availableValue = value != null && values.contains(value)
+        ? value
+        : null;
     return DropdownButtonFormField<QidiProfile>(
-      value: availableValue,
+      initialValue: availableValue,
       isExpanded: true,
       decoration: InputDecoration(labelText: label),
       items: [
@@ -446,27 +452,29 @@ class _PreparePageState extends State<PreparePage> {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.icon, required this.title, this.trailing});
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    this.trailing,
+  });
   final IconData icon;
   final String title;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: 19),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const Spacer(),
-          if (trailing != null) trailing!,
-        ],
-      );
+    children: [
+      Icon(icon, size: 19),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      const Spacer(),
+      if (trailing != null) trailing!,
+    ],
+  );
 }
 
 class _ReadOnlyValue extends StatelessWidget {
@@ -476,9 +484,9 @@ class _ReadOnlyValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InputDecorator(
-        decoration: InputDecoration(labelText: label),
-        child: Text(value),
-      );
+    decoration: InputDecoration(labelText: label),
+    child: Text(value),
+  );
 }
 
 class _SettingLine extends StatelessWidget {
@@ -487,25 +495,25 @@ class _SettingLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          children: [
-            Expanded(child: Text(label)),
-            SizedBox(
-              width: 120,
-              child: TextFormField(
-                initialValue: value,
-                readOnly: true,
-                textAlign: TextAlign.end,
-                decoration: InputDecoration(
-                  isDense: true,
-                  suffixText: unit.isEmpty ? null : unit,
-                ),
-              ),
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        Expanded(child: Text(label)),
+        SizedBox(
+          width: 120,
+          child: TextFormField(
+            initialValue: value,
+            readOnly: true,
+            textAlign: TextAlign.end,
+            decoration: InputDecoration(
+              isDense: true,
+              suffixText: unit.isEmpty ? null : unit,
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _EmptyPlate extends StatelessWidget {
@@ -514,32 +522,32 @@ class _EmptyPlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CustomPaint(
-        painter: _BedPainter(),
-        child: Center(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.view_in_ar_outlined, size: 46),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Drop or open a 3D model',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: onOpen,
-                    icon: const Icon(Icons.folder_open),
-                    label: const Text('Open STL / OBJ / 3MF / AMF'),
-                  ),
-                ],
+    painter: _BedPainter(),
+    child: Center(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.view_in_ar_outlined, size: 46),
+              const SizedBox(height: 10),
+              Text(
+                'Drop or open a 3D model',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-            ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: onOpen,
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Open STL / OBJ / 3MF / AMF'),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class MeshViewport extends StatefulWidget {
@@ -558,37 +566,37 @@ class _MeshViewportState extends State<MeshViewport> {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onPanStart: (d) => last = d.localPosition,
-        onPanUpdate: (d) {
-          final prev = last;
-          if (prev == null) return;
-          final delta = d.localPosition - prev;
-          last = d.localPosition;
-          setState(() {
-            yaw += delta.dx * .008;
-            pitch = (pitch + delta.dy * .008).clamp(-1.45, 1.45).toDouble();
-          });
-        },
-        onScaleUpdate: (d) {
-          if (d.pointerCount > 1) {
-            setState(() => zoom = (zoom * d.scale).clamp(.25, 8.0).toDouble());
-          }
-        },
-        onDoubleTap: () => setState(() {
-          yaw = -.65;
-          pitch = .82;
-          zoom = 1;
-        }),
-        child: CustomPaint(
-          painter: _MeshPainter(
-            mesh: widget.mesh,
-            yaw: yaw,
-            pitch: pitch,
-            zoom: zoom,
-          ),
-          child: const SizedBox.expand(),
-        ),
-      );
+    onPanStart: (d) => last = d.localPosition,
+    onPanUpdate: (d) {
+      final prev = last;
+      if (prev == null) return;
+      final delta = d.localPosition - prev;
+      last = d.localPosition;
+      setState(() {
+        yaw += delta.dx * .008;
+        pitch = (pitch + delta.dy * .008).clamp(-1.45, 1.45).toDouble();
+      });
+    },
+    onScaleUpdate: (d) {
+      if (d.pointerCount > 1) {
+        setState(() => zoom = (zoom * d.scale).clamp(.25, 8.0).toDouble());
+      }
+    },
+    onDoubleTap: () => setState(() {
+      yaw = -.65;
+      pitch = .82;
+      zoom = 1;
+    }),
+    child: CustomPaint(
+      painter: _MeshPainter(
+        mesh: widget.mesh,
+        yaw: yaw,
+        pitch: pitch,
+        zoom: zoom,
+      ),
+      child: const SizedBox.expand(),
+    ),
+  );
 }
 
 class _BedPainter extends CustomPainter {
@@ -611,7 +619,7 @@ class _BedPainter extends CustomPainter {
       Paint()..color = schemeColor,
     );
     final grid = Paint()
-      ..color = Colors.white.withOpacity(.18)
+      ..color = Colors.white.withValues(alpha: .18)
       ..strokeWidth = 1;
     for (var i = 1; i < 20; i++) {
       final x = rect.left + rect.width * i / 20;
@@ -622,7 +630,7 @@ class _BedPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(18)),
       Paint()
-        ..color = Colors.white.withOpacity(.35)
+        ..color = Colors.white.withValues(alpha: .35)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -647,7 +655,10 @@ class _MeshPainter extends CustomPainter {
     _BedPainter().paint(canvas, size);
     final bounds = mesh.bounds;
     final center = bounds.center;
-    final extent = math.max(bounds.width, math.max(bounds.depth, bounds.height));
+    final extent = math.max(
+      bounds.width,
+      math.max(bounds.depth, bounds.height),
+    );
     if (extent <= 0 || !extent.isFinite) return;
     final scale = math.min(size.width, size.height) * .55 / extent * zoom;
     Offset project(Point3 point) {
@@ -688,7 +699,7 @@ class _MeshPainter extends CustomPainter {
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFF0875EE).withOpacity(.85)
+        ..color = const Color(0xFF0875EE).withValues(alpha: .85)
         ..style = PaintingStyle.stroke
         ..strokeWidth = .8,
     );
@@ -696,7 +707,10 @@ class _MeshPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MeshPainter old) =>
-      old.mesh != mesh || old.yaw != yaw || old.pitch != pitch || old.zoom != zoom;
+      old.mesh != mesh ||
+      old.yaw != yaw ||
+      old.pitch != pitch ||
+      old.zoom != zoom;
 }
 
 enum _TransformKind { move, rotate, scale }
@@ -784,15 +798,14 @@ class _TransformDialogState extends State<_TransformDialog> {
     String label,
     TextEditingController controller,
     String suffix,
-  ) =>
-      TextField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(
-          decimal: true,
-          signed: true,
-        ),
-        decoration: InputDecoration(labelText: label, suffixText: suffix),
-      );
+  ) => TextField(
+    controller: controller,
+    keyboardType: const TextInputType.numberWithOptions(
+      decimal: true,
+      signed: true,
+    ),
+    decoration: InputDecoration(labelText: label, suffixText: suffix),
+  );
 }
 
 extension _FirstOrNull<T> on Iterable<T> {

@@ -35,7 +35,8 @@ class _PreviewPageState extends State<PreviewPage> {
       error = null;
     });
     try {
-      final bytes = file.bytes ??
+      final bytes =
+          file.bytes ??
           (file.path == null ? null : await File(file.path!).readAsBytes());
       if (bytes == null) throw StateError('Could not read ${file.name}');
       final text = utf8.decode(bytes, allowMalformed: true);
@@ -106,7 +107,7 @@ class _PreviewPageState extends State<PreviewPage> {
                         children: [
                           Positioned.fill(
                             child: CustomPaint(
-                              painter: _ToolpathPainter(layer: current!),
+                              painter: _ToolpathPainter(layer: current),
                             ),
                           ),
                           Positioned(
@@ -129,7 +130,9 @@ class _PreviewPageState extends State<PreviewPage> {
                                       child: Slider(
                                         value: layerIndex.toDouble(),
                                         min: 0,
-                                        max: math.max(0, layers.length - 1).toDouble(),
+                                        max: math
+                                            .max(0, layers.length - 1)
+                                            .toDouble(),
                                         divisions: layers.length > 1
                                             ? layers.length - 1
                                             : null,
@@ -203,9 +206,7 @@ class _PreviewPageState extends State<PreviewPage> {
       segments.add(_MoveSegment(px, py, x, y, extrusion: e > pe + 1e-8));
     }
     final zs = byZ.keys.toList()..sort();
-    return [
-      for (final zz in zs) _LayerPath(zz, List.unmodifiable(byZ[zz]!)),
-    ];
+    return [for (final zz in zs) _LayerPath(zz, List.unmodifiable(byZ[zz]!))];
   }
 }
 
@@ -234,37 +235,37 @@ class _EmptyPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.route_outlined, size: 52),
-                const SizedBox(height: 12),
-                Text(
-                  'G-code preview',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Open a G-code file to inspect layers, moves and basic statistics.',
-                ),
-                if (error != null) ...[
-                  const SizedBox(height: 10),
-                  Text(error.toString()),
-                ],
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: onOpen,
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('Open G-code'),
-                ),
-              ],
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.route_outlined, size: 52),
+            const SizedBox(height: 12),
+            Text(
+              'G-code preview',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
+            const SizedBox(height: 8),
+            const Text(
+              'Open a G-code file to inspect layers, moves and basic statistics.',
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 10),
+              Text(error.toString()),
+            ],
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Open G-code'),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _StatsPanel extends StatelessWidget {
@@ -279,64 +280,59 @@ class _StatsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(14),
-        children: [
-          Text(
-            'Preview',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          _row('Layers', '$layers'),
-          _row('Moves', '${stats.moveCount}'),
-          _row('Extrusion moves', '${stats.extrusionMoveCount}'),
-          _row('Travel', '${stats.travelDistanceMm.toStringAsFixed(1)} mm'),
-          _row('Extrusion', '${stats.extrusionMm.toStringAsFixed(1)} mm'),
-          _row(
-            'X',
-            '${stats.minX.toStringAsFixed(1)}…${stats.maxX.toStringAsFixed(1)}',
-          ),
-          _row(
-            'Y',
-            '${stats.minY.toStringAsFixed(1)}…${stats.maxY.toStringAsFixed(1)}',
-          ),
-          _row(
-            'Z',
-            '${stats.minZ.toStringAsFixed(2)}…${stats.maxZ.toStringAsFixed(2)}',
-          ),
-          _row(
-            'Temperatures',
-            stats.temperatures.map((e) => e.round()).join(', '),
-          ),
-          const Divider(height: 28),
-          Text('Current layer', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          _row('Z', current.z.toStringAsFixed(3)),
-          _row('Segments', '${current.segments.length}'),
-          _row(
-            'Extrusions',
-            '${current.segments.where((s) => s.extrusion).length}',
-          ),
-        ],
-      );
+    padding: const EdgeInsets.all(14),
+    children: [
+      Text(
+        'Preview',
+        style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
+      const SizedBox(height: 16),
+      _row('Layers', '$layers'),
+      _row('Moves', '${stats.moveCount}'),
+      _row('Extrusion moves', '${stats.extrusionMoveCount}'),
+      _row('Travel', '${stats.travelDistanceMm.toStringAsFixed(1)} mm'),
+      _row('Extrusion', '${stats.extrusionMm.toStringAsFixed(1)} mm'),
+      _row(
+        'X',
+        '${stats.minX.toStringAsFixed(1)}…${stats.maxX.toStringAsFixed(1)}',
+      ),
+      _row(
+        'Y',
+        '${stats.minY.toStringAsFixed(1)}…${stats.maxY.toStringAsFixed(1)}',
+      ),
+      _row(
+        'Z',
+        '${stats.minZ.toStringAsFixed(2)}…${stats.maxZ.toStringAsFixed(2)}',
+      ),
+      _row('Temperatures', stats.temperatures.map((e) => e.round()).join(', ')),
+      const Divider(height: 28),
+      Text('Current layer', style: Theme.of(context).textTheme.titleMedium),
+      const SizedBox(height: 8),
+      _row('Z', current.z.toStringAsFixed(3)),
+      _row('Segments', '${current.segments.length}'),
+      _row(
+        'Extrusions',
+        '${current.segments.where((s) => s.extrusion).length}',
+      ),
+    ],
+  );
 
   Widget _row(String a, String b) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          children: [
-            Expanded(child: Text(a)),
-            Flexible(
-              child: Text(
-                b,
-                textAlign: TextAlign.end,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        Expanded(child: Text(a)),
+        Flexible(
+          child: Text(
+            b,
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _ToolpathPainter extends CustomPainter {
@@ -345,7 +341,10 @@ class _ToolpathPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF202426));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFF202426),
+    );
     if (layer.segments.isEmpty) return;
     var minX = double.infinity;
     var minY = double.infinity;
@@ -361,11 +360,11 @@ class _ToolpathPainter extends CustomPainter {
     final h = math.max(1.0, maxY - minY);
     final scale = math.min((size.width - 60) / w, (size.height - 60) / h);
     Offset p(double x, double y) => Offset(
-          (x - (minX + maxX) / 2) * scale + size.width / 2,
-          (y - (minY + maxY) / 2) * scale + size.height / 2,
-        );
+      (x - (minX + maxX) / 2) * scale + size.width / 2,
+      (y - (minY + maxY) / 2) * scale + size.height / 2,
+    );
     final travel = Paint()
-      ..color = Colors.white.withOpacity(.18)
+      ..color = Colors.white.withValues(alpha: .18)
       ..strokeWidth = 1;
     final extrusion = Paint()
       ..color = const Color(0xFF45A3FF)
