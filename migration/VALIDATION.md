@@ -17,72 +17,73 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34689260162` (#244) executed code commit `1f9d7010b52f48f56286d0b5b2772de352b865a9` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34690713768` (#249) executed code commit `7c1c5d1f56a287cb812df3b511484851277d460f` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+311: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+325: All tests passed!`**;
 - job conclusion — **success**.
 
-## New fuzzy evidence in this checkpoint
+## Arachne fuzzy evidence executed in #249
 
-### Structured noise
+The green suite includes source-shaped Arachne models and exact `FuzzySkin.cpp::fuzzy_extrusion_line()` evidence for:
 
-Run #239 (`34688786051`) first validated the direct Dart `bambulab/libnoise@v1.0.0` subset and all-noise classic fuzzy path at **298/298 passing**. Run #244 re-executed those fixtures and additionally validated region composition.
+- `FuzzySkinMode` source order: `Displacement`, `Extrusion`, `Combined`;
+- seeded `std::mt19937(5489)` / libstdc++ Classic-oracle position values for `Displacement`;
+- seeded width oracle for `Extrusion`;
+- seeded position + width oracle for `Combined`;
+- `scaled(0.01)` minimum extrusion width;
+- Combined perpendicular shift by half the width delta;
+- structured-noise mode consuming `random_value()` only for spacing;
+- repeated-penultimate fallback behavior;
+- closure synchronization based on endpoint XY equality and affecting output front position/width;
+- source-shaped `ExtrusionLine` metadata retention.
 
-Executed structured-noise evidence includes:
+## Arachne / LineSegmentation evidence executed in #249
 
-- libnoise integer value hash and gradient hash behavior;
-- exact source 256-vector gradient table;
-- `MakeInt32Range` signed `fmod` semantics;
-- source cube-lower behavior at zero/negative integer boundaries;
-- Perlin/Billow/RidgedMulti octave formulas;
-- Voronoi cell displacement fixtures;
-- source `max(0.01, fuzzy_skin_scale)` behavior;
-- deterministic `slice_z` participation;
-- deterministic noise consuming `random_value()` only for spacing;
-- Perlin geometry flowing through apply/traversal/full represented classic loop output.
+The same run covers the represented `Algorithm/LineSegmentation` ExtrusionLine overload:
 
-### LineSegmentation / painted classic fuzzy
-
-Run #244 executed and passed fixtures for:
-
-- empty/default polyline segmentation;
-- one stripe producing default/painted/default ranges;
-- multiple disjoint region groups and default gaps;
-- one region covering the entire open polyline;
-- QIDI `Point` scalar-truncation behavior in range endpoint interpolation;
+- source 32-bit `ZAttributes` encoding through `Point64.z` / `Clipper64.zCallback`;
+- default/painted/default open-path segmentation;
+- Point interpolation with QIDI per-product coord truncation;
+- extrusion-width interpolation with final scalar truncation;
+- perimeter-index consistency at interpolated boundaries;
+- split Arachne segments using open-line constructor semantics;
+- full-cover fast path retaining whole-line metadata;
 - region-value mapping;
-- polygon closure by repeating the first source point;
-- full polygon coverage preserving distinct closing source index despite equal XY coordinates;
-- one painted region selecting whole-polygon fuzzy config;
-- multiple painted runs fuzzified as independent open polylines and rejoined;
-- identity region reconstruction without RNG consumption;
-- nonempty `perimeter_regions` disabling intermediate overhang speed grading for base `None`;
-- painted Perlin geometry applied before classic loop wrapping.
+- painted-region fuzzy application and XY-only seam duplicate removal.
 
-The current Dart Clipper2 package has no Clipper-Z callback. The implemented Polyline/Polygon LineSegmentation subset therefore reconstructs source `(line_index,t)` endpoint attributes by projection onto the source integer polyline using QIDI's 10-coordinate threshold. This compatibility seam is covered by the tests above; the Arachne ExtrusionLine overload remains unported.
+### Why #246–#248 failed before #249
 
-## Earlier fuzzy correction retained
+Run #246 (`34690222711`) first executed the Arachne batch. All three C++ fuzzy-mode goldens and the Arachne composition fixtures passed. Only two LineSegmentation cases failed: an existing Polyline endpoint-interpolation case and its new Arachne width-interpolation analogue.
 
-Run #230 remains the source of the corrected Classic RNG model: pinned `FuzzySkin.cpp` uses one function-local thread-local `random_value()` stream for spacing and Classic displacement. The false independent-RNG `*Exact2` branch was removed. #244 re-executed the MT19937/libstdc++ and Classic call-order regressions.
+Run #247 added a narrow compatibility repair for surviving open terminal points whose Dart Clipper2 Z value no longer matched the point's unique exact source XY. The two failures remained.
 
-## Other evidence re-exercised by #244
+Run #248 added diagnostics without weakening the assertion. It showed the painted intersection arriving in the opposite open-path direction: terminal source point → intersection, which activated the source first/last index seam exception on an actually open two-point subject and created a false trailing default range.
 
-The same 311-test run re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
+Pinned `ClipperLib_Z` supplies the represented open result in source direction; Dart Clipper2 may return it reversed. Commit `7c1c5d1` therefore restricts the first/last wrap exception to a subject whose first and last XY actually coincide. Open Dart paths normalize back to source order; closed Polygon/Arachne paths retain the source wrap behavior. Run #249 then passed all **325/325** tests. No expected geometry/width value was loosened.
 
-No fixture was skipped or rewritten to accept incorrect Dart output. The failing #241 region run led to a source-shaped closing-index reconstruction fix and removal of an unrelated role assumption from the slowdown test while retaining the actual slowdown contract assertion.
+## Earlier fuzzy evidence retained
+
+Run #249 also re-executed the earlier green evidence:
+
+- one shared Classic `random_value()` stream and direct MT19937/libstdc++ double fixtures;
+- direct libnoise v1.0.0 value/gradient/vector-table/Perlin/Billow/RidgedMulti/Voronoi behavior;
+- scale clamp, octave/persistence, Voronoi displacement and `slice_z` inputs;
+- Polygon/Polyline fuzzy sampling/casts/fallback;
+- painted Polyline/Polygon region composition;
+- recursive classic fuzzy traversal and region-aware overhang slowdown policy.
+
+It also re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
 
 ## Not proven by this checkpoint
 
-Run #244 does **not** prove:
+Run #249 does **not** prove:
 
-- Arachne `ExtrusionJunction` / `ExtrusionLine` fuzzy behavior;
-- `FuzzySkinMode::Displacement`, `Extrusion`, or `Combined`;
-- Arachne/extrusion-line LineSegmentation overload and region composition;
+- full Arachne wall generation around the represented fuzzy helper;
 - every pathological overlap/hole/degenerate LineSegmentation case;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;
-- complete classic perimeter/fill stages or Arachne wall generation;
+- remaining classic `fill_surfaces` / `fill_no_overlap` and later perimeter/fill stages;
 - complete Clipper/Boost regression spaces beyond represented fixtures;
 - complete G-code state/templates/travel/retraction/cooling/acceleration/multimaterial behavior;
 - all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
