@@ -132,7 +132,11 @@ class SourceArachneConstructFromPolygons2 {
       }
       var traversalGuard = 0;
       while (nextEdgeId != endingVoronoiEdge.id) {
-        final edge = topology.edge(nextEdgeId);
+        final currentEdgeId = nextEdgeId;
+        if (currentEdgeId == null) {
+          throw StateError('Pinned middle Voronoi edge id became null');
+        }
+        final edge = topology.edge(currentEdgeId);
         _requireFiniteCoordEdge(topology, edge);
         final edgeNextId = edge.nextId;
         if (edgeNextId == null) {
