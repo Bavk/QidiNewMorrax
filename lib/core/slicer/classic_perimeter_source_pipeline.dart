@@ -1,3 +1,4 @@
+import '../geometry/polygon.dart';
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import '../geometry/thick_polyline.dart';
@@ -84,11 +85,11 @@ class SourceClassicPerimeterPipeline2 {
     );
   }
 
-  static SourcePolygon2 _toSourcePolygon(dynamic polygon) => SourcePolygon2(
-        polygon.points.map<SourcePoint2>(
+  static SourcePolygon2 _toSourcePolygon(Polygon2 polygon) => SourcePolygon2(
+        polygon.points.map(
           (point) => SourcePoint2(
-            _recoverCoordinate(point.x as double),
-            _recoverCoordinate(point.y as double),
+            _recoverCoordinate(point.x),
+            _recoverCoordinate(point.y),
           ),
         ),
       );
