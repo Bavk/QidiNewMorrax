@@ -9,12 +9,10 @@ import 'source_geometry.dart';
 /// used by `ExtrusionEntity`; arc fitting remains a separately tracked source
 /// unit and is never silently approximated.
 class SourcePolyline2 {
+  /// Mirrors `Polyline(const Points&)`: preserve the provided point vector
+  /// exactly, including any existing adjacent duplicates.
   SourcePolyline2([Iterable<SourcePoint2> points = const []])
-      : points = <SourcePoint2>[] {
-    for (final point in points) {
-      append(point);
-    }
-  }
+      : points = List<SourcePoint2>.of(points);
 
   final List<SourcePoint2> points;
 
@@ -32,9 +30,15 @@ class SourcePolyline2 {
     points.add(point);
   }
 
+  /// Mirrors QIDI `Polyline::append(const Points&)`: only a duplicate at the
+  /// join is suppressed. Duplicates already present inside [source] are kept.
   void appendPoints(Iterable<SourcePoint2> source) {
-    for (final point in source) {
-      append(point);
+    final incoming = List<SourcePoint2>.of(source);
+    if (incoming.isEmpty) return;
+    if (points.isNotEmpty && points.last == incoming.first) {
+      points.addAll(incoming.skip(1));
+    } else {
+      points.addAll(incoming);
     }
   }
 
