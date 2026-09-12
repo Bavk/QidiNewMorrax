@@ -94,7 +94,7 @@ void main() {
     );
   });
 
-  test('percent overlap resolves against inset plus half solid spacing', () {
+  test('percent overlap preserves source double-to-coord truncation', () {
     final result = builder.build(
       last: [rectangle(0, 0, 20, 20)],
       effectiveLoopCount: 1,
@@ -103,13 +103,14 @@ void main() {
       ),
     );
 
-    // source ratio_over = unscale(20000 + 40000/2) = 0.4 mm;
-    // 20% => 0.08 mm => 8000 source units.
-    expect(result.infillPerimeterOverlapSource, 8000);
-    expect(result.insetSource, 12000);
+    // C++ oracle for pinned Config.hpp order `ratio_over * value / 100`:
+    // ratio_over = 0.40000000000000002, scaled result =
+    // 7999.9999999999991, then coord_t truncates to 7999.
+    expect(result.infillPerimeterOverlapSource, 7999);
+    expect(result.insetSource, 12001);
     expect(
       bounds(result.fillSurfaces.map((surface) => surface.expolygon)),
-      (12000, 12000, 1988000, 1988000),
+      (12001, 12001, 1987999, 1987999),
     );
     expect(
       bounds(result.fillNoOverlap),
