@@ -18,9 +18,10 @@ class SourceArachnePolylineStitchResult2 {
 /// `PolylineStitcher<VariableWidthLines, ExtrusionLine, ExtrusionJunction>`.
 ///
 /// Endpoint lookup follows the same square-cell traversal as `SquareGrid`.
-/// Within a cell endpoints retain insertion order (front, back for each input
-/// line); source uses an unordered_multimap here, but equivalent endpoints are
-/// intentionally indistinguishable below the snap threshold.
+/// Pinned libstdc++ `unordered_multimap::equal_range()` walks equivalent keys
+/// in reverse insertion order. That is observable because stitch search stops
+/// as soon as a candidate is strictly inside `snap_distance`, so each Dart
+/// cell deliberately prepends newly inserted endpoints.
 class SourceArachnePolylineStitcher2 {
   const SourceArachnePolylineStitcher2._();
 
@@ -259,7 +260,7 @@ class _EndpointGrid {
 
   void insert(_Endpoint endpoint, SourcePoint2 point) {
     final key = (_gridCoord(point.x), _gridCoord(point.y));
-    (_cells[key] ??= <_Endpoint>[]).add(endpoint);
+    (_cells[key] ??= <_Endpoint>[]).insert(0, endpoint);
   }
 
   Iterable<_Endpoint> nearby(SourcePoint2 point, int radius) sync* {
