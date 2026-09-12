@@ -11,7 +11,10 @@ SourcePolygon2 _square() => SourcePolygon2(const [
       SourcePoint2(0, 10000),
     ]);
 
-VoronoiTopology2 _pointCellTopology(SourcePoint2 query) {
+VoronoiTopology2 _pointCellTopology(
+  SourcePoint2 query, {
+  bool middlePrimary = true,
+}) {
   final vertices = <VoronoiVertex2>[
     const VoronoiVertex2(point: VoronoiPoint2(0, 0)),
     VoronoiVertex2(
@@ -40,8 +43,8 @@ VoronoiTopology2 _pointCellTopology(SourcePoint2 query) {
         sourceCategory: VoronoiSourceCategory.segment,
       ),
     ],
-    edges: const [
-      VoronoiHalfEdge2(
+    edges: [
+      const VoronoiHalfEdge2(
         id: 0,
         vertex0: 0,
         vertex1: 1,
@@ -60,9 +63,9 @@ VoronoiTopology2 _pointCellTopology(SourcePoint2 query) {
         rotNextId: 1,
         nextId: 2,
         prevId: 0,
-        primary: false,
+        primary: middlePrimary,
       ),
-      VoronoiHalfEdge2(
+      const VoronoiHalfEdge2(
         id: 2,
         vertex0: 2,
         vertex1: 0,
@@ -72,7 +75,7 @@ VoronoiTopology2 _pointCellTopology(SourcePoint2 query) {
         nextId: 0,
         prevId: 1,
       ),
-      VoronoiHalfEdge2(
+      const VoronoiHalfEdge2(
         id: 3,
         vertex0: 1,
         vertex1: 0,
@@ -87,9 +90,9 @@ VoronoiTopology2 _pointCellTopology(SourcePoint2 query) {
         cellIndex: 2,
         twinId: 1,
         rotNextId: 4,
-        primary: false,
+        primary: middlePrimary,
       ),
-      VoronoiHalfEdge2(
+      const VoronoiHalfEdge2(
         id: 5,
         vertex0: 0,
         vertex1: 2,
@@ -261,6 +264,22 @@ void main() {
     expect(result.sourcePointIndex.pointIndex, 0);
     expect(result.startingVdEdgeId, 0);
     expect(result.endingVdEdgeId, 2);
+  });
+
+  test('point cell assertion rejects secondary edge not starting at source', () {
+    final source = SourceArachnePolygonSegments2([_square()]);
+
+    expect(
+      () => SourceArachneVoronoiTransfer2.computePointCellRange(
+        _pointCellTopology(
+          const SourcePoint2(5000, 5000),
+          middlePrimary: false,
+        ),
+        0,
+        source,
+      ),
+      throwsA(isA<AssertionError>()),
+    );
   });
 
   test('point cell outside source corner is rejected before edge transfer', () {
