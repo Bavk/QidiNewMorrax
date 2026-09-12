@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'point.dart';
+import 'source_geometry.dart';
 import 'thick_polyline.dart';
 import 'voronoi_topology.dart';
 
@@ -17,7 +17,7 @@ class _EdgeDataView {
 }
 
 class _ReverseGrowth {
-  final List<Point2> points = [];
+  final List<SourcePoint2> points = [];
   final List<double> width = [];
   bool endIsEndpoint = false;
 }
@@ -25,10 +25,14 @@ class _ReverseGrowth {
 /// Port of the application-owned logic in `Geometry/MedialAxis.cpp`:
 /// `validate_edge()`, valid-edge selection and `process_edge_neighbors()`.
 ///
-/// This class intentionally consumes an already constructed Boost-compatible
-/// Voronoi half-edge topology. Reproducing Boost.Polygon's segment Voronoi
-/// construction + QIDI repair/inside-outside annotation is tracked separately;
-/// using a different skeletonizer here would violate the strict 1:1 contract.
+/// All widths and coordinates use the original scaled source coordinate domain.
+/// Voronoi vertex coordinates are doubles in that same domain, exactly as in
+/// Boost.Polygon. Conversion back to `Point(coord_t)` uses an lrint-compatible
+/// nearest-even conversion below.
+///
+/// The Boost-compatible segment Voronoi constructor, repair pass and
+/// inside/outside annotation are separate mandatory migration layers. This
+/// class deliberately does not call a substitute skeletonizer.
 class MedialAxisCore {
   MedialAxisCore({
     required this.minWidth,
@@ -39,9 +43,6 @@ class MedialAxisCore {
       throw ArgumentError('Require 0 <= minWidth <= maxWidth');
     }
   }
-
-  static const double sourceCoordinateStep = 0.00001;
-  static const double scaledEpsilonMm = 0.0001;
 
   final double minWidth;
   final double maxWidth;
@@ -58,8 +59,8 @@ class MedialAxisCore {
       _edgeData[_pairKey(edge)] = _MedialEdgeData();
     }
 
-    // Source iterates every first half-edge of a twin pair and retains only
-    // primary, finite edges with at least one inside endpoint.
+    // Source iterates one half-edge per twin pair and retains only primary,
+    // finite edges with at least one vertex annotated Inside.
     for (final edge in diagram.canonicalHalfEdges) {
       final v0 = diagram.vertex(edge.vertex0);
       final v1 = diagram.vertex(edge.vertex1);
@@ -95,22 +96,19 @@ class MedialAxisCore {
       }
       polyline.startIsEndpoint = reverse.endIsEndpoint;
 
-      if (_same(polyline.firstPoint, polyline.lastPoint)) {
+      if (polyline.firstPoint == polyline.lastPoint) {
         polyline.startIsEndpoint = false;
         polyline.endIsEndpoint = false;
       }
 
-      // Force the ThickPolyline source cardinality invariant to be checked.
-      polyline.thickLines();
+      polyline.thickLines(); // assert source cardinality invariant
       result.add(polyline);
     }
 
     return List.unmodifiable(result);
   }
 
-  /// Exact branch structure of source `MedialAxis::validate_edge()` in mm
-  /// coordinates. Source Voronoi vertex coordinates are cast to integer
-  /// `coord_t`; [_sourcePoint] reproduces that 0.00001 mm quantization.
+  /// Exact branch structure of source `MedialAxis::validate_edge()`.
   bool validateEdge(VoronoiHalfEdge2 edge) {
     final twin = _diagram.edge(edge.twinId);
     final cellL = _diagram.cell(edge.cellIndex);
@@ -120,28 +118,33 @@ class MedialAxisCore {
 
     final a = _sourcePoint(_diagram.vertex(edge.vertex0).point);
     final b = _sourcePoint(_diagram.vertex(edge.vertex1).point);
-    final edgeLength = a.distanceTo(b);
+    final edgeLine = SourceLine2(a, b);
 
     var w0 = cellR.containsSegment
-        ? _distanceToSegment(segmentR, a) * 2
-        : _endpointFor(cellR).distanceTo(a) * 2;
+        ? _asLine(segmentR).distanceTo(a) * 2
+        : (_endpointFor(cellR) - a).length * 2;
     var w1 = cellL.containsSegment
-        ? _distanceToSegment(segmentL, b) * 2
-        : _endpointFor(cellL).distanceTo(b) * 2;
+        ? _asLine(segmentL).distanceTo(b) * 2
+        : (_endpointFor(cellL) - b).length * 2;
 
     if (cellL.containsSegment && cellR.containsSegment) {
-      var angle = (_orientation(segmentR) - _orientation(segmentL)).abs();
+      var angle = (_asLine(segmentR).orientation -
+              _asLine(segmentL).orientation)
+          .abs();
       if (angle > math.pi) angle = 2 * math.pi - angle;
 
       if (math.pi - angle > math.pi / 8) {
-        if (w0 < scaledEpsilonMm ||
-            w1 < scaledEpsilonMm ||
-            edgeLength >= minWidth) {
+        if (w0 < Slic3rUnits.scaledEpsilon ||
+            w1 < Slic3rUnits.scaledEpsilon ||
+            edgeLine.length >= minWidth) {
           return false;
         }
       }
     } else {
-      if (w0 < scaledEpsilonMm || w1 < scaledEpsilonMm) return false;
+      if (w0 < Slic3rUnits.scaledEpsilon ||
+          w1 < Slic3rUnits.scaledEpsilon) {
+        return false;
+      }
     }
 
     if ((w0 >= minWidth || w1 >= minWidth) &&
@@ -262,7 +265,7 @@ class MedialAxisCore {
     return boundarySegments[cell.sourceIndex];
   }
 
-  Point2 _endpointFor(VoronoiCell2 cell) {
+  SourcePoint2 _endpointFor(VoronoiCell2 cell) {
     final segment = _segmentFor(cell);
     switch (cell.sourceCategory) {
       case VoronoiSourceCategory.segmentStartPoint:
@@ -274,31 +277,25 @@ class MedialAxisCore {
     }
   }
 
-  double _distanceToSegment(BoundarySegment2 segment, Point2 point) {
-    final vector = segment.b - segment.a;
-    final lengthSquared = vector.dot(vector);
-    if (lengthSquared == 0) return point.distanceTo(segment.a);
-    final t = ((point - segment.a).dot(vector) / lengthSquared)
-        .clamp(0.0, 1.0)
-        .toDouble();
-    return point.distanceTo(segment.a + vector * t);
+  SourceLine2 _asLine(BoundarySegment2 segment) =>
+      SourceLine2(segment.a, segment.b);
+
+  SourcePoint2 _sourcePoint(VoronoiPoint2 point) =>
+      SourcePoint2(_lrint(point.x), _lrint(point.y));
+
+  /// C/C++ `lrint()` under the default FE_TONEAREST mode: nearest integer,
+  /// halfway cases to even. Boost/POSIX builds use this when constructing a
+  /// Slic3r `Point` from Voronoi double coordinates.
+  int _lrint(double value) {
+    if (!value.isFinite) {
+      throw ArgumentError.value(value, 'Voronoi coordinate', 'must be finite');
+    }
+    final lower = value.floor();
+    final fraction = value - lower;
+    if (fraction < 0.5) return lower;
+    if (fraction > 0.5) return lower + 1;
+    return lower.isEven ? lower : lower + 1;
   }
-
-  double _orientation(BoundarySegment2 segment) {
-    var angle = math.atan2(
-      segment.b.y - segment.a.y,
-      segment.b.x - segment.a.x,
-    );
-    if (angle < 0) angle = 2 * math.pi + angle;
-    return angle;
-  }
-
-  Point2 _sourcePoint(Point2 point) => Point2(
-        ((point.x / sourceCoordinateStep).truncate()) * sourceCoordinateStep,
-        ((point.y / sourceCoordinateStep).truncate()) * sourceCoordinateStep,
-      );
-
-  static bool _same(Point2 a, Point2 b) => a.x == b.x && a.y == b.y;
 }
 
 class _NeighborStep {
