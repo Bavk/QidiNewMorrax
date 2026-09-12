@@ -40,11 +40,11 @@ void main() {
     ], 100);
 
     expect(result, hasLength(1));
-    expect(result.single.points.toSet(), const {
-      SourcePoint2(-100, -100),
-      SourcePoint2(100100, -100),
-      SourcePoint2(100100, 100100),
-      SourcePoint2(-100, 100100),
+    expect(result.single.points.toSet(), {
+      const SourcePoint2(-100, -100),
+      const SourcePoint2(100100, -100),
+      const SourcePoint2(100100, 100100),
+      const SourcePoint2(-100, 100100),
     });
   });
 
