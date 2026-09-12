@@ -1,11 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
 import 'package:qidi_flow_flutter/core/slicer/extrusion_entity.dart';
 import 'package:qidi_flow_flutter/core/slicer/flow.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_extrusion_line.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_extrusion_line_variable_width.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_extrusion_order.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_extrusion_traversal.dart';
+import 'package:qidi_flow_flutter/core/slicer/source_arachne_overhang.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_fuzzy_skin_apply.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_fuzzy_skin_geometry.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_fuzzy_skin_policy.dart';
@@ -36,6 +38,19 @@ Flow externalFlow() => Flow.nonBridging(
       nozzleDiameter: 0.4,
     );
 
+Flow overhangFlow() => Flow.bridging(
+      diameter: 0.4,
+      nozzleDiameter: 0.4,
+    );
+
+SourcePolygon2 rect(int minX, int minY, int maxX, int maxY) =>
+    SourcePolygon2([
+      SourcePoint2(minX, minY),
+      SourcePoint2(maxX, minY),
+      SourcePoint2(maxX, maxY),
+      SourcePoint2(minX, maxY),
+    ]);
+
 SourceArachneExtrusionJunction2 junction(
   int x,
   int y, {
@@ -51,7 +66,9 @@ SourceArachneExtrusionJunction2 junction(
 
 SourceArachneExtrusionTraversalSettings2 settings({
   bool detectOverhangWall = false,
+  bool enableOverhangSpeed = false,
   bool zDirectionOutwallSpeedContinuous = false,
+  List<SourcePolygon2> lowerLayerPolygons = const [],
 }) =>
     SourceArachneExtrusionTraversalSettings2(
       perimeterFlow: perimeterFlow(),
@@ -60,6 +77,10 @@ SourceArachneExtrusionTraversalSettings2 settings({
       layerId: 1,
       sliceZMm: 0.2,
       detectOverhangWall: detectOverhangWall,
+      lowerLayerPolygons: lowerLayerPolygons,
+      overhangFlow: overhangFlow(),
+      nozzleDiameterMm: 0.4,
+      enableOverhangSpeed: enableOverhangSpeed,
       zDirectionOutwallSpeedContinuous: zDirectionOutwallSpeedContinuous,
     );
 
@@ -84,6 +105,32 @@ void main() {
     expect(thick.width, const [10000, 20000, 20000, 30000]);
     expect(thick.startIsEndpoint, true);
     expect(thick.endIsEndpoint, true);
+  });
+
+  test('clip_extrusion interpolates source width at support boundary', () {
+    final line = SourceArachneExtrusionLine2(
+      insetIndex: 0,
+      isOdd: false,
+      junctions: [
+        junction(0, 0, width: 20000),
+        junction(200000, 0, width: 40000),
+      ],
+    );
+
+    final clipped = SourceArachneOverhang2.clipExtrusionWidths(
+      extrusion: line,
+      clipPolygons: [rect(100000, -50000, 300000, 50000)],
+      intersection: true,
+    );
+
+    expect(clipped, hasLength(1));
+    final thick = clipped.single;
+    final endpointWidths = <int, double>{
+      thick.firstPoint.x: thick.width.first,
+      thick.lastPoint.x: thick.width.last,
+    };
+    expect(endpointWidths[100000], 30000);
+    expect(endpointWidths[200000], 40000);
   });
 
   test('closed external contour becomes oriented loop with compensation', () {
@@ -155,7 +202,72 @@ void main() {
     expect(multi.customizeFlag, CustomizeFlag.none);
   });
 
-  test('active overhang branch is rejected instead of approximated', () {
+  test('non-speed overhang traversal keeps supported start and bridge flow', () {
+    final line = SourceArachneExtrusionLine2(
+      insetIndex: 0,
+      isOdd: false,
+      junctions: [junction(0, 0), junction(200000, 0)],
+    );
+
+    final result = SourceArachneExtrusionTraversal2.traverse(
+      orderedExtrusions: [
+        SourceArachneOrderedExtrusion2(
+          extrusion: line,
+          isContour: false,
+        ),
+      ],
+      settings: settings(
+        detectOverhangWall: true,
+        lowerLayerPolygons: [rect(-100000, -100000, 150000, 100000)],
+      ),
+      random: EmptyRandom(),
+    );
+
+    expect(result.entities, hasLength(1));
+    final multi = result.entities.single as ExtrusionMultiPath2;
+    expect(multi.firstPoint, const SourcePoint2(0, 0));
+    expect(multi.lastPoint, const SourcePoint2(200000, 0));
+    expect(multi.paths.first.role, ExtrusionRole.externalPerimeter);
+    expect(multi.paths.last.role, ExtrusionRole.overhangPerimeter);
+    expect(multi.paths.last.overhangDegree, 6);
+    expect(multi.paths.last.width, overhangFlow().width);
+    expect(multi.paths.last.height, overhangFlow().height);
+  });
+
+  test('bent unsupported Arachne wall gets source bridge degree five', () {
+    final line = SourceArachneExtrusionLine2(
+      insetIndex: 1,
+      isOdd: false,
+      junctions: [
+        junction(0, 0),
+        junction(100000, 100000),
+        junction(200000, 0),
+      ],
+    );
+
+    final result = SourceArachneExtrusionTraversal2.traverse(
+      orderedExtrusions: [
+        SourceArachneOrderedExtrusion2(
+          extrusion: line,
+          isContour: false,
+        ),
+      ],
+      settings: settings(detectOverhangWall: true),
+      random: EmptyRandom(),
+    );
+
+    final multi = result.entities.single as ExtrusionMultiPath2;
+    expect(
+      multi.paths.every(
+        (path) =>
+            path.role == ExtrusionRole.overhangPerimeter &&
+            path.overhangDegree == 5,
+      ),
+      true,
+    );
+  });
+
+  test('speed-graded Arachne overhang remains an explicit seam', () {
     final line = SourceArachneExtrusionLine2(
       insetIndex: 0,
       isOdd: false,
@@ -170,7 +282,10 @@ void main() {
             isContour: false,
           ),
         ],
-        settings: settings(detectOverhangWall: true),
+        settings: settings(
+          detectOverhangWall: true,
+          enableOverhangSpeed: true,
+        ),
         random: EmptyRandom(),
       ),
       throwsUnsupportedError,
