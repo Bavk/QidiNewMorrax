@@ -17,84 +17,83 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34697866558` (#276) executed code commit `2a33afd97b4f987a7edf4b482eebf8d34da7f9c0` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34698420757` (#278) executed code commit `69780005918e63a58485ebf7caf645214eacc37b` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+387: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+395: All tests passed!`**;
 - job conclusion — **success**.
 
-Feature commit `92d27b6ac300f1ce07207caf5100b9568eed3ce3` contained the ordered classic extrusion and loop-node implementation. Its run #275 already passed all **387** tests; it failed only the repository's strict analyze-enforcement because the new test file contained two unused imports. Commit `2a33afd...` removed only those imports; no algorithm or assertion was weakened.
+## Arachne `WallToolPaths` foundation evidence
 
-## Ordered classic surface → extrusion evidence
+Run #278 is the first green checkpoint for the source-shaped foundation immediately below pinned `PerimeterGenerator::process_arachne()`.
 
-Run #276 is the first green checkpoint composing the represented classic source path through the per-island extrusion boundary. New end-to-end fixtures validate:
+Eight new tests passed for `source_arachne_wall_tool_paths.dart`:
 
-- `chain_expolygons()` source order preserved all the way to the outer `loops` collection;
-- every produced island remains one nested `ExtrusionEntityCollection2`, matching source `loops->append(entities)` rather than flattening islands together;
-- `OuterInner` wall sequence is applied independently inside every island;
-- non-null empty lower slices produce the represented overhang branch for every ordered island;
-- one shared fuzzy RNG object is consumed across multiple islands instead of restarting a random stream per island;
-- the high-level classic seam uses smaller-width depth-zero loops before normal depth-zero loops, matching pinned source construction order;
-- gap-fill extrusion output remains a global collection accumulated in island order.
+- pinned `scaled<coord_t>(double)` constant truncation quirks: `0.5 → 49999`, `0.025 → 2500`, `2.0 → 199999`, `0.01 → 999`, `0.005 → 499`;
+- exact `process_arachne()` percentage × minimum-nozzle assignments stored through a source `float`/IEEE float32 boundary;
+- `WallToolPaths` constructor scaling from stored float parameters using float arithmetic and coord truncation;
+- `<3`-vertex simplifier clear behavior;
+- exactly-three-vertex identity behavior;
+- exact collinear vertex removal;
+- pinned 5-micron near-collinear deletion behavior;
+- vector wrapper removal of polygons simplified below three vertices.
 
-The implementation reuses already-green `SourceClassicPerimeterIslandProcess2` and `SourceClassicFuzzyPerimeterPipeline2`; it does not introduce duplicate fuzzy, overhang or wall-sequence algorithms.
+The represented constructor state also freezes `fill_outline_gaps == true`, `small_area_length = bead_width_0 / 2.` and `toolpaths_generated=false`.
 
-## QIDI outwall / loop-node producer evidence
+This checkpoint does **not** contain generated Arachne walls. It does not yet port the complete prepared-outline repair/union chain, beading strategies or `SkeletalTrapezoidation`.
 
-Run #276 also first validates the represented classic `z_direction_outwall_speed_continuous` metadata producer:
+## Ordered classic surface → extrusion evidence retained
 
-- literal `Point::is_in_lines(const Points&)` endpoint, horizontal/vertical and diagonal-distance behavior;
-- strict source comparison `abs(distance) < SCALED_EPSILON`;
-- exact loop-node bounding-box expansion by `SCALED_EPSILON = 10` source units;
-- one-outwall shortcut assigning `loop_id = 0` without geometric matching;
-- sequential `node_id` and `[start,end)` `loop_node_range` values over three ordered islands;
-- preexisting caller-owned global loop nodes shifting the next range and ID exactly;
-- multiple-outwall contour+hole case where matching follows the **post-traversal/post-wall-sequence entity order** while raw outwall paths retain their source contour order.
+Run #278 re-executed the complete 387-test checkpoint from #276, including:
 
-This proves the represented producer side only. It does not prove downstream inter-layer loop-node relation construction or its eventual speed-control consumer.
+- `chain_expolygons()` order preserved to nested outer `loops` collections;
+- per-island classic fuzzy/overhang recursive traversal and wall-sequence handling;
+- one shared fuzzy RNG across ordered islands;
+- non-null empty lower-slice overhang semantics;
+- QIDI `outwall_paths`, literal `Point::is_in_lines`, global `LoopNode` IDs and per-island `loop_node_range` producer behavior.
 
-## Earlier classic evidence retained
-
-Run #276 re-executed all previously green classic preprocessing/fill evidence, including:
-
-- pinned upstream `BridgeDetector` fixtures and fully airborne negative case;
-- `process_no_bridge()` `None` / null / empty gates plus `chbBridges` and `chbFilled`;
-- conditional surface simplification resolution and `chain_expolygons` preprocessing;
-- per-surface extra-perimeter accounting before one-wall gates;
-- top-one-wall / Alltop source order;
-- thin-wall and gap-fill represented paths;
-- final `fill_surfaces` / `fill_no_overlap` boundary and source **7999** overlap quirk;
-- source `Surface` copy-constructor reset of QIDI circle-compensation fields.
+It also re-executed all earlier classic preprocessing/fill evidence: pinned `BridgeDetector`, `process_no_bridge`, conditional surface simplification, extra-perimeter accounting, top-one-wall/Alltop, thin-wall/gap-fill, final fill boundary and the source **7999** overlap quirk.
 
 ## Earlier Arachne / fuzzy evidence retained
 
-Run #276 re-executed all previously green Arachne/fuzzy evidence:
+Run #278 re-executed all previously green Arachne/fuzzy evidence:
 
-- one shared Classic `random_value()` stream and direct MT19937/libstdc++ double fixtures;
-- direct libnoise v1.0.0 value/gradient/vector-table/Perlin/Billow/RidgedMulti/Voronoi behavior;
-- Polygon/Polyline fuzzy sampling/casts/fallback and painted-region LineSegmentation;
+- shared Classic `random_value()` stream and MT19937/libstdc++ fixtures;
+- pinned libnoise value/gradient/Perlin/Billow/RidgedMulti/Voronoi behavior;
+- Polygon/Polyline fuzzy geometry and painted-region LineSegmentation;
 - source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine` subset;
-- seeded C++ `Displacement`, `Extrusion`, `Combined` position/width goldens;
-- Arachne width interpolation, full-cover path, painted-region fuzzy application and seam behavior;
-- recursive classic fuzzy traversal and region-aware overhang slowdown policy.
+- seeded C++ `Displacement`, `Extrusion`, `Combined` goldens;
+- Arachne width interpolation and region-aware fuzzy composition.
 
-The same run re-executed the represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry and source-style G-code path formatting/emission.
+The same run re-executed represented source geometry, ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width and G-code path formatting/emission subsets.
 
-## Next audited wall-generation dependency
+## Next audited Arachne boundary
 
-Pinned `PerimeterGenerator::process_arachne()` remains open. Source audit confirms it depends on `Arachne::WallToolPaths` from `src/libslic3r/Arachne/WallToolPaths.hpp/.cpp`; that class in turn includes `BeadingStrategyFactory`, `SkeletalTrapezoidation` and existing `ExtrusionLine` types. The next implementation should therefore start with `WallToolPathsParams` and independently testable constructor/input-normalization/simplification behavior, then follow the real `generate()` dependency chain. No full Arachne wall parity is claimed by the current `ExtrusionLine` fuzzy subset.
+Pinned `WallToolPaths::generate()` continues from the now-verified constructor/simplifier through this prepared-outline chain:
+
+1. triple epsilon offset: `offset(-epsilon) → offset(+2*epsilon) → offset(-epsilon)`;
+2. `simplify()`;
+3. `fixSelfIntersections()`;
+4. `removeDegenerateVerts()`;
+5. `removeColinearEdges(..., scaled<double>(0.005))`;
+6. second `fixSelfIntersections()` and `removeDegenerateVerts()`;
+7. `removeSmallAreas(..., small_area_length², false)`;
+8. `union_()`;
+9. source `outline_size_change` update after each mutation and `area(prepared_outline) <= 0` early return.
+
+After that come rounded-rectangle extrusion width calculations, wall-transition/split/add thresholds, `BeadingStrategyFactory` composition, then `SkeletalTrapezoidation`. These are the next real dependencies; no full Arachne wall parity is claimed yet.
 
 ## Not proven by this checkpoint
 
-Run #276 does **not** prove:
+Run #278 does **not** prove:
 
-- full `Arachne::WallToolPaths` or `PerimeterGenerator::process_arachne()` wall generation;
+- the complete prepared-outline cleanup/union chain listed above;
+- `BeadingStrategyFactory`, individual beading strategies or `SkeletalTrapezoidation`;
+- full `Arachne::WallToolPaths::generate()` or `PerimeterGenerator::process_arachne()`;
 - downstream inter-layer QIDI loop-node matching / vertical wall speed-control consumption;
-- any behavior that would restore QIDI circle-compensation members after the pinned `Surface` copy constructor resets them;
-- every pathological counterbore, bridge-detector, simplify, overlap, hole or degenerate clipping topology;
+- every pathological geometry topology beyond represented fixtures;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;
-- complete Clipper/Boost regression spaces beyond represented fixtures;
 - complete G-code state/templates/travel/retraction/cooling/acceleration/multimaterial behavior;
 - all later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
 - complete project/profile persistence, STEP/source-enabled formats, scene/editor, Preview, Device/cloud/P2P, calibration, desktop integration or full UI parity;
