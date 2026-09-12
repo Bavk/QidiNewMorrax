@@ -7,12 +7,15 @@ import 'package:qidi_flow_flutter/core/slicer/source_arachne_process_planning.da
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_process_surface.dart';
 import 'package:qidi_flow_flutter/core/slicer/surface.dart';
 
-SourcePolygon2 _square(int min, int max) => SourcePolygon2([
-      SourcePoint2(min, min),
-      SourcePoint2(max, min),
-      SourcePoint2(max, max),
-      SourcePoint2(min, max),
+SourcePolygon2 _rect(int minX, int minY, int maxX, int maxY) =>
+    SourcePolygon2([
+      SourcePoint2(minX, minY),
+      SourcePoint2(maxX, minY),
+      SourcePoint2(maxX, maxY),
+      SourcePoint2(minX, maxY),
     ]);
+
+SourcePolygon2 _square(int min, int max) => _rect(min, min, max, max);
 
 SourcePolygon2 _clockwiseHole(int min, int max) => SourcePolygon2([
       SourcePoint2(min, min),
@@ -69,12 +72,18 @@ SourceArachneProcessPlanningSettings2 _planning({
 
 SourceArachneSurfaceProcessSettings2 _settings({
   SourceArachneProcessPlanningSettings2? planning,
+  int? perimeterWidth,
+  double topAreaThresholdPercent = 0,
+  List<SourcePolygon2>? lowerSlices,
 }) =>
     SourceArachneSurfaceProcessSettings2(
       planning: planning ?? _planning(),
       surfaceSimplifyResolutionSource: 1,
       perimeterSpacing: 40000,
       layerHeightMm: 0.2,
+      perimeterWidth: perimeterWidth,
+      topAreaThresholdPercent: topAreaThresholdPercent,
+      lowerSlices: lowerSlices,
     );
 
 void main() {
@@ -175,20 +184,97 @@ void main() {
     expect(result.circlePolygonIndices, isEmpty);
   });
 
-  test('Alltop separated-wall branch is rejected rather than approximated', () {
-    expect(
-      () => SourceArachneProcessSurface2.process(
-        surface: _surface(),
-        settings: _settings(
-          planning: _planning(
-            wallLoops: 3,
-            topType: SourceTopOneWallType2.allTop,
-            upperSlices: const <SourcePolygon2>[],
-          ),
+  test('Alltop full supported top keeps only first wall around top area', () {
+    final full = _square(0, 1000000);
+    final result = SourceArachneProcessSurface2.process(
+      surface: _surface(),
+      settings: _settings(
+        planning: _planning(
+          wallLoops: 3,
+          topType: SourceTopOneWallType2.allTop,
+          upperSlices: const <SourcePolygon2>[],
         ),
-        layerIndex: 2,
+        perimeterWidth: 40000,
+        lowerSlices: [full],
       ),
-      throwsA(isA<UnsupportedError>()),
+      layerIndex: 2,
+    );
+
+    expect(result.topOneWallEnabled, isTrue);
+    expect(result.topOneWallPolygons, isNotEmpty);
+    expect(result.wallToolPaths, isNotNull);
+    expect(result.totalPerimeters, isNotEmpty);
+    expect(
+      result.totalPerimeters
+          .expand((inset) => inset)
+          .every((line) => line.insetIndex == 0),
+      isTrue,
+    );
+  });
+
+  test('Alltop partial top runs remaining walls and shifts line inset only', () {
+    final full = _square(0, 1000000);
+    final upperRight = _rect(450000, 0, 1000000, 1000000);
+    final result = SourceArachneProcessSurface2.process(
+      surface: _surface(),
+      settings: _settings(
+        planning: _planning(
+          wallLoops: 3,
+          topType: SourceTopOneWallType2.allTop,
+          upperSlices: [upperRight],
+        ),
+        perimeterWidth: 40000,
+        lowerSlices: [full],
+      ),
+      layerIndex: 2,
+    );
+
+    expect(result.topOneWallEnabled, isTrue);
+    expect(result.remainingWallToolPaths, isNotNull);
+    final shifted = result.totalPerimeters
+        .expand((inset) => inset)
+        .where((line) => line.insetIndex > 0)
+        .toList();
+    expect(shifted, isNotEmpty);
+    // Pinned source increments `ExtrusionLine::inset_idx` only. Junction
+    // perimeter indexes stay in the second WallToolPaths local index domain.
+    expect(
+      shifted.any(
+        (line) => line.insetIndex == 1 &&
+            line.junctions.any((junction) => junction.perimeterIndex == 0),
+      ),
+      isTrue,
+    );
+    expect(result.infillContour, isNotEmpty);
+  });
+
+  test('Alltop without lower support disables feature and reruns normal walls', () {
+    final result = SourceArachneProcessSurface2.process(
+      surface: _surface(),
+      settings: _settings(
+        planning: _planning(
+          wallLoops: 3,
+          topType: SourceTopOneWallType2.allTop,
+          upperSlices: const <SourcePolygon2>[],
+        ),
+        perimeterWidth: 40000,
+        lowerSlices: const <SourcePolygon2>[],
+      ),
+      layerIndex: 2,
+    );
+
+    expect(result.topOneWallEnabled, isFalse);
+    expect(result.topOneWallPolygons, isEmpty);
+    expect(result.remainingWallToolPaths, isNull);
+    expect(result.wallToolPaths, isNotNull);
+    expect(result.wallToolPaths!.toolpathsGenerated, isTrue);
+    expect(
+      result.totalPerimeters
+          .expand((inset) => inset)
+          .map((line) => line.insetIndex)
+          .toSet()
+          .length,
+      greaterThan(1),
     );
   });
 }
