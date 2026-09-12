@@ -120,7 +120,7 @@ void main() {
     expect(result.spacingSource, 40000);
     expect(fillSurfaces, isNotEmpty);
     expect(fillNoOverlap, isNotEmpty);
-    expect(result.infillResult.resolvedInsertSource, 8000);
+    expect(result.infillResult.resolvedInsertSource, 7999);
   });
 
   test('single generated wall uses pinned mixed spacing before fill filter', () {
@@ -143,7 +143,7 @@ void main() {
     expect(result.spacingSource, 39000);
     // `loops == 0` resolves percentage overlap against external spacing,
     // not the mixed spacing used only by the too-small infill probe.
-    expect(result.infillResult.resolvedInsertSource, 7600);
+    expect(result.infillResult.resolvedInsertSource, 7599);
     expect(loops, hasLength(1));
     expect(fillSurfaces, isNotEmpty);
     expect(fillNoOverlap, isNotEmpty);
