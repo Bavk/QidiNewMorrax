@@ -23,6 +23,7 @@ class SourceClassicFuzzyPerimeterPipeline2 {
     required Flow overhangFlow,
     required double layerHeight,
     required int layerId,
+    required double sliceZMm,
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
     SourceFuzzyUnitRandom2? random,
     required bool detectOverhangWall,
@@ -61,6 +62,7 @@ class SourceClassicFuzzyPerimeterPipeline2 {
       fuzzyConfig: fuzzyConfig,
       random: random ?? sourceFuzzyProductionRandom2(),
       layerId: layerId,
+      sliceZMm: sliceZMm,
       configuredOverhangSpeedEnabled: configuredOverhangSpeedEnabled,
       overhangSettings: overhangSettings,
     );

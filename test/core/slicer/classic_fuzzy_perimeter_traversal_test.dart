@@ -23,6 +23,16 @@ class ZeroDisplacementRandom implements SourceFuzzyUnitRandom2 {
   }
 }
 
+class ZeroSpacingRandom implements SourceFuzzyUnitRandom2 {
+  int calls = 0;
+
+  @override
+  double nextUnit() {
+    calls++;
+    return 0;
+  }
+}
+
 class EmptyRandom implements SourceFuzzyUnitRandom2 {
   @override
   double nextUnit() => throw StateError('identity branch consumed random');
@@ -106,6 +116,7 @@ void main() {
       fuzzyConfig: fuzzyConfig(),
       random: random,
       layerId: 1,
+      sliceZMm: 0.2,
       configuredOverhangSpeedEnabled: true,
     );
 
@@ -129,6 +140,7 @@ void main() {
       fuzzyConfig: fuzzyConfig(),
       random: ZeroDisplacementRandom(),
       layerId: 1,
+      sliceZMm: 0.2,
       configuredOverhangSpeedEnabled: true,
       overhangSettings: overhangSettings(),
     );
@@ -162,6 +174,7 @@ void main() {
       fuzzyConfig: fuzzyConfig(type: SourceFuzzySkinType2.none),
       random: EmptyRandom(),
       layerId: 1,
+      sliceZMm: 0.2,
       configuredOverhangSpeedEnabled: true,
       overhangSettings: overhangSettings(),
     );
@@ -196,6 +209,7 @@ void main() {
       fuzzyConfig: fuzzyConfig(type: SourceFuzzySkinType2.allWalls),
       random: random,
       layerId: 1,
+      sliceZMm: 0.2,
       configuredOverhangSpeedEnabled: true,
     );
 
@@ -221,6 +235,7 @@ void main() {
       fuzzyConfig: fuzzyConfig(firstLayer: false),
       random: EmptyRandom(),
       layerId: 0,
+      sliceZMm: 0.2,
       configuredOverhangSpeedEnabled: true,
     );
 
@@ -228,25 +243,27 @@ void main() {
     expect(loop.polygon().points, hasLength(4));
   });
 
-  test('required non-Classic fuzzy noise still fails before traversal output', () {
+  test('Perlin fuzzy noise traverses without a displacement RNG draw', () {
     final root = SourcePerimeterLoop2(
       polygon: rectangle(0, 0, 200000, 200000),
       depth: 0,
       isContour: true,
     );
+    final random = ZeroSpacingRandom();
 
-    expect(
-      () => SourceClassicFuzzyPerimeterTraversal2.traverseNoRegion(
-        loops: [root],
-        thinWalls: <ThickPolyline2>[],
-        settings: traversalSettings,
-        fuzzyConfig: fuzzyConfig(noise: SourceFuzzyNoiseType2.perlin),
-        random: EmptyRandom(),
-        layerId: 1,
-        configuredOverhangSpeedEnabled: true,
-        overhangSettings: overhangSettings(),
-      ),
-      throwsUnsupportedError,
+    final output = SourceClassicFuzzyPerimeterTraversal2.traverseNoRegion(
+      loops: [root],
+      thinWalls: <ThickPolyline2>[],
+      settings: traversalSettings,
+      fuzzyConfig: fuzzyConfig(noise: SourceFuzzyNoiseType2.perlin),
+      random: random,
+      layerId: 1,
+      sliceZMm: 0.2,
+      configuredOverhangSpeedEnabled: true,
     );
+
+    final loop = output.single as ExtrusionLoop2;
+    expect(loop.polygon().points.length, greaterThan(4));
+    expect(random.calls, greaterThan(0));
   });
 }

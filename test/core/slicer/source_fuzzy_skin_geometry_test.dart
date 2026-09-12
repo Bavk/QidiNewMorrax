@@ -10,6 +10,8 @@ class SequenceRandom implements SourceFuzzyUnitRandom2 {
   final List<double> values;
   int _index = 0;
 
+  int get consumed => _index;
+
   @override
   double nextUnit() {
     if (_index >= values.length) {
@@ -120,6 +122,67 @@ void main() {
       SourcePoint2(60000, 5000),
       SourcePoint2(90000, 5000),
     ]);
+  });
+
+  test('deterministic noise consumes random_value only for point spacing', () {
+    final random = SequenceRandom(const [0, 0, 0, 0, 0]);
+    final result = SourceFuzzySkinGeometry2.fuzzyPolyline(
+      polyline: SourcePolyline2(const [
+        SourcePoint2(0, 0),
+        SourcePoint2(100000, 0),
+      ]),
+      thicknessMm: 0.1,
+      pointDistanceMm: 0.4,
+      sliceZMm: 0.2,
+      noiseSettings: const SourceFuzzyNoiseSettings2(
+        type: SourceFuzzyNoiseType2.perlin,
+        scaleMm: 1,
+        octaves: 4,
+        persistence: 0.5,
+      ),
+      random: random,
+    );
+
+    expect(result.points, hasLength(4));
+    expect(random.consumed, 5);
+    expect(result.points.any((point) => point.y != 0), true);
+  });
+
+  test('deterministic Perlin geometry depends on source slice_z', () {
+    SourcePolyline2 run(double sliceZ) => SourceFuzzySkinGeometry2.fuzzyPolyline(
+          polyline: SourcePolyline2(const [
+            SourcePoint2(0, 0),
+            SourcePoint2(100000, 0),
+          ]),
+          thicknessMm: 0.1,
+          pointDistanceMm: 0.4,
+          sliceZMm: sliceZ,
+          noiseSettings: const SourceFuzzyNoiseSettings2(
+            type: SourceFuzzyNoiseType2.perlin,
+          ),
+          random: SequenceRandom(const [0, 0, 0, 0, 0]),
+        );
+
+    expect(run(0.2).points, isNot(equals(run(0.4).points)));
+  });
+
+  test('fuzzy scale follows source max(0.01, configured scale)', () {
+    SourcePolyline2 run(double scale) => SourceFuzzySkinGeometry2.fuzzyPolyline(
+          polyline: SourcePolyline2(const [
+            SourcePoint2(0, 0),
+            SourcePoint2(100000, 0),
+          ]),
+          thicknessMm: 0.1,
+          pointDistanceMm: 0.4,
+          sliceZMm: 0.2,
+          noiseSettings: SourceFuzzyNoiseSettings2(
+            type: SourceFuzzyNoiseType2.voronoi,
+            scaleMm: scale,
+          ),
+          random: SequenceRandom(const [0, 0, 0, 0, 0]),
+        );
+
+    expect(run(0).points, equals(run(0.01).points));
   });
 
   test('source cast truncates diagonal normal displacement toward zero', () {

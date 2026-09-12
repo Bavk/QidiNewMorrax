@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import '../geometry/source_polyline.dart';
+import 'source_libnoise.dart';
 
 /// Exact pinned-source order from `PrintConfig.hpp`.
 enum SourceFuzzyNoiseType2 {
@@ -15,20 +16,18 @@ enum SourceFuzzyNoiseType2 {
 
 /// Explicit seam for QIDI's function-local thread-local `random_value()`.
 ///
-/// The pinned source uses this same stream for the initial sample spacing,
-/// Classic/Uniform displacement, and every following sample-spacing draw.
-/// Keeping the stream explicit lets the geometry algorithm use deterministic
-/// source-oracle fixtures without replacing production randomness with a
-/// deterministic global seed.
+/// The pinned source uses this same stream for initial sample spacing, Classic
+/// displacement, and every following sample-spacing draw. Deterministic
+/// libnoise modes consume this stream only for spacing.
 abstract interface class SourceFuzzyUnitRandom2 {
   double nextUnit();
 }
 
 /// Direct `std::mt19937` port used by pinned `FuzzySkin.cpp::random_value()`.
 ///
-/// [nextUnit] also preserves libstdc++'s `uniform_real_distribution<double>`
-/// behavior for a `[0, 1)` distribution over mt19937: two 32-bit engine draws
-/// are combined by `generate_canonical` with the first draw as the low limb.
+/// [nextUnit] preserves libstdc++'s `uniform_real_distribution<double>`
+/// behavior for `[0, 1)`: two 32-bit engine draws are combined by
+/// `generate_canonical`, with the first draw as the low limb.
 class SourceFuzzyMt19937Random2 implements SourceFuzzyUnitRandom2 {
   SourceFuzzyMt19937Random2.seeded(int seed) {
     _state[0] = seed & _uint32Mask;
@@ -91,9 +90,6 @@ class SourceFuzzyMt19937Random2 implements SourceFuzzyUnitRandom2 {
       return ((secure.nextInt(1 << 16) << 16) | secure.nextInt(1 << 16)) &
           _uint32Mask;
     } on UnsupportedError {
-      // Pinned C++ falls back from random_device to a thread-id hash when
-      // entropy is unavailable. Dart has no stable thread-id API, so retain
-      // the same nondeterministic seed boundary with time + object identity.
       return (DateTime.now().microsecondsSinceEpoch ^ identityHashCode(Object())) &
           _uint32Mask;
     }
@@ -106,15 +102,31 @@ SourceFuzzyUnitRandom2? _productionFuzzyRandom;
 SourceFuzzyUnitRandom2 sourceFuzzyProductionRandom2() =>
     _productionFuzzyRandom ??= SourceFuzzyMt19937Random2.systemSeeded();
 
-/// Exact sampling/displacement core of the pinned `FuzzySkin.cpp` Classic
-/// noise path, parameterized only by its single nondeterministic random stream.
+/// Pinned `FuzzySkin.cpp::get_noise_module()` settings.
+class SourceFuzzyNoiseSettings2 {
+  const SourceFuzzyNoiseSettings2({
+    required this.type,
+    this.scaleMm = 1.0,
+    this.octaves = 4,
+    this.persistence = 0.5,
+  });
+
+  final SourceFuzzyNoiseType2 type;
+  final double scaleMm;
+  final int octaves;
+  final double persistence;
+}
+
+/// Exact sampling/displacement core of pinned `FuzzySkin.cpp::fuzzy_polyline`.
 class SourceFuzzySkinGeometry2 {
   const SourceFuzzySkinGeometry2._();
 
-  static SourcePolyline2 fuzzyClassicPolyline({
+  static SourcePolyline2 fuzzyPolyline({
     required SourcePolyline2 polyline,
     required double thicknessMm,
     required double pointDistanceMm,
+    required double sliceZMm,
+    required SourceFuzzyNoiseSettings2 noiseSettings,
     required SourceFuzzyUnitRandom2 random,
     bool closed = false,
   }) {
@@ -141,6 +153,7 @@ class SourceFuzzySkinGeometry2 {
     final minDistance = 0.75 * pointDistance;
     final randomRange = 0.5 * pointDistance;
     var distanceLeftOver = _unit(random) * (minDistance / 2);
+    final deterministicNoise = _noiseModule(noiseSettings);
     final output = <SourcePoint2>[];
 
     var p0 = closed ? polyline.points.last : polyline.points.first;
@@ -156,17 +169,19 @@ class SourceFuzzySkinGeometry2 {
 
       while (distanceFromP0 < segmentLength) {
         final ratio = distanceFromP0 / segmentLength;
-        // Source uses `(dir.cast<double>() * ratio).cast<coord_t>()`; Eigen's
-        // numeric cast truncates floating coordinates toward zero here.
         final sample = SourcePoint2(
           p0.x + (dx * ratio).truncate(),
           p0.y + (dy * ratio).truncate(),
         );
 
-        // `NoiseType::Classic` is UniformNoise::GetValue(), which calls the
-        // exact same `random_value()` as spacing and maps [0,1) -> [-1,1).
-        final noise = _unit(random) * 2 - 1;
-        final displacement = noise * thickness;
+        final noiseValue = noiseSettings.type == SourceFuzzyNoiseType2.classic
+            ? _unit(random) * 2.0 - 1.0
+            : deterministicNoise!.getValue(
+                sample.x * Slic3rUnits.scalingFactor,
+                sample.y * Slic3rUnits.scalingFactor,
+                sliceZMm,
+              );
+        final displacement = noiseValue * thickness;
         final normalX = -dy / segmentLength;
         final normalY = dx / segmentLength;
         output.add(SourcePoint2(
@@ -182,8 +197,7 @@ class SourceFuzzySkinGeometry2 {
     }
 
     // Preserve the pinned source fallback literally. `point_idx` is declared
-    // inside the while loop, so for polylines with >= 3 points the same
-    // penultimate point may be appended repeatedly until output reaches three.
+    // inside the while loop, so the same penultimate point may repeat.
     while (output.length < 3) {
       var pointIndex = polyline.points.length - 2;
       output.add(polyline.points[pointIndex]);
@@ -196,25 +210,94 @@ class SourceFuzzySkinGeometry2 {
         : polyline.copy();
   }
 
-  /// Literal pinned `fuzzy_polygon()`: run the closed polyline path and keep
-  /// the resulting point list exactly as produced (including fallback dupes).
-  static SourcePolygon2 fuzzyClassicPolygon({
+  static SourcePolygon2 fuzzyPolygon({
     required SourcePolygon2 polygon,
     required double thicknessMm,
     required double pointDistanceMm,
+    required double sliceZMm,
+    required SourceFuzzyNoiseSettings2 noiseSettings,
     required SourceFuzzyUnitRandom2 random,
   }) {
     if (polygon.points.length < 3) {
       throw StateError('source fuzzy polygon requires at least three points');
     }
-    final fuzzy = fuzzyClassicPolyline(
+    final fuzzy = fuzzyPolyline(
       polyline: SourcePolyline2(polygon.points),
       thicknessMm: thicknessMm,
       pointDistanceMm: pointDistanceMm,
+      sliceZMm: sliceZMm,
+      noiseSettings: noiseSettings,
       random: random,
       closed: true,
     );
     return SourcePolygon2(fuzzy.points);
+  }
+
+  static SourcePolyline2 fuzzyClassicPolyline({
+    required SourcePolyline2 polyline,
+    required double thicknessMm,
+    required double pointDistanceMm,
+    required SourceFuzzyUnitRandom2 random,
+    bool closed = false,
+  }) =>
+      fuzzyPolyline(
+        polyline: polyline,
+        thicknessMm: thicknessMm,
+        pointDistanceMm: pointDistanceMm,
+        sliceZMm: 0,
+        noiseSettings: const SourceFuzzyNoiseSettings2(
+          type: SourceFuzzyNoiseType2.classic,
+        ),
+        random: random,
+        closed: closed,
+      );
+
+  static SourcePolygon2 fuzzyClassicPolygon({
+    required SourcePolygon2 polygon,
+    required double thicknessMm,
+    required double pointDistanceMm,
+    required SourceFuzzyUnitRandom2 random,
+  }) =>
+      fuzzyPolygon(
+        polygon: polygon,
+        thicknessMm: thicknessMm,
+        pointDistanceMm: pointDistanceMm,
+        sliceZMm: 0,
+        noiseSettings: const SourceFuzzyNoiseSettings2(
+          type: SourceFuzzyNoiseType2.classic,
+        ),
+        random: random,
+      );
+
+  static SourceLibNoiseModule2? _noiseModule(
+    SourceFuzzyNoiseSettings2 settings,
+  ) {
+    if (settings.type == SourceFuzzyNoiseType2.classic) return null;
+
+    // Literal `std::max(0.01, (double)cfg.fuzzy_skin_scale.value)` behavior.
+    final scale = 0.01 < settings.scaleMm ? settings.scaleMm : 0.01;
+    final frequency = 1.0 / scale;
+    return switch (settings.type) {
+      SourceFuzzyNoiseType2.classic => null,
+      SourceFuzzyNoiseType2.perlin => SourceLibNoisePerlin2(
+          frequency: frequency,
+          octaveCount: settings.octaves,
+          persistence: settings.persistence,
+        ),
+      SourceFuzzyNoiseType2.billow => SourceLibNoiseBillow2(
+          frequency: frequency,
+          octaveCount: settings.octaves,
+          persistence: settings.persistence,
+        ),
+      SourceFuzzyNoiseType2.ridgedMulti => SourceLibNoiseRidgedMulti2(
+          frequency: frequency,
+          octaveCount: settings.octaves,
+        ),
+      SourceFuzzyNoiseType2.voronoi => SourceLibNoiseVoronoi2(
+          frequency: frequency,
+          displacement: 1.0,
+        ),
+    };
   }
 
   static double _unit(SourceFuzzyUnitRandom2 random) {

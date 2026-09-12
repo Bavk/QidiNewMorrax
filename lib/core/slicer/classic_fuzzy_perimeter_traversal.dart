@@ -15,11 +15,8 @@ import 'variable_width.dart';
 
 /// Classic `traverse_loops()` branch with no painted/per-region fuzzy segments.
 ///
-/// This class exists separately from the already-verified non-fuzzy traversal
-/// so source random-stream consumption stays in the correct recursion order:
-/// each call fuzzifies its sibling loops, chains them, and only then fuzzifies
-/// children when recursion reaches the chosen parent. Pre-fuzzifying the whole
-/// tree would change the single thread-local source random stream.
+/// Sibling loops consume the source spacing RNG before shortest-path chaining;
+/// child loops consume it only when recursion reaches the selected parent.
 class SourceClassicFuzzyPerimeterTraversal2 {
   const SourceClassicFuzzyPerimeterTraversal2._();
 
@@ -30,6 +27,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
     required SourceFuzzyUnitRandom2 random,
     required int layerId,
+    required double sliceZMm,
     required bool configuredOverhangSpeedEnabled,
     SourceClassicPerimeterOverhangSettings2? overhangSettings,
   }) {
@@ -45,6 +43,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
       fuzzyConfig: fuzzyConfig,
       random: random,
       layerId: layerId,
+      sliceZMm: sliceZMm,
       speedGrading: speedGrading,
       overhangSettings: overhangSettings,
     );
@@ -57,6 +56,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
     required SourceFuzzyUnitRandom2 random,
     required int layerId,
+    required double sliceZMm,
     required bool speedGrading,
     required SourceClassicPerimeterOverhangSettings2? overhangSettings,
   }) {
@@ -70,6 +70,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
         layerIndex: layerId,
         perimeterIndex: loop.depth,
         isContour: loop.isContour,
+        sliceZMm: sliceZMm,
         random: random,
       );
       final isExternal = loop.isExternal;
@@ -165,6 +166,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
         fuzzyConfig: fuzzyConfig,
         random: random,
         layerId: layerId,
+        sliceZMm: sliceZMm,
         speedGrading: speedGrading,
         overhangSettings: overhangSettings,
       );

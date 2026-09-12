@@ -57,6 +57,7 @@ void main() {
       layerIndex: 3,
       perimeterIndex: 0,
       isContour: true,
+      sliceZMm: 0.6,
       random: random,
     );
 
@@ -80,6 +81,7 @@ void main() {
       layerIndex: 1,
       perimeterIndex: 0,
       isContour: true,
+      sliceZMm: 0.2,
       random: applyRandom,
     );
 
@@ -96,6 +98,7 @@ void main() {
       layerIndex: 1,
       perimeterIndex: 0,
       isContour: false,
+      sliceZMm: 0.2,
       random: random,
     );
 
@@ -103,7 +106,7 @@ void main() {
     expect(random.consumed, 0);
   });
 
-  test('first-layer suppression returns identity before noise implementation', () {
+  test('first-layer suppression returns identity before noise construction', () {
     final polygon = box();
     final random = SequenceRandom(const []);
     final result = SourceFuzzySkinNoRegionApply2.applyPolygon(
@@ -116,6 +119,7 @@ void main() {
       layerIndex: 0,
       perimeterIndex: 4,
       isContour: false,
+      sliceZMm: 0.2,
       random: random,
     );
 
@@ -123,17 +127,31 @@ void main() {
     expect(random.consumed, 0);
   });
 
-  test('required non-Classic fuzzy geometry fails explicitly', () {
-    expect(
-      () => SourceFuzzySkinNoRegionApply2.applyPolygon(
-        polygon: box(),
-        config: config(noise: SourceFuzzyNoiseType2.perlin),
-        layerIndex: 1,
-        perimeterIndex: 0,
-        isContour: true,
-        random: SequenceRandom(const []),
+  test('required Perlin geometry composes through apply_fuzzy_skin branch', () {
+    final polygon = box();
+    final directRandom = SequenceRandom(List<double>.filled(32, 0));
+    final applyRandom = SequenceRandom(List<double>.filled(32, 0));
+    final direct = SourceFuzzySkinGeometry2.fuzzyPolygon(
+      polygon: polygon,
+      thicknessMm: 0.1,
+      pointDistanceMm: 0.4,
+      sliceZMm: 0.2,
+      noiseSettings: const SourceFuzzyNoiseSettings2(
+        type: SourceFuzzyNoiseType2.perlin,
       ),
-      throwsUnsupportedError,
+      random: directRandom,
     );
+    final result = SourceFuzzySkinNoRegionApply2.applyPolygon(
+      polygon: polygon,
+      config: config(noise: SourceFuzzyNoiseType2.perlin),
+      layerIndex: 1,
+      perimeterIndex: 0,
+      isContour: true,
+      sliceZMm: 0.2,
+      random: applyRandom,
+    );
+
+    expect(result.points, direct.points);
+    expect(applyRandom.consumed, directRandom.consumed);
   });
 }

@@ -23,6 +23,16 @@ class ZeroDisplacementRandom implements SourceFuzzyUnitRandom2 {
   }
 }
 
+class ZeroSpacingRandom implements SourceFuzzyUnitRandom2 {
+  int calls = 0;
+
+  @override
+  double nextUnit() {
+    calls++;
+    return 0;
+  }
+}
+
 class EmptyRandom implements SourceFuzzyUnitRandom2 {
   @override
   double nextUnit() => throw StateError('identity branch consumed random');
@@ -76,13 +86,14 @@ ClassicPerimeterResult shell(int layerId) =>
 SourceFuzzySkinNoRegionConfig2 fuzzyConfig({
   SourceFuzzySkinType2 type = SourceFuzzySkinType2.external,
   bool firstLayer = true,
+  SourceFuzzyNoiseType2 noise = SourceFuzzyNoiseType2.classic,
 }) =>
     SourceFuzzySkinNoRegionConfig2(
       type: type,
       fuzzySkinFirstLayer: firstLayer,
       thicknessMm: 0.1,
       pointDistanceMm: 0.4,
-      noiseType: SourceFuzzyNoiseType2.classic,
+      noiseType: noise,
     );
 
 List<ExtrusionEntity2> run({
@@ -100,6 +111,7 @@ List<ExtrusionEntity2> run({
       overhangFlow: overhangFlow,
       layerHeight: 0.2,
       layerId: layerId,
+      sliceZMm: (layerId + 1) * 0.2,
       fuzzyConfig: config,
       random: random,
       detectOverhangWall: detectOverhang,
@@ -186,5 +198,19 @@ void main() {
       loop.paths.any((path) => path.role == ExtrusionRole.overhangPerimeter),
       true,
     );
+  });
+
+  test('Perlin fuzzy noise reaches classic loop output end-to-end', () {
+    final random = ZeroSpacingRandom();
+    final entities = run(
+      layerId: 1,
+      config: fuzzyConfig(noise: SourceFuzzyNoiseType2.perlin),
+      random: random,
+      detectOverhang: false,
+    );
+
+    final loop = entities.single as ExtrusionLoop2;
+    expect(loop.polygon().points.length, greaterThan(4));
+    expect(random.calls, greaterThan(0));
   });
 }
