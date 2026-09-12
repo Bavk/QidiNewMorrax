@@ -56,7 +56,10 @@ void main() {
       rebased.points.map((p) => '${p.x},${p.y}').toList(),
       ['10,0', '10,10', '0,0', '10,0'],
     );
-    expect(rebased.width, [3, 4, 5, 1, 2, 3]);
+
+    // Literal source `get_in_width(0)` and `get_out_width(0)` both return
+    // width[0]. The closing segment therefore intentionally receives 1,1.
+    expect(rebased.width, [3, 4, 5, 1, 1, 3]);
   });
 
   test('rebaseAt returns empty source-style result for open polyline', () {
