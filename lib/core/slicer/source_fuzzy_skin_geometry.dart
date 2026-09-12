@@ -14,6 +14,13 @@ enum SourceFuzzyNoiseType2 {
   voronoi,
 }
 
+/// Exact pinned-source `FuzzySkinMode` order.
+enum SourceFuzzySkinMode2 {
+  displacement,
+  extrusion,
+  combined,
+}
+
 /// Explicit seam for QIDI's function-local thread-local `random_value()`.
 ///
 /// The pinned source uses this same stream for initial sample spacing, Classic
@@ -90,7 +97,8 @@ class SourceFuzzyMt19937Random2 implements SourceFuzzyUnitRandom2 {
       return ((secure.nextInt(1 << 16) << 16) | secure.nextInt(1 << 16)) &
           _uint32Mask;
     } on UnsupportedError {
-      return (DateTime.now().microsecondsSinceEpoch ^ identityHashCode(Object())) &
+      return (DateTime.now().microsecondsSinceEpoch ^
+              identityHashCode(Object())) &
           _uint32Mask;
     }
   }
@@ -152,8 +160,8 @@ class SourceFuzzySkinGeometry2 {
     final pointDistance = pointDistanceMm / Slic3rUnits.scalingFactor;
     final minDistance = 0.75 * pointDistance;
     final randomRange = 0.5 * pointDistance;
-    var distanceLeftOver = _unit(random) * (minDistance / 2);
-    final deterministicNoise = _noiseModule(noiseSettings);
+    var distanceLeftOver = unitRandom(random) * (minDistance / 2);
+    final deterministicNoise = noiseModule(noiseSettings);
     final output = <SourcePoint2>[];
 
     var p0 = closed ? polyline.points.last : polyline.points.first;
@@ -175,7 +183,7 @@ class SourceFuzzySkinGeometry2 {
         );
 
         final noiseValue = noiseSettings.type == SourceFuzzyNoiseType2.classic
-            ? _unit(random) * 2.0 - 1.0
+            ? unitRandom(random) * 2.0 - 1.0
             : deterministicNoise!.getValue(
                 sample.x * Slic3rUnits.scalingFactor,
                 sample.y * Slic3rUnits.scalingFactor,
@@ -189,7 +197,7 @@ class SourceFuzzySkinGeometry2 {
           sample.y + (normalY * displacement).truncate(),
         ));
 
-        distanceFromP0 += minDistance + _unit(random) * randomRange;
+        distanceFromP0 += minDistance + unitRandom(random) * randomRange;
       }
 
       distanceLeftOver = distanceFromP0 - segmentLength;
@@ -269,7 +277,10 @@ class SourceFuzzySkinGeometry2 {
         random: random,
       );
 
-  static SourceLibNoiseModule2? _noiseModule(
+  /// Shared pinned `get_noise_module()` construction used by both Polygon and
+  /// Arachne fuzzy paths. Classic returns null because its UniformNoise reads
+  /// from the shared [SourceFuzzyUnitRandom2] stream instead.
+  static SourceLibNoiseModule2? noiseModule(
     SourceFuzzyNoiseSettings2 settings,
   ) {
     if (settings.type == SourceFuzzyNoiseType2.classic) return null;
@@ -300,7 +311,8 @@ class SourceFuzzySkinGeometry2 {
     };
   }
 
-  static double _unit(SourceFuzzyUnitRandom2 random) {
+  /// Validated call to pinned `random_value()`'s `[0, 1)` contract.
+  static double unitRandom(SourceFuzzyUnitRandom2 random) {
     final value = random.nextUnit();
     if (!value.isFinite || value < 0 || value >= 1) {
       throw StateError('source fuzzy random stream must yield [0, 1) values');

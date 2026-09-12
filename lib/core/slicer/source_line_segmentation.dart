@@ -1,7 +1,9 @@
-import '../geometry/clipper_geometry.dart';
+import 'package:clipper2/clipper2.dart' as c2;
+
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import '../geometry/source_polyline.dart';
+import 'source_arachne_extrusion_line.dart';
 
 class SourcePolylineClipSegment2 {
   const SourcePolylineClipSegment2({
@@ -10,6 +12,16 @@ class SourcePolylineClipSegment2 {
   });
 
   final SourcePolyline2 polyline;
+  final int clipIndex;
+}
+
+class SourceExtrusionClipSegment2 {
+  const SourceExtrusionClipSegment2({
+    required this.extrusion,
+    required this.clipIndex,
+  });
+
+  final SourceArachneExtrusionLine2 extrusion;
   final int clipIndex;
 }
 
@@ -33,21 +45,28 @@ class SourcePolylineRegionSegment2<T> {
   final T value;
 }
 
-/// Source-shaped port of the Polyline/Polygon subset of
+class SourceExtrusionRegionSegment2<T> {
+  const SourceExtrusionRegionSegment2({
+    required this.extrusion,
+    required this.value,
+  });
+
+  final SourceArachneExtrusionLine2 extrusion;
+  final T value;
+}
+
+/// Source-shaped Polyline/Polygon/Arachne subset of
 /// `Algorithm/LineSegmentation/LineSegmentation.cpp`.
 ///
-/// QIDI carries source-point indexes through a Clipper-Z channel. The current
-/// pure-Dart Clipper2 package has no Z callback, so this port reconstructs the
-/// same `(line_index, t)` attributes by projecting returned intersection
-/// endpoints back onto the integer source polyline with QIDI's 10-coordinate
-/// `SCALED_EPSILON` threshold. The range ordering, default-gap fill, overlap
-/// precedence, segment construction and polygon closing behavior are literal to
-/// the pinned source.
+/// Pinned QIDI carries subject indexes through Clipper-Z. `clipper2 0.0.3`
+/// exposes the same auxiliary Z channel, so this port encodes the source
+/// `ZAttributes` bits directly instead of reconstructing endpoint identity by
+/// geometric projection after clipping. Clip endpoints that survive as clip
+/// points are remapped to the nearest subject line exactly like the source.
 class SourceLineSegmentation2 {
   const SourceLineSegmentation2._();
 
   static const double _pointOnLineThresholdSquared = 100.0;
-  static const ClipperGeometry _clipper = ClipperGeometry();
 
   static List<SourcePolylineClipSegment2> polylineSegmentation({
     required SourcePolyline2 subject,
@@ -57,44 +76,15 @@ class SourceLineSegmentation2 {
     if (subject.points.length < 2) {
       throw StateError('source line segmentation requires at least two points');
     }
-    if (defaultClipIndex < 0) {
-      throw ArgumentError.value(
-        defaultClipIndex,
-        'defaultClipIndex',
-        'must be >= 0',
-      );
-    }
+    _validateDefaultClipIndex(defaultClipIndex);
 
-    final ranges = <_SourceLineRegionRange2>[];
-    for (var groupIndex = 0; groupIndex < clipGroups.length; groupIndex++) {
-      final clip = <SourcePolygon2>[
-        for (final expolygon in clipGroups[groupIndex]) ...[
-          expolygon.contour,
-          ...expolygon.holes,
-        ],
-      ];
-      if (clip.isEmpty) continue;
-
-      final intersections = _clipper.intersectionSourceOpenPolylines(
-        [subject],
-        clip,
-      );
-      for (final intersection in intersections) {
-        final range = _rangeFromIntersection(
-          intersection,
-          subject,
-          groupIndex + defaultClipIndex + 1,
-        );
-        if (range != null) ranges.add(range);
-      }
-    }
-
-    final continuous = _createContinuousRanges(
-      ranges,
+    final subjectPath = _subjectPath(subject.points, isClosed: false);
+    final ranges = _subjectSegmentation(
+      subjectPath,
+      clipGroups,
       defaultClipIndex,
-      subject.points.length - 1,
     );
-    if (continuous.isEmpty) {
+    if (ranges.isEmpty) {
       return [
         SourcePolylineClipSegment2(
           polyline: subject.copy(),
@@ -102,17 +92,17 @@ class SourceLineSegmentation2 {
         ),
       ];
     }
-    if (continuous.length == 1) {
+    if (ranges.length == 1) {
       return [
         SourcePolylineClipSegment2(
           polyline: subject.copy(),
-          clipIndex: continuous.single.clipIndex,
+          clipIndex: ranges.single.clipIndex,
         ),
       ];
     }
 
     return List.unmodifiable([
-      for (final range in continuous)
+      for (final range in ranges)
         SourcePolylineClipSegment2(
           polyline: _createPolylineSegment(range, subject),
           clipIndex: range.clipIndex,
@@ -126,7 +116,9 @@ class SourceLineSegmentation2 {
     int defaultClipIndex = 0,
   }) {
     if (subject.points.length < 3) {
-      throw StateError('source polygon segmentation requires at least three points');
+      throw StateError(
+        'source polygon segmentation requires at least three points',
+      );
     }
     return polylineSegmentation(
       subject: SourcePolyline2([
@@ -138,6 +130,54 @@ class SourceLineSegmentation2 {
     );
   }
 
+  static List<SourceExtrusionClipSegment2> extrusionSegmentation({
+    required SourceArachneExtrusionLine2 subject,
+    required List<List<SourceExPolygon2>> clipGroups,
+    int defaultClipIndex = 0,
+  }) {
+    if (subject.junctions.length < 2) {
+      throw StateError(
+        'source extrusion segmentation requires at least two junctions',
+      );
+    }
+    _validateDefaultClipIndex(defaultClipIndex);
+
+    // Closed Arachne ExtrusionLine already duplicates its closing point.
+    final subjectPath = _subjectPath(
+      [for (final junction in subject.junctions) junction.p],
+      isClosed: false,
+    );
+    final ranges = _subjectSegmentation(
+      subjectPath,
+      clipGroups,
+      defaultClipIndex,
+    );
+    if (ranges.isEmpty) {
+      return [
+        SourceExtrusionClipSegment2(
+          extrusion: subject.copy(),
+          clipIndex: defaultClipIndex,
+        ),
+      ];
+    }
+    if (ranges.length == 1) {
+      return [
+        SourceExtrusionClipSegment2(
+          extrusion: subject.copy(),
+          clipIndex: ranges.single.clipIndex,
+        ),
+      ];
+    }
+
+    return List.unmodifiable([
+      for (final range in ranges)
+        SourceExtrusionClipSegment2(
+          extrusion: _createExtrusionSegment(range, subject),
+          clipIndex: range.clipIndex,
+        ),
+    ]);
+  }
+
   static List<SourcePolylineRegionSegment2<T>> polylineRegionSegmentation<T>({
     required SourcePolyline2 subject,
     required T baseValue,
@@ -145,9 +185,7 @@ class SourceLineSegmentation2 {
   }) {
     final segmented = polylineSegmentation(
       subject: subject,
-      clipGroups: [
-        for (final region in regions) region.expolygons,
-      ],
+      clipGroups: [for (final region in regions) region.expolygons],
     );
     return List.unmodifiable([
       for (final segment in segmented)
@@ -166,7 +204,9 @@ class SourceLineSegmentation2 {
     required List<SourceLineSegmentationRegion2<T>> regions,
   }) {
     if (subject.points.length < 3) {
-      throw StateError('source polygon segmentation requires at least three points');
+      throw StateError(
+        'source polygon segmentation requires at least three points',
+      );
     }
     return polylineRegionSegmentation(
       subject: SourcePolyline2([
@@ -178,103 +218,211 @@ class SourceLineSegmentation2 {
     );
   }
 
-  static _SourceLineRegionRange2? _rangeFromIntersection(
-    SourcePolyline2 intersection,
-    SourcePolyline2 subject,
-    int clipIndex,
+  static List<SourceExtrusionRegionSegment2<T>> extrusionRegionSegmentation<T>({
+    required SourceArachneExtrusionLine2 subject,
+    required T baseValue,
+    required List<SourceLineSegmentationRegion2<T>> regions,
+  }) {
+    final segmented = extrusionSegmentation(
+      subject: subject,
+      clipGroups: [for (final region in regions) region.expolygons],
+    );
+    return List.unmodifiable([
+      for (final segment in segmented)
+        SourceExtrusionRegionSegment2<T>(
+          extrusion: segment.extrusion,
+          value: segment.clipIndex == 0
+              ? baseValue
+              : regions[segment.clipIndex - 1].value,
+        ),
+    ]);
+  }
+
+  static List<_SourceLineRegionRange2> _subjectSegmentation(
+    c2.Path64 subject,
+    List<List<SourceExPolygon2>> clipGroups,
+    int defaultClipIndex,
   ) {
-    if (intersection.points.length < 2) return null;
-
-    final firstNeighbor = intersection.points[1];
-    final lastNeighbor = intersection.points[intersection.points.length - 2];
-    var begin = _locatePoint(subject, intersection.points.first, firstNeighbor);
-    var end = _locatePoint(subject, intersection.points.last, lastNeighbor);
-    if (begin == null || end == null) return null;
-
-    if (_comparePosition(begin, end) > 0) {
-      final swap = begin;
-      begin = end;
-      end = swap;
+    final ranges = <_SourceLineRegionRange2>[];
+    for (var groupIndex = 0; groupIndex < clipGroups.length; groupIndex++) {
+      final clips = _clipPaths(clipGroups[groupIndex]);
+      if (clips.isEmpty) continue;
+      ranges.addAll(_intersectionWithRegion(
+        subject,
+        clips,
+        groupIndex + defaultClipIndex + 1,
+      ));
     }
+    return _createContinuousRanges(
+      ranges,
+      defaultClipIndex,
+      subject.length - 1,
+    );
+  }
+
+  static List<_SourceLineRegionRange2> _intersectionWithRegion(
+    c2.Path64 subject,
+    c2.Paths64 clips,
+    int regionIndex,
+  ) {
+    final clipper = c2.Clipper64();
+    clipper.preserveCollinear = true;
+    clipper.zCallback = (edge1Bottom, edge1Top, edge2Bottom, edge2Top, _) {
+      final edge1BottomZ = _SourceZAttributes2.decode(edge1Bottom.z);
+      final edge1TopZ = _SourceZAttributes2.decode(edge1Top.z);
+      final edge2BottomZ = _SourceZAttributes2.decode(edge2Bottom.z);
+      final edge2TopZ = _SourceZAttributes2.decode(edge2Top.z);
+
+      if (edge1BottomZ.isClipPoint != edge1TopZ.isClipPoint ||
+          edge2BottomZ.isClipPoint != edge2TopZ.isClipPoint) {
+        throw StateError('source LineSegmentation edge Z identity mismatch');
+      }
+
+      if (!edge1BottomZ.isClipPoint && !edge1TopZ.isClipPoint) {
+        _requireAdjacentSubjectIndexes(edge1BottomZ, edge1TopZ);
+        return _SourceZAttributes2(
+          isNewPoint: true,
+          pointIndex: mathMin(
+            edge1BottomZ.pointIndex,
+            edge1TopZ.pointIndex,
+          ),
+        ).encode();
+      }
+      if (!edge2BottomZ.isClipPoint && !edge2TopZ.isClipPoint) {
+        _requireAdjacentSubjectIndexes(edge2BottomZ, edge2TopZ);
+        return _SourceZAttributes2(
+          isNewPoint: true,
+          pointIndex: mathMin(
+            edge2BottomZ.pointIndex,
+            edge2TopZ.pointIndex,
+          ),
+        ).encode();
+      }
+      throw StateError(
+        'source LineSegmentation intersection has no subject edge',
+      );
+    };
+
+    clipper.addOpenSubject(subject);
+    clipper.addClips(clips);
+    final solution = clipper.execute(c2.ClipType.intersection, c2.FillRule.nonZero);
+    if (solution == null) return const [];
+
+    final ranges = <_SourceLineRegionRange2>[];
+    for (final intersection in [...solution.closed, ...solution.open]) {
+      final range = _createLineRegionRange(
+        intersection,
+        subject,
+        regionIndex,
+      );
+      if (range != null) ranges.add(range);
+    }
+    return ranges;
+  }
+
+  static _SourceLineRegionRange2? _createLineRegionRange(
+    c2.Path64 intersection,
+    c2.Path64 subject,
+    int regionIndex,
+  ) {
+    if (intersection.length < 2) return null;
+
+    final normalized = <c2.Point64>[...intersection];
+    for (var index = 0; index < normalized.length; index++) {
+      final point = normalized[index];
+      final z = _SourceZAttributes2.decode(point.z);
+      if (!z.isClipPoint) continue;
+
+      final subjectLineIndex = _findClosestLineToPoint(subject, point);
+      if (subjectLineIndex != null) {
+        normalized[index] = c2.Point64(
+          point.x,
+          point.y,
+          _SourceZAttributes2(
+            isNewPoint: true,
+            pointIndex: subjectLineIndex,
+          ).encode(),
+        );
+      }
+
+      if (_SourceZAttributes2.decode(normalized[index].z).isClipPoint) {
+        return null;
+      }
+    }
+
+    if (_needReverse(normalized, subject)) {
+      normalized.setAll(0, normalized.reversed.toList(growable: false));
+    }
+
+    final beginZ = _SourceZAttributes2.decode(normalized.first.z);
+    final endZ = _SourceZAttributes2.decode(normalized.last.z);
+    final beginIndex = beginZ.pointIndex;
+    final endIndex = endZ.pointIndex;
+    if (beginIndex > subject.length || endIndex > subject.length) return null;
+
+    final beginT = beginZ.isNewPoint
+        ? _projectPointOnLine(
+            subject[beginIndex],
+            subject[beginIndex + 1],
+            normalized.first,
+          ).t
+        : 0.0;
+    final endT = endZ.isNewPoint
+        ? _projectPointOnLine(
+            subject[endIndex],
+            subject[endIndex + 1],
+            normalized.last,
+          ).t
+        : 0.0;
+    if (beginT == double.maxFinite || endT == double.maxFinite) return null;
 
     return _SourceLineRegionRange2(
-      beginIndex: begin.lineIndex,
-      beginT: begin.t,
-      endIndex: end.lineIndex,
-      endT: end.t,
-      clipIndex: clipIndex,
+      beginIndex: beginIndex,
+      beginT: beginT,
+      endIndex: endIndex,
+      endT: endT,
+      clipIndex: regionIndex,
     );
   }
 
-  static _SourceLinePosition2? _locatePoint(
-    SourcePolyline2 subject,
-    SourcePoint2 query,
-    SourcePoint2 neighbor,
-  ) {
-    final exactIndexes = <int>[];
-    for (var index = 0; index < subject.points.length; index++) {
-      if (subject.points[index] == query) exactIndexes.add(index);
-    }
-    if (exactIndexes.length == 1) {
-      return _SourceLinePosition2(exactIndexes.single, 0);
-    }
-    if (exactIndexes.length > 1) {
-      // Polygon segmentation represents a closed polygon as an open polyline
-      // whose first point is repeated at the end. In source Clipper-Z those
-      // equal XY points retain distinct subject indexes. Reconstruct that
-      // distinction from the adjacent intersection point before falling back
-      // to geometric projection, otherwise a fully covered polygon collapses
-      // to the zero-length [0,0] range.
-      final lastIndex = subject.points.length - 1;
-      if (subject.points.first == subject.points.last &&
-          exactIndexes.first == 0 &&
-          exactIndexes.last == lastIndex &&
-          lastIndex >= 2) {
-        if (neighbor == subject.points[1]) {
-          return const _SourceLinePosition2(0, 0);
-        }
-        if (neighbor == subject.points[lastIndex - 1]) {
-          return _SourceLinePosition2(lastIndex, 0);
-        }
+  static bool _needReverse(c2.Path64 intersection, c2.Path64 subject) {
+    for (var index = 1; index < intersection.length; index++) {
+      final previous = intersection[index - 1];
+      final current = intersection[index];
+      final previousZ = _SourceZAttributes2.decode(previous.z);
+      final currentZ = _SourceZAttributes2.decode(current.z);
+      if (previousZ.isClipPoint || currentZ.isClipPoint) continue;
+
+      final maxPointIndex = subject.length - 1;
+      var validOrder = previousZ.pointIndex <= currentZ.pointIndex;
+      if (currentZ.pointIndex == maxPointIndex && previousZ.pointIndex == 0) {
+        validOrder = false;
+      }
+      if (currentZ.pointIndex == 0 && previousZ.pointIndex == maxPointIndex) {
+        validOrder = true;
       }
 
-      final neighborLine = _findClosestLineToPoint(subject, neighbor);
-      if (neighborLine != null) {
-        for (final index in exactIndexes) {
-          if (index == neighborLine) return _SourceLinePosition2(index, 0);
-          if (index > 0 && index - 1 == neighborLine) {
-            return _SourceLinePosition2(index, 0);
-          }
-        }
+      if (!validOrder && _sourcePoint(previous) != _sourcePoint(current)) {
+        return true;
       }
-      return _SourceLinePosition2(exactIndexes.first, 0);
+      if (currentZ.pointIndex == previousZ.pointIndex) {
+        if (currentZ.pointIndex >= subject.length) return false;
+        final subjectPoint = subject[currentZ.pointIndex];
+        final previousDistance = _squaredDistance(previous, subjectPoint);
+        final currentDistance = _squaredDistance(current, subjectPoint);
+        if (previousDistance > currentDistance) return true;
+      }
     }
-
-    final lineIndex = _findClosestLineToPoint(subject, query);
-    if (lineIndex == null) return null;
-    final projection = _projectPointOnLine(
-      subject.points[lineIndex],
-      subject.points[lineIndex + 1],
-      query,
-    );
-    if (!projection.t.isFinite || !projection.distanceSquared.isFinite) {
-      return null;
-    }
-    return _SourceLinePosition2(lineIndex, projection.t);
+    return false;
   }
 
-  static int? _findClosestLineToPoint(
-    SourcePolyline2 subject,
-    SourcePoint2 query,
-  ) {
+  static int? _findClosestLineToPoint(c2.Path64 subject, c2.Point64 query) {
     int? closest;
-    var minDistanceSquared = double.infinity;
-    for (var lineIndex = 0;
-        lineIndex + 1 < subject.points.length;
-        lineIndex++) {
+    var minDistanceSquared = double.maxFinite;
+    for (var lineIndex = 0; lineIndex + 1 < subject.length; lineIndex++) {
       final projection = _projectPointOnLine(
-        subject.points[lineIndex],
-        subject.points[lineIndex + 1],
+        subject[lineIndex],
+        subject[lineIndex + 1],
         query,
       );
       if (projection.distanceSquared <= _pointOnLineThresholdSquared) {
@@ -289,9 +437,9 @@ class SourceLineSegmentation2 {
   }
 
   static _SourceProjectionInfo2 _projectPointOnLine(
-    SourcePoint2 from,
-    SourcePoint2 to,
-    SourcePoint2 query,
+    c2.Point64 from,
+    c2.Point64 to,
+    c2.Point64 query,
   ) {
     final lineX = (to.x - from.x).toDouble();
     final lineY = (to.y - from.y).toDouble();
@@ -300,15 +448,18 @@ class SourceLineSegmentation2 {
     final lengthSquared = lineX * lineX + lineY * lineY;
     if (lengthSquared <= 0) {
       return const _SourceProjectionInfo2(
-        t: double.infinity,
-        distanceSquared: double.infinity,
+        t: double.maxFinite,
+        distanceSquared: double.maxFinite,
       );
     }
 
     final projected = queryX * lineX + queryY * lineY;
     final t = (projected / lengthSquared).clamp(0.0, 1.0).toDouble();
     if (projected < 0 || projected > lengthSquared) {
-      return _SourceProjectionInfo2(t: t, distanceSquared: double.infinity);
+      return _SourceProjectionInfo2(
+        t: t,
+        distanceSquared: double.maxFinite,
+      );
     }
 
     final projectedX = t * lineX;
@@ -422,6 +573,64 @@ class SourceLineSegmentation2 {
     return SourcePolyline2(points);
   }
 
+  static SourceArachneExtrusionLine2 _createExtrusionSegment(
+    _SourceLineRegionRange2 range,
+    SourceArachneExtrusionLine2 subject,
+  ) {
+    final junctions = <SourceArachneExtrusionJunction2>[];
+    if (range.beginT == 0.0) {
+      junctions.add(subject.junctions[range.beginIndex].copy());
+    } else {
+      final from = subject.junctions[range.beginIndex];
+      final to = subject.junctions[range.beginIndex + 1];
+      if (from.perimeterIndex != to.perimeterIndex) {
+        throw StateError(
+          'source extrusion segmentation requires equal perimeter indexes '
+          'across interpolated junctions',
+        );
+      }
+      junctions.add(SourceArachneExtrusionJunction2(
+        p: _sourceLerpPoint(from.p, to.p, range.beginT),
+        w: _sourceLerpWidth(from.w, to.w, range.beginT),
+        perimeterIndex: from.perimeterIndex,
+      ));
+    }
+
+    for (var lineIndex = range.beginIndex + 1;
+        lineIndex <= range.endIndex;
+        lineIndex++) {
+      junctions.add(subject.junctions[lineIndex].copy());
+    }
+
+    if (range.endT == 0.0) {
+      junctions.add(subject.junctions[range.endIndex].copy());
+    } else if (range.endT == 1.0) {
+      junctions.add(subject.junctions[range.endIndex + 1].copy());
+    } else {
+      final from = subject.junctions[range.endIndex];
+      final to = subject.junctions[range.endIndex + 1];
+      if (from.perimeterIndex != to.perimeterIndex) {
+        throw StateError(
+          'source extrusion segmentation requires equal perimeter indexes '
+          'across interpolated junctions',
+        );
+      }
+      junctions.add(SourceArachneExtrusionJunction2(
+        p: _sourceLerpPoint(from.p, to.p, range.endT),
+        w: _sourceLerpWidth(from.w, to.w, range.endT),
+        perimeterIndex: from.perimeterIndex,
+      ));
+    }
+
+    // The source two-argument ExtrusionLine constructor forces split segments
+    // open even when the original line is closed.
+    return SourceArachneExtrusionLine2(
+      insetIndex: subject.insetIndex,
+      isOdd: subject.isOdd,
+      junctions: junctions,
+    );
+  }
+
   static SourcePoint2 _sourceLerpPoint(
     SourcePoint2 a,
     SourcePoint2 b,
@@ -436,12 +645,56 @@ class SourceLineSegmentation2 {
     );
   }
 
-  static int _comparePosition(
-    _SourceLinePosition2 a,
-    _SourceLinePosition2 b,
-  ) {
-    final indexCompare = a.lineIndex.compareTo(b.lineIndex);
-    return indexCompare != 0 ? indexCompare : a.t.compareTo(b.t);
+  static int _sourceLerpWidth(int a, int b, double t) =>
+      ((1.0 - t) * a + t * b).truncate();
+
+  static c2.Path64 _subjectPath(
+    List<SourcePoint2> points, {
+    required bool isClosed,
+  }) {
+    final output = <c2.Point64>[];
+    for (var index = 0; index < points.length; index++) {
+      final point = points[index];
+      output.add(c2.Point64(
+        point.x,
+        point.y,
+        _SourceZAttributes2(pointIndex: index).encode(),
+      ));
+    }
+    if (isClosed && points.isNotEmpty) {
+      output.add(c2.Point64(
+        points.first.x,
+        points.first.y,
+        _SourceZAttributes2(pointIndex: points.length).encode(),
+      ));
+    }
+    return output;
+  }
+
+  static c2.Paths64 _clipPaths(List<SourceExPolygon2> expolygons) {
+    final clipZ = const _SourceZAttributes2(isClipPoint: true).encode();
+    return [
+      for (final expolygon in expolygons) ...[
+        [
+          for (final point in expolygon.contour.points)
+            c2.Point64(point.x, point.y, clipZ),
+        ],
+        for (final hole in expolygon.holes)
+          [
+            for (final point in hole.points)
+              c2.Point64(point.x, point.y, clipZ),
+          ],
+      ],
+    ];
+  }
+
+  static SourcePoint2 _sourcePoint(c2.Point64 point) =>
+      SourcePoint2(point.x, point.y);
+
+  static double _squaredDistance(c2.Point64 a, c2.Point64 b) {
+    final dx = (a.x - b.x).toDouble();
+    final dy = (a.y - b.y).toDouble();
+    return dx * dx + dy * dy;
   }
 
   static int _compareRange(
@@ -450,6 +703,59 @@ class SourceLineSegmentation2 {
   ) {
     final indexCompare = a.beginIndex.compareTo(b.beginIndex);
     return indexCompare != 0 ? indexCompare : a.beginT.compareTo(b.beginT);
+  }
+
+  static void _validateDefaultClipIndex(int defaultClipIndex) {
+    if (defaultClipIndex < 0) {
+      throw ArgumentError.value(
+        defaultClipIndex,
+        'defaultClipIndex',
+        'must be >= 0',
+      );
+    }
+  }
+
+  static void _requireAdjacentSubjectIndexes(
+    _SourceZAttributes2 a,
+    _SourceZAttributes2 b,
+  ) {
+    if ((a.pointIndex - b.pointIndex).abs() != 1) {
+      throw StateError(
+        'source LineSegmentation intersection edge indexes are not adjacent',
+      );
+    }
+  }
+
+  static int mathMin(int a, int b) => a < b ? a : b;
+}
+
+class _SourceZAttributes2 {
+  const _SourceZAttributes2({
+    this.isClipPoint = false,
+    this.isNewPoint = false,
+    this.pointIndex = 0,
+  });
+
+  final bool isClipPoint;
+  final bool isNewPoint;
+  final int pointIndex;
+
+  int encode() {
+    if (pointIndex < 0 || pointIndex >= (1 << 30)) {
+      throw StateError('source LineSegmentation point index exceeds 30 bits');
+    }
+    return (isClipPoint ? 1 << 31 : 0) |
+        (isNewPoint ? 1 << 30 : 0) |
+        (pointIndex & 0x3fffffff);
+  }
+
+  static _SourceZAttributes2 decode(int raw) {
+    final value = raw & 0xffffffff;
+    return _SourceZAttributes2(
+      isClipPoint: (value & (1 << 31)) != 0,
+      isNewPoint: (value & (1 << 30)) != 0,
+      pointIndex: value & 0x3fffffff,
+    );
   }
 }
 
@@ -461,13 +767,6 @@ class _SourceProjectionInfo2 {
 
   final double t;
   final double distanceSquared;
-}
-
-class _SourceLinePosition2 {
-  const _SourceLinePosition2(this.lineIndex, this.t);
-
-  final int lineIndex;
-  final double t;
 }
 
 class _SourceLineRegionRange2 {
