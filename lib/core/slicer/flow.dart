@@ -11,6 +11,28 @@ enum FlowRole {
   supportTransition,
 }
 
+class FlowWidthOption {
+  const FlowWidthOption(this.value, {this.percent = false});
+
+  final double value;
+  final bool percent;
+
+  double absoluteValue(double ratioOver) =>
+      percent ? ratioOver * value / 100 : value;
+}
+
+class FlowConfigSnapshot {
+  const FlowConfigSnapshot({
+    required this.widthOptions,
+    required this.scalarOptions,
+    required this.nozzleDiameters,
+  });
+
+  final Map<String, FlowWidthOption> widthOptions;
+  final Map<String, double> scalarOptions;
+  final List<double> nozzleDiameters;
+}
+
 class FlowException implements Exception {
   const FlowException(this.message);
   final String message;
@@ -40,8 +62,8 @@ class FlowSlicingException extends FlowException {
         );
 }
 
-/// Pure-Dart port of `libslic3r/Flow.hpp` + the mathematical portion of
-/// `Flow.cpp` from the supplied Qidi Flow source tree.
+/// Pure-Dart port of `libslic3r/Flow.hpp` + the mathematical/config-width
+/// portions of `Flow.cpp` from the supplied Qidi Flow source tree.
 ///
 /// Keep source quirks intact: methods such as [withCrossSection] intentionally
 /// reproduce the supplied formulas rather than silently replacing them with a
@@ -127,6 +149,90 @@ class Flow {
         : height * (width - height * (1 - 0.25 * math.pi));
     if (result <= 0) throw const FlowNegativeFlowException();
     return result;
+  }
+
+  /// Port of both `Flow::extrusion_width()` overloads after the source config
+  /// values have been represented by [FlowConfigSnapshot].
+  static double resolveExtrusionWidth(
+    String optionKey,
+    FlowConfigSnapshot config, {
+    int firstPrintingExtruder = 0,
+  }) {
+    final original = config.widthOptions[optionKey];
+    if (original == null) {
+      throw FlowException(
+        'Failed to calculate line width of $optionKey. Can not get value of "$optionKey" ',
+      );
+    }
+
+    var option = original;
+    var firstLayer = optionKey.startsWith('initial_layer_');
+
+    if (option.value == 0) {
+      final fallback = config.widthOptions['line_width'];
+      if (fallback == null) {
+        throw FlowException(
+          'Failed to calculate line width of $optionKey. Can not get value of "line_width" ',
+        );
+      }
+      option = fallback;
+      // Exact source behavior: a role-specific zero falls back to line_width
+      // and stops using initial_layer_print_height for percentage resolution.
+      firstLayer = false;
+    }
+
+    if (option.percent) {
+      final heightKey = firstLayer
+          ? 'initial_layer_print_height'
+          : 'layer_height';
+      final base = config.scalarOptions[heightKey];
+      if (base == null) {
+        throw FlowException(
+          'Failed to calculate line width of $optionKey. Can not get value of "$heightKey" ',
+        );
+      }
+      return option.absoluteValue(base);
+    }
+
+    if (option.value == 0) {
+      if (firstPrintingExtruder < 0 ||
+          firstPrintingExtruder >= config.nozzleDiameters.length) {
+        throw FlowException(
+          'Failed to calculate line width of $optionKey. Can not get value of "nozzle_diameter" ',
+        );
+      }
+      return autoExtrusionWidth(
+        _flowRoleForOptionKey(optionKey),
+        config.nozzleDiameters[firstPrintingExtruder],
+      );
+    }
+
+    return option.value;
+  }
+
+  static FlowRole _flowRoleForOptionKey(String optionKey) {
+    switch (optionKey) {
+      case 'inner_wall_line_width':
+      case 'line_width':
+      case 'initial_layer_line_width':
+        return FlowRole.perimeter;
+      case 'outer_wall_line_width':
+        return FlowRole.externalPerimeter;
+      case 'sparse_infill_line_width':
+        return FlowRole.infill;
+      case 'internal_solid_infill_line_width':
+        return FlowRole.solidInfill;
+      case 'top_surface_line_width':
+        return FlowRole.topSolidInfill;
+      case 'support_line_width':
+        return FlowRole.supportMaterial;
+      default:
+        throw ArgumentError.value(
+          optionKey,
+          'optionKey',
+          'opt_key_to_flow_role: invalid argument',
+        );
+    }
   }
 
   static double autoExtrusionWidth(FlowRole role, double nozzleDiameter) {
