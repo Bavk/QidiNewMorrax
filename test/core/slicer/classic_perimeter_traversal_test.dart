@@ -7,15 +7,24 @@ import 'package:qidi_flow_flutter/core/slicer/classic_perimeter_traversal.dart';
 import 'package:qidi_flow_flutter/core/slicer/extrusion_entity.dart';
 import 'package:qidi_flow_flutter/core/slicer/flow.dart';
 
-SourcePolygon2 box(int min, int max, {bool clockwise = false}) {
+SourcePolygon2 rectangle(
+  int minX,
+  int minY,
+  int maxX,
+  int maxY, {
+  bool clockwise = false,
+}) {
   final polygon = SourcePolygon2([
-    SourcePoint2(min, min),
-    SourcePoint2(max, min),
-    SourcePoint2(max, max),
-    SourcePoint2(min, max),
+    SourcePoint2(minX, minY),
+    SourcePoint2(maxX, minY),
+    SourcePoint2(maxX, maxY),
+    SourcePoint2(minX, maxY),
   ]);
   return clockwise ? polygon.reversed() : polygon;
 }
+
+SourcePolygon2 box(int min, int max, {bool clockwise = false}) =>
+    rectangle(min, min, max, max, clockwise: clockwise);
 
 final extFlow = Flow.nonBridging(
   width: 0.45,
@@ -26,6 +35,10 @@ final smallFlow = extFlow.withWidth(0.35);
 final perimeterFlow = Flow.nonBridging(
   width: 0.5,
   height: 0.2,
+  nozzleDiameter: 0.4,
+);
+final overhangFlow = Flow.bridging(
+  diameter: 0.4,
   nozzleDiameter: 0.4,
 );
 final settings = SourceClassicPerimeterTraversalSettings2(
@@ -185,5 +198,81 @@ void main() {
     final thin = output.firstWhere((entity) => entity is! ExtrusionLoop2);
     expect(thin.role, ExtrusionRole.externalPerimeter);
     expect(thin.length, greaterThan(0));
+  });
+
+  test('active overhang detection splits paths before loop wrapping', () {
+    final root = SourcePerimeterLoop2(
+      polygon: box(0, 100),
+      depth: 0,
+      isContour: true,
+      needCircleCompensation: true,
+    );
+    final lowerSeries = <List<SourcePolygon2>>[
+      [rectangle(50, -50, 150, 150)],
+    ];
+
+    final output =
+        SourceClassicPerimeterTraversal2.traverseWithoutSpeedGrading(
+      loops: [root],
+      thinWalls: <ThickPolyline2>[],
+      settings: settings,
+      overhangSettings: SourceClassicPerimeterOverhangSettings2(
+        overhangFlow: overhangFlow,
+        externalLowerPolygonsSeries: lowerSeries,
+        smallerExternalLowerPolygonsSeries: lowerSeries,
+        perimeterLowerPolygonsSeries: lowerSeries,
+        layerId: 1,
+      ),
+    );
+
+    final loop = onlyLoop(output);
+    expect(loop.isCounterClockwise, true);
+    expect(loop.paths, hasLength(3));
+    expect(
+      loop.paths.where((path) => path.role == ExtrusionRole.externalPerimeter),
+      hasLength(1),
+    );
+    expect(
+      loop.paths.where((path) => path.role == ExtrusionRole.overhangPerimeter),
+      hasLength(2),
+    );
+    expect(
+      loop.paths.map((path) => path.getOverhangDegree()).toSet(),
+      {0, 5, 6},
+    );
+    expect(
+      loop.paths.every(
+        (path) => path.customizeFlag == CustomizeFlag.circleCompensation,
+      ),
+      true,
+    );
+  });
+
+  test('raft-layer boundary bypasses overhang split like source condition', () {
+    final root = SourcePerimeterLoop2(
+      polygon: box(0, 100),
+      depth: 0,
+      isContour: true,
+    );
+
+    final output =
+        SourceClassicPerimeterTraversal2.traverseWithoutSpeedGrading(
+      loops: [root],
+      thinWalls: <ThickPolyline2>[],
+      settings: settings,
+      overhangSettings: SourceClassicPerimeterOverhangSettings2(
+        overhangFlow: overhangFlow,
+        externalLowerPolygonsSeries: const [],
+        smallerExternalLowerPolygonsSeries: const [],
+        perimeterLowerPolygonsSeries: const [],
+        layerId: 0,
+        raftLayers: 0,
+      ),
+    );
+
+    final loop = onlyLoop(output);
+    expect(loop.paths, hasLength(1));
+    expect(loop.paths.single.role, ExtrusionRole.externalPerimeter);
+    expect(loop.paths.single.getOverhangDegree(), 0);
   });
 }
