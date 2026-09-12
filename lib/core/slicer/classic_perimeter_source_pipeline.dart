@@ -90,7 +90,7 @@ class SourceClassicPerimeterPipeline2 {
 
   /// End-to-end classic shell -> nesting -> overhang split -> recursive
   /// traversal -> wall-sequence pipeline for the source branch where overhang
-  /// speed grading is disabled.
+  /// speed grading is disabled and prebuilt source lower-series are supplied.
   static List<ExtrusionEntity2> buildExtrusionsWithoutSpeedGrading({
     required ClassicPerimeterResult result,
     required Flow externalPerimeterFlow,
@@ -119,6 +119,49 @@ class SourceClassicPerimeterPipeline2 {
       traversed,
       wallSequence: wallSequence,
       layerId: overhangSettings.layerId,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+  }
+
+  /// Same source branch as [buildExtrusionsWithoutSpeedGrading], but constructs
+  /// the three lower-polygon series and distance boundaries exactly where
+  /// `PerimeterGenerator::process_classic()` does instead of requiring callers
+  /// to precompute them.
+  static List<ExtrusionEntity2> buildExtrusionsFromLowerSlicesWithoutSpeedGrading({
+    required ClassicPerimeterResult result,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required Flow overhangFlow,
+    required double layerHeight,
+    required List<SourcePolygon2>? lowerSlices,
+    required double wallNozzleDiameter,
+    required int layerId,
+    int raftLayers = 0,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
+  }) {
+    final overhangSettings =
+        SourceClassicPerimeterOverhangSettings2.fromLowerSlices(
+      overhangFlow: overhangFlow,
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      lowerSlices: lowerSlices,
+      wallNozzleDiameter: wallNozzleDiameter,
+      layerId: layerId,
+      raftLayers: raftLayers,
+    );
+    return buildExtrusionsWithoutSpeedGrading(
+      result: result,
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: layerHeight,
+      overhangSettings: overhangSettings,
+      wallSequence: wallSequence,
       brimOuterOnly: brimOuterOnly,
       brimWidth: brimWidth,
     );
