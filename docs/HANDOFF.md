@@ -1,204 +1,82 @@
 # Handoff — Qidi Flow strict Flutter/Dart rewrite
 
-This repository is a **strict 1:1 reimplementation** of the supplied Qidi Flow 2.07.02.60 Pass28 application in Flutter + Dart. The old C++/wxWidgets/React application is reference material only; it must never remain a runtime backend through FFI, subprocesses, native shared libraries, hidden local services, or embedded legacy WebViews.
+This repository is a **strict 1:1 reimplementation** of Qidi Flow 2.07.02.60 Pass28 in Flutter + Dart. The legacy C++/wxWidgets/React application is reference material only and must not remain a runtime backend through FFI, subprocesses, native shared libraries, hidden services, or embedded legacy WebViews.
 
 ## Read first
 
 1. [`../migration/PARITY_CONTRACT.md`](../migration/PARITY_CONTRACT.md) — acceptance authority.
-2. [`../migration/MIGRATION_STATUS.md`](../migration/MIGRATION_STATUS.md) — current subsystem truth and next dependency order.
+2. [`../migration/MIGRATION_STATUS.md`](../migration/MIGRATION_STATUS.md) — subsystem truth and next dependency order.
 3. [`../migration/TRACEABILITY.md`](../migration/TRACEABILITY.md) — source → Dart → evidence ledger.
-4. [`../migration/VALIDATION.md`](../migration/VALIDATION.md) — what actually executed.
-5. This file — operational continuation notes.
+4. [`../migration/VALIDATION.md`](../migration/VALIDATION.md) — executed evidence.
+5. [`../migration/FUZZY_SKIN_SOURCE_NOTES.md`](../migration/FUZZY_SKIN_SOURCE_NOTES.md) — pinned fuzzy-skin contract.
 
-Do not infer completion from visual similarity, a compiling app shell, or a passing common-case test. Source quirks are part of the contract.
+Do not infer completion from visual similarity, compilation, or common-case tests. Source quirks are part of the contract.
 
-## Current validated checkpoint — 2026-09-12
+## Validation checkpoint — 2026-09-12
 
-Last validated code checkpoint before this documentation batch:
+Last confirmed green checkpoint remains:
 
-- code commit: `b6809d50912e5135a3d4851177093934a715adf9` (`test: cover speed graded classic source pipeline`);
-- normal workflow: `.github/workflows/flutter-parity.yml` run `34682700807` (#203);
-- Flutter `3.47.2`;
-- Dart `3.13.2`;
-- `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **248/248 passed**;
-- job conclusion → **success**.
+- code commit `b6809d50912e5135a3d4851177093934a715adf9`;
+- `.github/workflows/flutter-parity.yml` run `34682700807` (#203);
+- Flutter `3.47.2`, Dart `3.13.2`;
+- analyzer clean;
+- **248/248 tests passed**.
 
-Important independently green milestones immediately before it include run #201 (`34682605150`) for speed-graded recursive traversal, #199 (`34682507521`) for the independent graded splitter, #197 (`34682411840`) for standalone `detect_overhang_degree()` helpers, #194 (`34682165435`) for automatic overhang state from raw lower slices, and #191 (`34681985037`, 231/231) for source lower-support series / `dist_boundary()`.
+The later fuzzy batch reached run #229 (`34683822158`) but failed three newly introduced `*Exact2` tests. Source inspection proved those tests encoded the wrong RNG topology. Corrective code commit `ffc005e678d0cf1e6d4000e6c9a842620700ddbe` triggered run #230 (`34688064516`), which was still running when this handoff was written. Do not promote the new fuzzy scope to validated until that run (or a later run containing the same code) is green.
 
-## Numeric/source rules that must be preserved
+## Critical fuzzy correction
 
-### libslic3r coordinates
+Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
 
-The source slicer is not a free-form millimeter-double system:
+Literal `FuzzySkin.cpp` facts:
 
-- `SCALING_FACTOR = 0.00001` mm;
-- 100000 integer source units/mm;
-- `EPSILON = 1e-4`;
-- `SCALED_EPSILON = 10` source units.
+- `random_value()` owns one function-local thread-local `std::mt19937` plus one `uniform_real_distribution<double>(0,1)`;
+- `NoiseType::Classic` is `UniformNoise`, whose `GetValue()` calls that **same** `random_value()` and maps it to `[-1,1)`;
+- spacing and Classic displacement therefore share one random stream in call order;
+- Classic displacement is `double` in this pinned file; there is no separate float32 displacement boundary;
+- pinned `fuzzy_polygon()` calls closed `fuzzy_polyline()` directly; there is no extra same-neighbor cleanup in `FuzzySkin.cpp`.
 
-Rounding/truncation-sensitive algorithms must stay in source integer types (`SourcePoint2`, `SourceLine2`, `SourcePolygon2`, `SourceExPolygon2`, `SourcePolyline2`, `ThickPolyline2`) until the actual source boundary converts units.
+The recent separate spacing/displacement `*Exact2` branch was therefore false parity and has been removed. `SourceFuzzyMt19937Random2` now ports MT19937 plus the libstdc++ double distribution composition, with C++ seeded oracle values in tests. Production fuzzy Classic uses a per-isolate nondeterministically seeded stream.
 
-### Boost.Polygon 1.83
+The correction also removes the artificial coupling of fuzzy layer identity to overhang state: `SourceClassicFuzzyPerimeterTraversal2` now receives explicit `layerId`, so first-layer suppression is correct even when overhang detection is off.
 
-The direct Dart Fortune/Voronoi port is passing the represented Boost/QIDI oracle suite. Two implementation details are especially easy to break:
+## Current represented classic fuzzy scope
 
-- Boost `uint64_t` arithmetic and double-bit ULP comparison cannot be represented safely by signed native Dart `int` when bit 63 is crossed; the port deliberately uses `BigInt` at those boundaries.
-- PPP circle formation keeps the **literal Boost 1.83 operand order** for `robust_cross_product`. Do not reorder it into a mathematically nicer cross product without a Boost oracle proving equivalence.
+Implemented, pending latest CI promotion:
 
-### Clipper compatibility
+- exact `FuzzySkinType` order: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy`;
+- exact `NoiseType` order: `Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi`;
+- `should_fuzzify()` including first-layer gating;
+- `fuzzy_skin_allows_overhang_slowdown()` distinction between `None` and `Disabled_fuzzy`;
+- Classic no-painted-region `fuzzy_polyline()` / `fuzzy_polygon()` sampling and displacement path;
+- source fallback quirk for fewer than three generated points;
+- source RNG call order and MT19937 seeded oracle;
+- recursive classic perimeter traversal ordering with fuzzy application;
+- represented fuzzy/overhang slowdown composition in the no-region classic pipeline.
 
-Current verified compatibility includes:
+## First unfinished priority
 
-- Clipper1 miter-limit values below 2 behaving as effective 2;
-- positive ExPolygon hole offsets retaining holes by explicit contour-minus-hole reconstruction;
-- source-domain open-polyline square/open-butt offset used by `polygons_covered_by_width()`;
-- QIDI Clipper2 `intersection_pl_2()` / `diff_pl_2()` through open subjects in source integer coordinates;
-- the duplicated-start seam: a closed perimeter represented as an open polyline may produce two difference runs around the repeated first point;
-- the source-coordinate closed-polygon offset subset used by lower-overhang support generation, including float32 deltas, miter limit 3, hole delta/winding reversal, negative offsets, and QIDI-patched Clipper1 `ShortestEdgeLength = abs(delta * 0.005)` filtering.
+Continue fuzzy skin with the first still-missing source branch, in this order:
 
-Do not remove these adapter quirks just because native Clipper2 defaults differ.
+1. port `get_noise_module()` dependencies for **Perlin**, **Billow**, **RidgedMulti**, and **Voronoi**, preserving source frequency/scale, octave, persistence, displacement, coordinate and `slice_z` semantics;
+2. add deterministic source/C++ oracle fixtures for those noise modules before integrating them into `SourceFuzzySkinGeometry2`;
+3. port painted/per-region `LineSegmentation` and per-segment config selection used by `apply_fuzzy_skin()`; never fuzzify the whole loop as a substitute;
+4. then port Arachne `fuzzy_extrusion_line()` including `Displacement`, `Extrusion`, and `Combined` width/position rules.
 
-## Classic perimeter / MedialAxis checkpoint
+Only after those branches and CI are green should the fuzzy subsystem receive a broader parity claim.
 
-The following source subset now works end-to-end and is covered by the 248-test suite:
+## Numeric/source invariants
 
-- classic onion-shell inset formulas and QIDI smaller-external-width behavior;
-- exact `last = offsets` source quirk;
-- thin-wall Clipper → MedialAxis → `ThickPolyline2` → source variable-width extrusion path;
-- classic extra-iteration gap collection, float32 offset casts, DP simplify, MedialAxis, length filter, gap-fill variable width and covered-width subtraction;
-- source `Polygon::contains()` loop nesting and `is_internal_contour()` semantics;
-- source-shaped `chain_extrusion_entities()` graph/reversal behavior;
-- recursive `traverse_loops()` order and contour/hole winding;
-- thin-wall insertion into the same nearest-neighbor collection;
-- post-traversal wall sequence for `OuterInner`, first-layer outer-only brim and `InnerOuterInner`, including the source trailing-second-wall drop quirk;
-- QIDI Clipper2 open-subject supported/unsupported overhang splitting;
-- automatic `generate_lower_polygons_series(width)` for internal/external/smaller-external walls, including source float32 arithmetic, source scaling, scaled-width reuse, hole delta/winding and source short-edge filtering;
-- exact `dist_boundary(width)` calculations and per-wall boundary selection;
-- no-speed overhang branch with degree 5/6 bridge-wall classification and overhang flow;
-- speed grading through `prepare_split_polylines`, 0.6 mm endpoint cuts, source Point/lrint coordinates, float32 distance queries/returns, the non-uniform `{0,10,25,50,75,100}` map, smoothing and binary-double 0.1 terracing;
-- intermediate graded paths retain the normal wall role/flow while fully unsupported paths switch to `erOverhangPerimeter` + overhang flow;
-- recursive speed-graded traversal with external/smaller/internal series+boundary selection and customize flags;
-- end-to-end raw lower slices → lower-series/boundaries → zero/intermediate/unsupported split → recursive traversal → wall sequence.
+- slicer coordinates use `SCALING_FACTOR = 0.00001` mm (100000 source units/mm);
+- preserve source integer geometry until the source converts units;
+- keep Boost.Polygon 1.83 operand/bit semantics, including `BigInt` boundaries already required by the Dart port;
+- keep QIDI/Clipper compatibility quirks already frozen by regression tests;
+- never replace a source oddity with a cleaner algorithm without an independent source oracle.
 
-Raw `thinWalls` and `gapFillPolylines` remain deliberately retained in `ClassicPerimeterResult` as regression evidence in addition to converted extrusion entities.
+## Other major open areas
 
-## Immediate next code task — fuzzy skin policy first
+All top-level gates remain open. Major remaining work includes later classic perimeter/fill stages, Arachne, fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, full G-code state/templates/travel/retract/cooling/multimaterial behavior, project/profile round trips and STEP/source-enabled import formats, scene/editor and Preview parity, Device/cloud/P2P/account/camera/HMS/firmware, calibration, desktop integration, full UI/localization/accessibility, runtime asset publication/verification, and exhaustive reference/differential tests.
 
-The next unresolved classic overhang dependency is fuzzy skin. Do **not** jump directly to random displacement geometry; first port and verify the source policy/identity layer.
+## Working discipline
 
-Source files are pinned in BambuStudio commit `f2b55a5a83f266cf56e06c7943a81a08bebb7fad`:
-
-- `src/libslic3r/FuzzySkin.cpp`;
-- `src/libslic3r/FuzzySkin.hpp`;
-- `src/libslic3r/PrintConfig.hpp`;
-- classic `traverse_loops()` in `PerimeterGenerator.cpp`.
-
-### Exact enum/value rules
-
-`FuzzySkinType` source order:
-
-1. `None`;
-2. `External`;
-3. `All`;
-4. `AllWalls`;
-5. `Disabled_fuzzy`;
-6. `Count` sentinel.
-
-`NoiseType` source order:
-
-1. `Perlin`;
-2. `Billow`;
-3. `RidgedMultifractal`;
-4. `Voronoi`;
-5. `Uniform`;
-6. `Count` sentinel.
-
-`FuzzySkinMode` is `None, FuzzySingle, FuzzyAll, FuzzyExternal, FuzzyHole, Smooth, Mixed`.
-
-### `should_fuzzify()` source behavior
-
-- `None` and `Disabled_fuzzy` always return false;
-- `AllWalls` always returns true;
-- `External` fuzzifies only contour depth 0 (`current_perimeter == 0 && is_contour`);
-- `All` fuzzifies contour/hole at depth 0 but not deeper perimeters.
-
-At the config wrapper level, `layer_id == 0 && !fuzzy_skin_first_layer` returns the original polygon unchanged before geometry transformation.
-
-### Critical slowdown quirk
-
-Source:
-
-```cpp
-return fs == FuzzySkinType::Disabled_fuzzy ||
-       (fs == FuzzySkinType::None && perimeter_regions->empty());
-```
-
-Therefore `None` and `Disabled_fuzzy` both leave the polygon unchanged, but they are **not equivalent** for overhang speed:
-
-- `Disabled_fuzzy` always allows overhang slowdown;
-- `None` allows slowdown only when `perimeter_regions` is empty;
-- actual fuzzy modes do not allow slowdown through this helper.
-
-This distinction should be the first regression fixture.
-
-### Geometry after policy is green
-
-Source `fuzzy_polyline` uses:
-
-- `min_dist = 0.75 * point_distance`;
-- random point-spacing addition in `[0, 0.5 * point_distance]`;
-- carried `distance_left_over`;
-- source `Point(double,double)` / `lrint` placement;
-- displacement perpendicular to the segment;
-- `remove_same_neighbor()` after polygon fuzzing.
-
-`Uniform` noise is nondeterministic (`std::mt19937(std::random_device{})`), so do not invent a stable golden. Introduce an explicit RNG seam/source-equivalent injection before testing it. Perlin/Billow/RidgedMultifractal/Voronoi are deterministic from coordinates and `slice_z` and can be ported with deterministic fixtures once the policy layer is green.
-
-If `perimeter_regions` is non-empty, source uses line segmentation and per-region fuzzy config. Do not silently fuzzify the whole loop; port that segmentation before claiming the branch.
-
-## Current represented parity evidence
-
-The 248-test suite currently covers explicitly scoped subsets of Point/Line/Polygon geometry; Polyline/ArcFitter; Circle/ArcSegment; ThickPolyline; Boost robust predicates/Fortune/Voronoi; MedialAxis; translated Clipper behavior; Flow; Extruder; Surface; ExtrusionEntity; source variable-width and covered-width geometry; source-style G-code formatting/path emission; and the represented classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall-sequence/lower-support/no-speed and speed-graded overhang pipeline.
-
-These are **scoped parity claims only**. All top-level product gates remain open.
-
-## Major open areas
-
-- fuzzy-skin policy, geometry/noise and perimeter-region segmentation;
-- remaining classic fill-surface/fill-no-overlap and later stages;
-- Arachne;
-- full fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
-- complete native G-code templates/state/travel/retract/cooling/acceleration/multi-material behavior;
-- complete project/profile persistence, STEP and source-enabled import formats;
-- scene/editor and full Preview parity;
-- full Device/cloud/P2P/account/camera/HMS/firmware flows and hardware-in-loop validation;
-- all calibration workflows;
-- desktop integrations/installers/updates/single-instance/file-association behavior;
-- complete source UI/state/localization/accessibility/visual parity;
-- exhaustive source/reference/differential tests.
-
-## Runtime asset truth
-
-Earlier local migration work verified 3,657/3,657 copied runtime entries against source SHA-256. The **GitHub repository has not yet published and re-verified the complete real runtime asset set**. Some declared asset directories contain `.gitkeep` solely so Flutter CI can resolve the directory declarations.
-
-Therefore:
-
-- do not call assets complete;
-- do not treat `.gitkeep` as migrated content;
-- do not remove source asset declarations merely to silence tooling;
-- before release parity, publish the actual bytes and verify SHA-256 again from repository/release inputs.
-
-## CI / working discipline
-
-For every meaningful source batch:
-
-1. identify the exact source functions and dependent types/constants;
-2. port literal behavior, including odd branches/rounding/order;
-3. add translated, differential, or source-oracle tests;
-4. run/confirm `.github/workflows/flutter-parity.yml` on pinned Flutter 3.47.2;
-5. do not weaken analyzer or tests to make CI green;
-6. update `MIGRATION_STATUS.md`, `TRACEABILITY.md`, `VALIDATION.md`, and this handoff when scope/evidence/next dependency changes;
-7. never promote a top-level gate until every required branch and reference test for that gate is complete.
-
-If a future edit breaks Boost/Voronoi or Clipper fixtures, assume the port changed source semantics until proven otherwise; do not rewrite goldens to fit the Dart output without an independent C++/source oracle.
+For each source batch: identify exact source functions and dependencies; port literal behavior; add source-oracle/translated/differential tests; confirm `.github/workflows/flutter-parity.yml` on pinned Flutter 3.47.2; do not weaken analyzer/tests; then update migration ledgers and this handoff. A scoped passing test never closes a top-level product gate.
