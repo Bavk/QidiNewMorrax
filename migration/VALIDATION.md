@@ -18,30 +18,26 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-### Cleanup validation run
+### Current normal parity run
 
-GitHub Actions run `34668728368` executed the final analyzer-cleanup candidate before committing it. Observed results:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34679098241` (#152) executed on code commit `704b9900820d4ed479ad192cebbbe1958f0b89fb` and completed successfully:
 
-- `dart format` on the five cleanup files — completed;
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+174: All tests passed!`**;
-- `git diff --check` — completed with no errors.
+- `flutter test --reporter expanded` — **`+185: All tests passed!`**;
+- job conclusion — **success**.
 
-Only after those checks passed did the workflow create commit `015dcdd4cbfb9b292a89642c0d736f2471483691` (`chore: finish analyzer cleanup`).
+This checkpoint includes the classic gap-fill source branch represented so far.
 
-### Independent ordinary parity run
+### Independently green intermediate source milestones
 
-The temporary write-enabled cleanup workflow was removed in commit `2f2c8486e09640dd4d6d03ebc85cee843146d8b2`. The normal read-only `.github/workflows/flutter-parity.yml` then ran independently as run `34668800262` (#139) against that commit and completed successfully:
+Run `34678782013` (#147) completed successfully after wiring classic thin-wall MedialAxis output through `SourceVariableWidth2` using the source external perimeter `Flow`.
 
-- toolchain identity: Flutter `3.47.2`, Dart `3.13.2`;
-- Analyze step: **success**, log line `No issues found!`;
-- Unit and parity tests: **success**, final line `+174: All tests passed!`;
-- job conclusion: **success**.
+Run `34678922719` (#150) completed successfully after adding source integer-domain open-polyline offset and `ExtrusionEntity::polygons_covered_by_width()`-shaped dispatch. Its exact open-butt fixture checks a 1 mm path at width 0.4 mm plus 10 source units of epsilon.
 
-This second run confirms the green state without the temporary cleanup workflow or write permissions.
+Earlier Boost/Voronoi and Clipper compatibility repairs were also re-exercised by all of these later green full-suite runs; no fixture was weakened or skipped.
 
-## What the 174-test suite currently proves
+## What the 185-test suite currently proves
 
 The passing suite contains source-derived, source-formula, or Boost/Clipper oracle coverage for the represented subsets of:
 
@@ -52,21 +48,26 @@ The passing suite contains source-derived, source-formula, or Boost/Clipper orac
 - Boost.Polygon 1.83 robust numeric helpers, site/circle predicates, PPP/PPS/PSS/SSS circle formation, Fortune construction, topology adaptation, and known regression inputs;
 - QIDI Voronoi issue detection, repair angles/remapping, annotation and default direct builder behavior;
 - MedialAxis edge validation/traversal plus `ExPolygon::medial_axis()` post-processing;
-- Clipper/ClipperUtils translated boolean and offset fixtures, including Clipper1 miter-limit and positive-hole orientation compatibility at the Dart Clipper2 adapter boundary;
+- Clipper/ClipperUtils translated boolean and offset fixtures, including Clipper1 miter-limit and positive-hole reconstruction compatibility at the Dart Clipper2 adapter boundary;
+- source open-polyline square/open-butt offset used by extrusion covered-width geometry;
 - Flow formulas/config fallback behavior;
 - Extruder state/math and QIDI variant resolution;
 - Surface classification/copy/assignment quirks;
 - ExtrusionEntity/Path/MultiPath/Loop/Collection represented semantics;
+- QIDI/libslic3r variable-width `ThickPolyline` conversion;
+- represented `polygons_covered_by_width()` dispatch and exact integer-coordinate path coverage;
 - source-style G-code formatter and linear/arc extrusion-path emission subset;
-- classic perimeter onion-shell formulas, QIDI smaller-width outer-loop behavior, and the `detect_thin_wall` MedialAxis branch;
+- classic perimeter onion-shell formulas and QIDI smaller-width outer-loop behavior;
+- classic `detect_thin_wall` through MedialAxis **and** variable-width external-perimeter extrusion conversion;
+- classic gap detection on the extra shell iteration, source float32 offset casts, width-limited gap region construction, closed-polygon Douglas–Peucker, MedialAxis, configured length filtering, gap-fill variable-width extrusion conversion, and covered-width subtraction from the residual region;
 - existing linear-infill and basic writer fixtures.
 
 ## What is not proven by this checkpoint
 
 This checkpoint does **not** establish full application parity. In particular it does not prove:
 
-- the full source Clipper/ClipperUtils regression space beyond translated fixtures;
-- complete `PerimeterGenerator::process_classic()` downstream variable-width conversion, gap fill, overhang/path ordering, or Arachne;
+- the full source Clipper/ClipperUtils regression space beyond translated/current-consumer fixtures;
+- complete `PerimeterGenerator::process_classic()` structural loop → `ExtrusionLoop` conversion, recursive `traverse_loops`, nearest-neighbor `chain_extrusion_entities`, overhang/path-role splitting, fill-surface/fill-no-overlap stages, or Arachne;
 - complete native G-code state/templates/travel/retraction/cooling/acceleration/multi-material behavior;
 - all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
 - complete project/profile persistence, STEP/Assimp-enabled formats, or every repair/warning path;
