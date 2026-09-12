@@ -92,7 +92,7 @@ class SourceArachneVoronoiTransfer2 {
         final vertex0 = SourceVoronoiUtils2.toPoint(
           topology.vertex(edge.vertex0!).point,
         );
-        assert(vertex0 == sourcePoint || edge.secondary);
+        assert(vertex0 == sourcePoint || !edge.secondary);
       }
     }
 
