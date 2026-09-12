@@ -8,6 +8,7 @@ import 'classic_perimeter_traversal.dart';
 import 'classic_wall_sequence.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
+import 'source_fuzzy_skin_policy.dart';
 
 /// Bridges the already-ported classic shell geometry to the source loop tree,
 /// `traverse_loops()` representation and source wall-sequence adjustment.
@@ -241,6 +242,111 @@ class SourceClassicPerimeterPipeline2 {
       brimOuterOnly: brimOuterOnly,
       brimWidth: brimWidth,
     );
+  }
+
+  /// Applies the source fuzzy-skin *policy* around the already-ported classic
+  /// overhang branches without pretending that unported fuzzy geometry exists.
+  ///
+  /// This method is intentionally limited to configurations whose loop geometry
+  /// is provably identity under the base fuzzy config. Painted/per-region fuzzy
+  /// segmentation is rejected until `LineSegmentation` is ported. When geometry
+  /// is identity, speed grading is selected by the exact source expression
+  /// `is_enable_overhang_speed(pg) && fuzzy_skin_allows_overhang_slowdown(pg)`.
+  static List<ExtrusionEntity2> buildExtrusionsFromLowerSlicesWithFuzzyPolicy({
+    required ClassicPerimeterResult result,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required Flow overhangFlow,
+    required double layerHeight,
+    required List<SourcePolygon2>? lowerSlices,
+    required double wallNozzleDiameter,
+    required int layerId,
+    required bool configuredOverhangSpeedEnabled,
+    required SourceFuzzySkinType2 fuzzySkinType,
+    required bool fuzzySkinFirstLayer,
+    required bool perimeterRegionsEmpty,
+    int raftLayers = 0,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
+  }) {
+    if (!perimeterRegionsEmpty) {
+      throw UnsupportedError(
+        'painted/per-region fuzzy geometry requires source LineSegmentation',
+      );
+    }
+
+    final roots = buildLoopTree(result);
+    _requireIdentityFuzzyGeometry(
+      roots,
+      fuzzySkinType: fuzzySkinType,
+      fuzzySkinFirstLayer: fuzzySkinFirstLayer,
+      layerId: layerId,
+    );
+
+    final speedGrading = SourceFuzzySkinPolicy2.enablesOverhangSpeed(
+      configuredOverhangSpeedEnabled: configuredOverhangSpeedEnabled,
+      type: fuzzySkinType,
+      perimeterRegionsEmpty: true,
+    );
+
+    if (speedGrading) {
+      return buildExtrusionsFromLowerSlicesWithSpeedGrading(
+        result: result,
+        externalPerimeterFlow: externalPerimeterFlow,
+        smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+        perimeterFlow: perimeterFlow,
+        overhangFlow: overhangFlow,
+        layerHeight: layerHeight,
+        lowerSlices: lowerSlices,
+        wallNozzleDiameter: wallNozzleDiameter,
+        layerId: layerId,
+        raftLayers: raftLayers,
+        wallSequence: wallSequence,
+        brimOuterOnly: brimOuterOnly,
+        brimWidth: brimWidth,
+      );
+    }
+    return buildExtrusionsFromLowerSlicesWithoutSpeedGrading(
+      result: result,
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      overhangFlow: overhangFlow,
+      layerHeight: layerHeight,
+      lowerSlices: lowerSlices,
+      wallNozzleDiameter: wallNozzleDiameter,
+      layerId: layerId,
+      raftLayers: raftLayers,
+      wallSequence: wallSequence,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+  }
+
+  static void _requireIdentityFuzzyGeometry(
+    Iterable<SourcePerimeterLoop2> loops, {
+    required SourceFuzzySkinType2 fuzzySkinType,
+    required bool fuzzySkinFirstLayer,
+    required int layerId,
+  }) {
+    for (final loop in loops) {
+      SourceFuzzySkinPolicy2.identityPolygon(
+        polygon: loop.polygon,
+        type: fuzzySkinType,
+        layerIndex: layerId,
+        perimeterIndex: loop.depth,
+        isContour: loop.isContour,
+        fuzzySkinFirstLayer: fuzzySkinFirstLayer,
+      );
+      _requireIdentityFuzzyGeometry(
+        loop.children,
+        fuzzySkinType: fuzzySkinType,
+        fuzzySkinFirstLayer: fuzzySkinFirstLayer,
+        layerId: layerId,
+      );
+    }
   }
 
   static SourceClassicPerimeterTraversalSettings2 _traversalSettings({
