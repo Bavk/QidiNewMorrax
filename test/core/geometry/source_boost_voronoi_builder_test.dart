@@ -154,9 +154,14 @@ void main() {
     expect(() => builder.insertPoint(-0x80000001, 0), throwsRangeError);
   });
 
-  test('construct refuses non-source Voronoi substitution while port is partial', () {
-    final builder = SourceBoostVoronoiBuilder2();
-    expect(builder.construct, throwsUnsupportedError);
+  test('construct now executes the directly ported Boost Fortune sweep', () {
+    final snapshot = (SourceBoostVoronoiBuilder2()
+          ..insertPoint(0, 0)
+          ..insertPoint(10, 0))
+        .constructSnapshot();
+    expect(snapshot.cells, hasLength(2));
+    expect(snapshot.edges, hasLength(2));
+    expect(snapshot.vertices, isEmpty);
   });
 }
 
