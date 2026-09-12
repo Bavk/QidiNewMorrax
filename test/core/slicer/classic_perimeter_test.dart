@@ -36,6 +36,8 @@ void main() {
     expect(result.loops, hasLength(2));
     expect(result.thinWalls, isEmpty);
     expect(result.thinWallExtrusions, isEmpty);
+    expect(result.gapFillPolylines, isEmpty);
+    expect(result.gapFillExtrusions, isEmpty);
 
     final outerBounds = result.loops[0].expolygon.contour.bounds;
     expect(outerBounds.min.x, closeTo(0.2, 2e-5));
@@ -151,6 +153,53 @@ void main() {
     }
   });
 
+  test('classic gap fill uses the extra shell iteration and solid infill flow', () {
+    final solidFlow = Flow.nonBridging(
+      width: 0.4,
+      height: 0.2,
+      nozzleDiameter: 0.4,
+    );
+    final result = generator.generate(
+      [ExPolygon2(contour: rectangle(10, 1.0))],
+      ClassicPerimeterSettings(
+        wallLoops: 1,
+        externalPerimeterWidth: 0.4,
+        externalPerimeterSpacing: 0.4,
+        perimeterWidth: 0.4,
+        perimeterSpacing: 0.4,
+        solidInfillFlow: solidFlow,
+        hasGapFill: true,
+        surfaceSimplifyResolution: 0.01,
+      ),
+      layerIndex: 0,
+    );
+
+    // i=0 emits the requested outer wall. i=1 is still evaluated solely to
+    // detect the narrow region that cannot hold another full perimeter.
+    expect(result.loops, hasLength(1));
+    expect(result.loops.single.depth, 0);
+    expect(result.effectiveLoopCount, 1);
+    expect(result.gapFillPolylines, isNotEmpty);
+    expect(result.gapFillExtrusions, isNotEmpty);
+
+    final sourceMin = 0.2 *
+        Slic3rUnits.scaleTruncated(0.4) *
+        (1 - ClassicPerimeterShellGenerator.insetOverlapTolerance);
+    final sourceMax = 2.0 * Slic3rUnits.scaleTruncated(0.4);
+    for (final polyline in result.gapFillPolylines) {
+      expect(polyline.length, greaterThan(0));
+      for (final width in polyline.width) {
+        expect(width, greaterThanOrEqualTo(sourceMin));
+        expect(width, lessThanOrEqualTo(sourceMax));
+      }
+    }
+    for (final entity in result.gapFillExtrusions) {
+      expect(entity.role, ExtrusionRole.gapFill);
+      expect(entity.length, greaterThan(0));
+      expect(entity.minMm3PerMm, greaterThan(0));
+    }
+  });
+
   test('detect_thin_wall requires the source external perimeter Flow', () {
     expect(
       () => generator.generate(
@@ -162,6 +211,24 @@ void main() {
           perimeterWidth: 0.4,
           perimeterSpacing: 0.4,
           detectThinWall: true,
+        ),
+        layerIndex: 0,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('gap fill requires source solid infill Flow', () {
+    expect(
+      () => generator.generate(
+        [ExPolygon2(contour: rectangle(10, 1.0))],
+        const ClassicPerimeterSettings(
+          wallLoops: 1,
+          externalPerimeterWidth: 0.4,
+          externalPerimeterSpacing: 0.4,
+          perimeterWidth: 0.4,
+          perimeterSpacing: 0.4,
+          hasGapFill: true,
         ),
         layerIndex: 0,
       ),
