@@ -19,9 +19,9 @@ As of 2026-09-12:
 - pinned Flutter: **3.47.2**;
 - Dart: **3.13.2**;
 - `flutter analyze`: **No issues found**;
-- `flutter test --reporter expanded`: **185/185 passing**;
-- validated code commit: `704b9900820d4ed479ad192cebbbe1958f0b89fb`;
-- validation workflow: `.github/workflows/flutter-parity.yml` run `34679098241` (#152), conclusion **success**.
+- `flutter test --reporter expanded`: **225/225 passing**;
+- validated code commit: `4a235117a905bf94fe7732031b1b3b8a7556867b`;
+- validation workflow: `.github/workflows/flutter-parity.yml` run `34681600348` (#185), conclusion **success**.
 
 See [`VALIDATION.md`](VALIDATION.md) for the executed evidence and exact scope.
 
@@ -58,6 +58,7 @@ Exact-source algorithms therefore use `SourcePoint2`, `SourceLine2`, `SourcePoly
 The following represented behaviors are now `parity_verified` by the passing suite:
 
 - SourcePoint/SourceLine rounding, orientation, distance, parallel/perpendicular, finite/infinite intersection subset;
+- source `Polygon::contains()` / Clipper1 `PointInPolygon` 0/1/-1 semantics, including boundary-as-inside behavior;
 - QIDI Polyline append/join dedup, clip/extend, reverse, ArcFitter, `PathFittingData`, fitting-aware split/reverse/clip quirks;
 - Circle/ArcSegment construction, clipping, direction and arc helpers;
 - `ThickPolyline` invariants, `thicklines`, reverse, `rebase_at`, `get_width_at`;
@@ -88,9 +89,10 @@ The current pure-Dart Clipper2 adapter is `parity_verified` **for the translated
 - `offset2`, opening/closing building blocks used by current slicer code;
 - Clipper1 miter-limit compatibility: source values below 2 behave as effective limit 2;
 - positive `ExPolygon` hole reconstruction across offset;
-- source open-polyline offset used by `polygons_covered_by_width()`, with square join, open-butt end type and source integer coordinates.
+- source open-polyline offset used by `polygons_covered_by_width()`, with square join, open-butt end type and source integer coordinates;
+- QIDI `Clipper2Utils.cpp` open-subject `intersection_pl_2()` / `diff_pl_2()` behavior in source integer coordinates, including the duplicated-start seam that may split a closed perimeter represented as an open polyline into two difference runs.
 
-The broader Clipper/ClipperUtils module remains `port_started`: the source uses Clipper 6.x plus custom Slic3r/QIDI wrappers, so more original regression coverage is still required before calling the whole subsystem equivalent.
+The broader Clipper/ClipperUtils module remains `port_started`: the source uses Clipper 6.x plus custom Slic3r/QIDI wrappers, so more original regression coverage is still required before calling the whole subsystem equivalent. In particular, automatic lower-layer overhang-series generation still needs the exact source polygon-offset path, including negative-offset behavior and float32 boundaries.
 
 ## Flow / Extruder / Surface / ExtrusionEntity
 
@@ -167,14 +169,23 @@ The currently represented `PerimeterGenerator::process_classic()` subset is `par
 - use of the same external perimeter `Flow` for nozzle-derived minimum width and converted extrusion semantics;
 - source covered-width geometry required by downstream subtraction;
 - classic gap collection on the extra shell iteration;
-- gap min/max width formulas, explicit float32 offset casts, opening/max-width clipping, closed-polygon Douglas–Peucker, MedialAxis, configured short-line removal, `variable_width(... erGapFill, solid_infill_flow ...)`, and covered-width subtraction from `last`.
+- gap min/max width formulas, explicit float32 offset casts, opening/max-width clipping, closed-polygon Douglas–Peucker, MedialAxis, configured short-line removal, `variable_width(... erGapFill, solid_infill_flow ...)`, and covered-width subtraction from `last`;
+- source structural loop nesting: holes first, then contour nesting, using source `Polygon::contains()` semantics;
+- structural loop → `ExtrusionLoop2` conversion with external/internal role, contour/hole/internal-contour loop-role flags, second-perimeter bit, selected source Flow and polygon split-at-first-point behavior;
+- literal `chain_extrusion_entities()` graph semantics, including constrained reversal, cycle prevention, loop reversal suppression and source closest-point fallback;
+- thin-wall variable-width entities inserted into the same nearest-neighbor chain with the source far-bbox-corner start-point rule;
+- recursive `traverse_loops()` ordering and winding: contour children before contour, hole before children, contour forced CCW and hole forced CW;
+- source wall-sequence adjustment for `OuterInner`, first-layer outer-only brim, and `InnerOuterInner`, including the source trailing-second-wall drop quirk;
+- QIDI Clipper2 open-subject supported/unsupported perimeter splitting for the branch where overhang-speed grading is disabled;
+- supported path role/flow preservation, unsupported `erOverhangPerimeter` role/overhang Flow, and `detect_bridge_wall()` degree 5 vs 6 classification;
+- `layer_id > raft_layers` activation boundary and end-to-end shell → loop tree → overhang split → traversal → wall-sequence pipeline.
 
 This does **not** complete `process_classic()`. Still pending include:
 
-- structural loop → `ExtrusionLoop` construction with exact loop-role flags;
-- recursive `traverse_loops()` nesting/orientation semantics;
-- `chain_extrusion_entities()` nearest-neighbor ordering/reversal and thin-wall integration into that chain;
-- overhang clipping/degree/bridge-wall path splitting and source role/flow selection;
+- automatic `generate_lower_polygons_series(width)` construction from lower slices, including source float32 arithmetic, Clipper1-style positive/negative polygon offsets and exact source scaling;
+- overhang-speed grading / `detect_overhang_degree()` for intermediate degrees 1–4 and its distance-boundary math;
+- fuzzy-skin application and `fuzzy_skin_allows_overhang_slowdown()` gating;
+- remaining lower-polygon bbox-clipping/performance wrapper details where they may expose observable source behavior;
 - remaining fill-surface/fill-no-overlap and later perimeter stages;
 - Arachne variable-width wall generation.
 
@@ -208,13 +219,14 @@ The earlier local audit verified 3,657/3,657 copied runtime entries against sour
 
 ## Immediate next dependency order
 
-1. Port structural classic loop → `ExtrusionLoop` conversion and source loop-role/winding semantics.
-2. Port recursive `traverse_loops()` plus exact `chain_extrusion_entities()` ordering/reversal, including thin walls in the same chain.
-3. Continue `PerimeterGenerator::process_classic()` through overhang/path-role/covered-area/fill-surface branches.
-4. Expand Clipper/ClipperUtils translated regression coverage as new source consumers require it.
-5. Continue Arachne/surfaces/fill/bridge/support/seam toolpath modules.
-6. Expand the native G-code state machine and integrate the exact ExtrusionEntity model into Preview/G-code consumers.
-7. Continue project/profile/editor/device/cloud/calibration/desktop/UI parity in parallel.
-8. Publish and SHA-verify the real runtime assets before any release-complete claim.
+1. Port automatic `PerimeterGenerator::generate_lower_polygons_series(width)` and `dist_boundary(width)` with source float32/scaling semantics and source-compatible polygon offsets.
+2. Port `detect_overhang_degree()` / overhang-speed grading for degrees 1–4 and verify path segmentation against source/oracle fixtures.
+3. Port fuzzy-skin interaction and the exact slowdown gating branch, then close the remaining represented `traverse_loops()` overhang variants.
+4. Continue `process_classic()` through fill-surface/fill-no-overlap and later perimeter stages.
+5. Expand Clipper/ClipperUtils translated regression coverage as each new source consumer requires it, especially negative/multi-polygon offset edge cases.
+6. Continue Arachne/surfaces/fill/bridge/support/seam toolpath modules.
+7. Expand the native G-code state machine and integrate the exact ExtrusionEntity model into Preview/G-code consumers.
+8. Continue project/profile/editor/device/cloud/calibration/desktop/UI parity in parallel.
+9. Publish and SHA-verify the real runtime assets before any release-complete claim.
 
 No item may be called complete because it merely looks equivalent or passes only common-case smoke tests.
