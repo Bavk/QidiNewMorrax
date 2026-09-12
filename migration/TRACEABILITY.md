@@ -16,14 +16,16 @@ The source of truth for acceptance is [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md)
 
 Current normal GitHub Actions checkpoint:
 
-- `.github/workflows/flutter-parity.yml` run `34679098241` (#152) on code commit `704b9900820d4ed479ad192cebbbe1958f0b89fb`;
+- `.github/workflows/flutter-parity.yml` run `34681600348` (#185) on code commit `4a235117a905bf94fe7732031b1b3b8a7556867b`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - `flutter analyze` = **No issues found**;
-- `flutter test --reporter expanded` = **185/185 passing**;
+- `flutter test --reporter expanded` = **225/225 passing**;
 - job conclusion = **success**.
 
 Relevant independently green intermediate runs in the same source chain:
 
+- run `34681547786` (#183): **224/224**, open-subject Clipper2 seam + no-speed overhang splitter integrated into recursive traversal;
+- run `34680042259` (#172): classic wall-sequence helper/source quirks;
 - run `34678782013` (#147): thin-wall MedialAxis output → source variable-width extrusion integration;
 - run `34678922719` (#150): source open-polyline offset and `polygons_covered_by_width()` dispatch.
 
@@ -33,6 +35,7 @@ Relevant independently green intermediate runs in the same source chain:
 |---|---|---|---|---|
 | libslic3r scaling constants / integer Point | `Slic3rUnits`, `SourcePoint2` | source-formula geometry tests | `parity_verified` | Broader source geometry APIs remain outside this row. |
 | `Line` represented math | `SourceLine2` | translated/source-formula Line tests | `parity_verified` | Only represented Line methods are claimed. |
+| `Polygon::contains()` / Clipper1 PointInPolygon | `SourcePolygon2.pointInPolygon()` / `contains()` | 0/1/-1, boundary, orientation, concave fixtures | `parity_verified` | Broader Polygon APIs remain open. |
 | QIDI `Polyline` append/clip/extend/reverse and fitting metadata | `SourcePolyline2`, `PathFittingData2` | Polyline regression tests including exact-length and arc metadata quirks | `parity_verified` | Other Polyline APIs/consumers pending as encountered. |
 | Arc fitting / Douglas–Peucker represented helpers | `SourceArcFitter2`, `SourceCircle2`, `SourceArcSegment2` | ArcFitter/Circle/ArcSegment tests plus classic closed-polygon gap consumer | `parity_verified` | Broader arc/simplification consumers still depend on later toolpath stages. |
 | `ThickPolyline` represented behavior | `ThickPolyline2` | width-cardinality, reverse, `rebase_at`, `get_width_at` tests | `parity_verified` | Additional downstream consumers may expose more quirks. |
@@ -57,7 +60,8 @@ Implementation constraints that must not be simplified:
 | Clipper1 miter-limit compatibility | adapter `_clipper2MiterLimit` | source fixture using low miter limit | `parity_verified` | Keep adapter boundary explicit; do not rely on Clipper2 default semantics. |
 | positive ExPolygon hole reconstruction | explicit contour/hole offset + difference | expanded-hole fixture | `parity_verified` | More multi-hole/nested cases pending. |
 | open Polyline offset for covered-width geometry | `offsetSourceOpenPolyline` | exact source-coordinate square/open-butt fixture | `parity_verified` | Other open-line wrappers/end types remain open. |
-| complete Slic3r/QIDI ClipperUtils | partial adapter | incomplete original regression coverage | `port_started` | Translate remaining source tests and wrappers. |
+| QIDI Clipper2 open-subject intersection/difference | `intersectionSourceOpenPolylines`, `differenceSourceOpenPolylines` | source-integer line fixtures + duplicated-start seam golden | `parity_verified` | Other open/closed mixed operations remain open. |
+| complete Slic3r/QIDI ClipperUtils | partial adapter | incomplete original regression coverage | `port_started` | Translate remaining source tests and wrappers; lower-series negative polygon offsets are the next consumer. |
 
 ## Slicer semantic-model traceability
 
@@ -67,7 +71,7 @@ Implementation constraints that must not be simplified:
 | Extruder represented E/retract/variant behavior | `ExtruderState`, `QidiConfigVariantResolver` | exact state/math and QIDI resolver tests | `parity_verified` | Full native print-state integration pending. |
 | Surface represented classification/copy/assignment quirks | Dart Surface model | source-style Surface tests | `parity_verified` | Surface-processing pipeline remains incomplete. |
 | ExtrusionRole/Path/MultiPath/Loop/Collection represented behavior | Dart extrusion entity model | source-semantic regression tests | `parity_verified` | Remaining entity operations/consumers pending. |
-| QIDI/libslic3r variable-width ThickPolyline conversion | `SourceVariableWidth2` | seven translated/source-specific width segmentation and loop tests | `parity_verified` | Later ordering/overhang consumers remain open. |
+| QIDI/libslic3r variable-width ThickPolyline conversion | `SourceVariableWidth2` | seven translated/source-specific width segmentation and loop tests | `parity_verified` | Later unrepresented consumers remain open. |
 | `ExtrusionEntity::polygons_covered_by_width()` represented dispatch | `extrusion_covered_geometry.dart` + integer open-line Clipper adapter | exact path coverage fixture + recursive collection/iterable fixture | `parity_verified` | Other source entity geometry methods remain open. |
 | Linear infill current subset | `LinearInfill` | square/hole clipping fixtures | `implemented_unverified` | Not enough source-pattern/reference coverage for parity claim. |
 
@@ -76,17 +80,23 @@ Implementation constraints that must not be simplified:
 | Source behavior | Dart replacement | Evidence | Status | Remaining scope |
 |---|---|---|---|---|
 | common onion-shell inset formulas | `ClassicPerimeterShellGenerator` | equal-flow source-formula fixture | `parity_verified` | Later `process_classic()` stages remain open. |
-| alternate extra wall count | same | odd/even layer test | `parity_verified` | Other wall ordering rules pending. |
-| QIDI smaller-external-width decision | same | narrow-loop regression | `parity_verified` | Structural extrusion loop construction/order still pending. |
+| alternate extra wall count | same | odd/even layer test | `parity_verified` | Other wall-count/config branches still open. |
+| QIDI smaller-external-width decision | same | narrow-loop regression | `parity_verified` | Broader source cases still open. |
 | source quirk `last = offsets` | same | regression proving smaller-width outer loop does not seed inner loops | `parity_verified` | Keep exact behavior in future refactors. |
-| `detect_thin_wall` geometric branch | Clipper difference/opening → `SourceExPolygonMedialAxis2` → `ThickPolyline2` | end-to-end thin-wall tests | `parity_verified` | Later loop-tree ordering remains open. |
+| `detect_thin_wall` geometric branch | Clipper difference/opening → `SourceExPolygonMedialAxis2` → `ThickPolyline2` | end-to-end thin-wall tests | `parity_verified` | Other thin-wall source cases may still be added. |
 | source external Flow dependency | `ClassicPerimeterSettings.externalPerimeterFlow` | required-input + converted-extrusion tests | `parity_verified` | Full config caller wiring remains later integration work. |
-| variable-width conversion after thin-wall MedialAxis | `SourceVariableWidth2` wired into `ClassicPerimeterResult.thinWallExtrusions` | run #147 end-to-end test | `parity_verified` | Thin walls still need insertion into source nearest-neighbor loop chain. |
+| variable-width conversion after thin-wall MedialAxis | `SourceVariableWidth2` wired into `ClassicPerimeterResult.thinWallExtrusions` | run #147 end-to-end test | `parity_verified` | Thin walls are now also integrated into traversal chaining. |
 | classic gap collection extra iteration | source-literal i>0 gap difference in `ClassicPerimeterShellGenerator` | classic gap fixture | `parity_verified` | More complex gap geometries should be added as later regressions appear. |
 | classic gap region filtering/MedialAxis/variable width | opening + max-width subtraction + DP + MedialAxis + length filter + `SourceVariableWidth2` | classic gap fixture, run #152 | `parity_verified` | Full surrounding process_classic path remains incomplete. |
 | gap covered-width subtraction from `last` | `ExtrusionEntitiesCoveredGeometry2` + `differenceEx` | covered-width unit tests + classic gap end-to-end run | `parity_verified` | Other covered-area source helpers remain open. |
-| structural loop → `ExtrusionLoop`, recursive `traverse_loops`, `chain_extrusion_entities` | partial structural loop values only | no complete source-order evidence yet | `port_started` | Immediate next source unit. |
-| overhang clipping/role/flow path splitting | not complete | incomplete | `pending` / `port_started` | Follow traversal/order port. |
+| loop nesting / `is_internal_contour()` | `SourcePerimeterLoop2`, `SourceClassicPerimeterLoopNester2`, `SourcePolygon2.contains` | hole/contour nesting fixtures | `parity_verified` | More pathological containment inputs may be added later. |
+| source `chain_extrusion_entities()` ordering/reversal | `SourceShortestPath2` | reversal, fallback, loop suppression, reorder fixtures | `parity_verified` | KD-tree is replaced only as an acceleration detail; tie-specific oracle coverage can still be expanded. |
+| structural loop → `ExtrusionLoop` and recursive `traverse_loops()` | `SourceClassicPerimeterTraversal2` | role/flow/loop-role, recursive order, winding, thin-wall-chain tests | `parity_verified` | Fuzzy-skin and speed-graded overhang branches remain outside this row. |
+| source wall sequence | `SourceClassicWallSequence2` + pipeline integration | outer-inner, brim, inner-outer-inner and source quirk fixtures | `parity_verified` | Other higher-level config interactions may remain. |
+| no-speed `detect_overhang_wall` supported/unsupported split | `SourceClassicOverhangSplitter2`, traversal/pipeline integration | open-subject seam, role/flow, degree 5/6, raft boundary, e2e pipeline fixtures; runs #183/#185 | `parity_verified` | Speed grading 1–4, fuzzy skin and automatic lower-series construction remain open. |
+| `generate_lower_polygons_series(width)` / `dist_boundary(width)` | not yet wired | source located; no Dart/oracle checkpoint yet | `pending` | Immediate next source dependency; preserve float32/scaling and Clipper offset behavior. |
+| overhang speed grading / `detect_overhang_degree()` | not ported | incomplete | `pending` | Port after lower-series generation. |
+| fuzzy-skin overhang interaction | not ported | incomplete | `pending` | Port source transform + slowdown gating after graded overhang path. |
 | remaining fill-surface/fill-no-overlap stages | partial | incomplete | `port_started` | Continue line-by-line. |
 | Arachne wall generator | not ported | none | `pending` | Full source port required. |
 
