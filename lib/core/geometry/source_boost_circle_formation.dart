@@ -2,18 +2,14 @@ import 'dart:math' as math;
 
 import 'source_boost_circle_formation_pps.dart';
 import 'source_boost_circle_formation_pss.dart';
+import 'source_boost_circle_formation_sss.dart';
 import 'source_boost_extended_numeric.dart';
 import 'source_boost_robust_fpt.dart';
 import 'source_boost_voronoi_predicates.dart';
 import 'source_boost_voronoi_structures.dart';
 
-/// Incremental port of Boost.Polygon 1.83
-/// `circle_formation_predicate` + `lazy/mp_circle_formation_functor`.
-///
-/// PPP, PPS and PSS are represented with their lazy robust formulas and
-/// selective multiprecision fallback. SSS remains an explicit unsupported
-/// branch until its exact source formulas are ported; Fortune construction must
-/// not approximate it.
+/// Boost.Polygon 1.83 `circle_formation_predicate` plus its lazy and selective
+/// multiprecision circle-formation functors for PPP/PPS/PSS/SSS.
 class BoostCircleFormation2 {
   const BoostCircleFormation2();
 
@@ -131,9 +127,10 @@ class BoostCircleFormation2 {
         circle,
       );
     } else {
-      throw UnsupportedError(
-        'Boost SSS circle formation is still being ported.',
-      );
+      if (!BoostVoronoiPredicates2.circleExistsSss(site1, site2, site3)) {
+        return false;
+      }
+      const BoostSssCircleFormation2().form(site1, site2, site3, circle);
     }
 
     if (_liesOutsideVerticalSegment(circle, site1) ||
