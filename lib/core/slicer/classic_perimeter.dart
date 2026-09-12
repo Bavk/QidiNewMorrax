@@ -5,6 +5,9 @@ import '../geometry/source_geometry.dart';
 import '../geometry/source_medial_axis.dart';
 import '../geometry/source_polygon.dart';
 import '../geometry/thick_polyline.dart';
+import 'extrusion_entity.dart';
+import 'flow.dart';
+import 'variable_width.dart';
 
 class ClassicPerimeterSettings {
   const ClassicPerimeterSettings({
@@ -13,7 +16,7 @@ class ClassicPerimeterSettings {
     required this.externalPerimeterSpacing,
     required this.perimeterWidth,
     required this.perimeterSpacing,
-    this.externalNozzleDiameter,
+    this.externalPerimeterFlow,
     this.extraPerimeters = 0,
     this.alternateExtraWall = false,
     this.preciseOuterWall = false,
@@ -28,10 +31,11 @@ class ClassicPerimeterSettings {
   final double perimeterWidth;
   final double perimeterSpacing;
 
-  /// Source `ext_perimeter_flow.nozzle_diameter()`. It is required only when
-  /// [detectThinWall] is enabled. The port deliberately does not guess this
-  /// value from extrusion width because the C++ source does not do that.
-  final double? externalNozzleDiameter;
+  /// Source `ext_perimeter_flow`. Classic thin-wall generation uses this same
+  /// object twice: its nozzle diameter defines `min_width = nozzle / 3`, then
+  /// the resulting ThickPolylines are passed to `variable_width()` with the
+  /// complete flow to construct extrusion entities.
+  final Flow? externalPerimeterFlow;
 
   final int extraPerimeters;
   final bool alternateExtraWall;
@@ -58,6 +62,7 @@ class ClassicPerimeterResult {
     required this.loops,
     required this.innerRegion,
     required this.thinWalls,
+    required this.thinWallExtrusions,
     required this.effectiveLoopCount,
   });
 
@@ -65,9 +70,14 @@ class ClassicPerimeterResult {
   final List<ExPolygon2> innerRegion;
 
   /// Direct output of source `ExPolygon::medial_axis()` in source-coordinate
-  /// units. Converting these to variable-width `ExtrusionPath`s is a separate
-  /// source stage and is intentionally not folded into this shell result.
+  /// units. Kept as explicit evidence even though the source consumer stage is
+  /// now represented by [thinWallExtrusions].
   final List<ThickPolyline2> thinWalls;
+
+  /// Source `variable_width(thin_walls, erExternalPerimeter,
+  /// ext_perimeter_flow, ...)` output. The later source chaining / recursive
+  /// loop traversal stage is intentionally not claimed here yet.
+  final List<ExtrusionEntity2> thinWallExtrusions;
 
   final int effectiveLoopCount;
 }
@@ -104,6 +114,7 @@ class ClassicPerimeterShellGenerator {
         loops: const [],
         innerRegion: List.unmodifiable(surfaces),
         thinWalls: const [],
+        thinWallExtrusions: const [],
         effectiveLoopCount: 0,
       );
     }
@@ -117,6 +128,7 @@ class ClassicPerimeterShellGenerator {
         loops: const [],
         innerRegion: List.unmodifiable(surfaces),
         thinWalls: const [],
+        thinWallExtrusions: const [],
         effectiveLoopCount: 0,
       );
     }
@@ -174,8 +186,8 @@ class ClassicPerimeterShellGenerator {
             _unscale(extMinSpacing / 2.0 - 1.0),
           );
 
-          final nozzleDiameter = settings.externalNozzleDiameter!;
-          final minWidth = _scale(nozzleDiameter / 3.0);
+          final externalFlow = settings.externalPerimeterFlow!;
+          final minWidth = _scale(externalFlow.nozzleDiameter / 3.0);
 
           // `offset()` returns polygons in C++; geometry is represented here as
           // ExPolygons and flattened with source contour/hole winding before
@@ -283,10 +295,21 @@ class ClassicPerimeterShellGenerator {
       last = offsets;
     }
 
+    final thinWallExtrusions = <ExtrusionEntity2>[];
+    if (thinWalls.isNotEmpty) {
+      const SourceVariableWidth2().variableWidth(
+        thinWalls,
+        ExtrusionRole.externalPerimeter,
+        settings.externalPerimeterFlow!,
+        thinWallExtrusions,
+      );
+    }
+
     return ClassicPerimeterResult(
       loops: List.unmodifiable(output),
       innerRegion: List.unmodifiable(last),
       thinWalls: List.unmodifiable(thinWalls),
+      thinWallExtrusions: List.unmodifiable(thinWallExtrusions),
       effectiveLoopCount: effectiveLoopNumber + 1,
     );
   }
@@ -337,12 +360,11 @@ class ClassicPerimeterShellGenerator {
         settings.perimeterSpacing <= 0) {
       throw ArgumentError('perimeter widths and spacings must be > 0');
     }
-    if (settings.detectThinWall &&
-        (settings.externalNozzleDiameter == null ||
-            settings.externalNozzleDiameter! <= 0)) {
+    if (settings.detectThinWall && settings.externalPerimeterFlow == null) {
       throw ArgumentError(
-        'externalNozzleDiameter must be > 0 when detectThinWall is enabled; '
-        'the source uses ext_perimeter_flow.nozzle_diameter() directly.',
+        'externalPerimeterFlow is required when detectThinWall is enabled; '
+        'the source uses ext_perimeter_flow for both nozzle diameter and '
+        'variable-width extrusion conversion.',
       );
     }
   }
