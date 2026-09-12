@@ -67,7 +67,7 @@ void main() {
     expect(paths.single.height, 0.2);
   });
 
-  test('half-supported loop splits supported and unsupported source runs', () {
+  test('half-supported loop preserves supported run and open-subject seam', () {
     final paths = splitter.splitWithoutSpeedGrading(
       polygon: box(0, 0, 100, 100),
       lowerPolygonsSeries: [
@@ -79,23 +79,29 @@ void main() {
       layerHeight: 0.2,
     );
 
-    expect(paths, hasLength(2));
+    expect(paths, hasLength(3));
     final supported = paths.singleWhere(
       (path) => path.role == ExtrusionRole.externalPerimeter,
     );
-    final unsupported = paths.singleWhere(
-      (path) => path.role == ExtrusionRole.overhangPerimeter,
-    );
+    final unsupported = paths
+        .where((path) => path.role == ExtrusionRole.overhangPerimeter)
+        .toList(growable: false);
 
     expect(supported.getOverhangDegree(), 0);
     expect(supported.mm3PerMm, closeTo(supportedFlow.mm3PerMm, 1e-12));
     expect(supported.height, 0.2);
 
-    expect(unsupported.getOverhangDegree(), 5);
-    expect(unsupported.mm3PerMm, closeTo(overhangFlow.mm3PerMm, 1e-12));
-    expect(unsupported.width, overhangFlow.width);
-    expect(unsupported.height, overhangFlow.height);
-    expect(unsupported.polyline.isClosed, false);
+    expect(unsupported, hasLength(2));
+    expect(
+      unsupported.map((path) => path.getOverhangDegree()).toSet(),
+      {5, 6},
+    );
+    for (final path in unsupported) {
+      expect(path.mm3PerMm, closeTo(overhangFlow.mm3PerMm, 1e-12));
+      expect(path.width, overhangFlow.width);
+      expect(path.height, overhangFlow.height);
+      expect(path.polyline.isClosed, false);
+    }
   });
 
   test('fully unsupported loop uses overhang role and flow', () {
