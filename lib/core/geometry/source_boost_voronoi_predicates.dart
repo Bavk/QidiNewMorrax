@@ -43,8 +43,8 @@ class BoostVoronoiPredicates2 {
 
     final l = (a1 * b2) & _uint64Mask;
     final r = (b1 * a2) & _uint64Mask;
-    final lhsNegative = a1Signed < 0 ^ b2Signed < 0;
-    final rhsNegative = a2Signed < 0 ^ b1Signed < 0;
+    final lhsNegative = (a1Signed < 0) != (b2Signed < 0);
+    final rhsNegative = (a2Signed < 0) != (b1Signed < 0);
 
     if (lhsNegative) {
       if (rhsNegative) {
@@ -86,7 +86,6 @@ class BoostVoronoiPredicates2 {
   static bool pointLess(SourcePoint2 lhs, SourcePoint2 rhs) =>
       lhs.x == rhs.x ? lhs.y < rhs.y : lhs.x < rhs.x;
 
-  /// Boost `event_comparison_predicate(site, site)`.
   static bool siteLess(BoostSiteEvent2 lhs, BoostSiteEvent2 rhs) {
     if (lhs.x0 != rhs.x0) return lhs.x0 < rhs.x0;
 
@@ -128,7 +127,6 @@ class BoostVoronoiPredicates2 {
     return lhs.y < rhs.y;
   }
 
-  /// Boost `distance_predicate::operator()`.
   static bool distanceLess(
     BoostSiteEvent2 leftSite,
     BoostSiteEvent2 rightSite,
@@ -149,8 +147,6 @@ class BoostVoronoiPredicates2 {
         : _segmentSegmentDistance(leftSite, rightSite, newPoint);
   }
 
-  /// Boost `node_comparison_predicate` used as the std::map comparator for the
-  /// beach-line bisector tree.
   static bool nodeLess(
     BoostBeachLineNodeKey2 node1,
     BoostBeachLineNodeKey2 node2,
@@ -183,7 +179,6 @@ class BoostVoronoiPredicates2 {
     return !site2.isSegment ? y2.direction > 0 : true;
   }
 
-  // Boost `circle_existence_predicate::ppp`.
   static bool circleExistsPpp(
     BoostSiteEvent2 site1,
     BoostSiteEvent2 site2,
@@ -192,7 +187,6 @@ class BoostVoronoiPredicates2 {
       orientation(site1.point0, site2.point0, site3.point0) ==
       BoostOrientation2.right;
 
-  // Boost `circle_existence_predicate::pps`.
   static bool circleExistsPps(
     BoostSiteEvent2 site1,
     BoostSiteEvent2 site2,
@@ -216,7 +210,6 @@ class BoostVoronoiPredicates2 {
     return true;
   }
 
-  // Boost `circle_existence_predicate::pss`.
   static bool circleExistsPss(
     BoostSiteEvent2 site1,
     BoostSiteEvent2 site2,
@@ -281,7 +274,7 @@ class BoostVoronoiPredicates2 {
 
     final dist1 = _distanceToPointArc(leftSite, newPoint);
     final dist2 = _distanceToSegmentArc(rightSite, newPoint);
-    return reverseOrder ^ (dist1 < dist2);
+    return reverseOrder != (dist1 < dist2);
   }
 
   static bool _segmentSegmentDistance(
@@ -302,8 +295,8 @@ class BoostVoronoiPredicates2 {
     BoostSiteEvent2 site,
     SourcePoint2 point,
   ) {
-    final dx = site.x - point.x.toDouble();
-    final dy = site.y - point.y.toDouble();
+    final dx = site.x.toDouble() - point.x.toDouble();
+    final dy = site.y.toDouble() - point.y.toDouble();
     return (dx * dx + dy * dy) / (2.0 * dx);
   }
 
@@ -312,12 +305,12 @@ class BoostVoronoiPredicates2 {
     SourcePoint2 point,
   ) {
     if (isVertical(site)) {
-      return (site.x - point.x.toDouble()) * 0.5;
+      return (site.x.toDouble() - point.x.toDouble()) * 0.5;
     }
     final segment0 = site.point0;
     final segment1 = site.point1;
-    final a1 = segment1.x - segment0.x.toDouble();
-    final b1 = segment1.y - segment0.y.toDouble();
+    final a1 = segment1.x.toDouble() - segment0.x.toDouble();
+    final b1 = segment1.y.toDouble() - segment0.y.toDouble();
     var k = math.sqrt(a1 * a1 + b1 * b1);
     if (b1 >= 0) {
       k = 1.0 / (b1 + k);
@@ -350,10 +343,10 @@ class BoostVoronoiPredicates2 {
           : _BoostFastDistanceResult2.more;
     }
 
-    final difX = newPoint.x - sitePoint.x.toDouble();
-    final difY = newPoint.y - sitePoint.y.toDouble();
-    final a = segmentEnd.x - segmentStart.x.toDouble();
-    final b = segmentEnd.y - segmentStart.y.toDouble();
+    final difX = newPoint.x.toDouble() - sitePoint.x.toDouble();
+    final difY = newPoint.y.toDouble() - sitePoint.y.toDouble();
+    final a = segmentEnd.x.toDouble() - segmentStart.x.toDouble();
+    final b = segmentEnd.y.toDouble() - segmentStart.y.toDouble();
 
     if (isVertical(rightSite)) {
       if (newPoint.y < sitePoint.y && !reverseOrder) {
@@ -386,7 +379,7 @@ class BoostVoronoiPredicates2 {
     final fastRightExpr = (2.0 * b) * difX * difY;
     final exprCmp = ulpCompare(fastLeftExpr, fastRightExpr, 4);
     if (exprCmp != BoostUlpResult2.equal) {
-      if ((exprCmp == BoostUlpResult2.more) ^ reverseOrder) {
+      if ((exprCmp == BoostUlpResult2.more) != reverseOrder) {
         return reverseOrder
             ? _BoostFastDistanceResult2.less
             : _BoostFastDistanceResult2.more;
@@ -425,8 +418,6 @@ class BoostVoronoiPredicates2 {
   static bool _comparisonYLess(_ComparisonY2 a, _ComparisonY2 b) =>
       a.y == b.y ? a.direction < b.direction : a.y < b.y;
 
-  /// Literal Boost 1.83 `ulp_comparison<fpt64>` ordering. Note that its mapped
-  /// integer order is reversed, hence `llA > llB` returns LESS.
   static BoostUlpResult2 ulpCompare(double a, double b, int maxUlps) {
     var llA = _doubleBits(a);
     var llB = _doubleBits(b);
