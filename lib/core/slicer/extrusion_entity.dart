@@ -278,10 +278,9 @@ class ExtrusionPath2 extends ExtrusionEntity2 {
       destination.addAll(polyline.points);
 
   @override
-  double get totalVolume => mm3PerMm * Slic3rUnits.unscale(length.round());
+  double get totalVolume =>
+      mm3PerMm * Slic3rUnits.unscaleDouble(length);
 
-  /// Exact supplied source setter: only perimeter/support roles accept and
-  /// clamp an overhang degree; other roles leave the stored value untouched.
   void setOverhangDegree(int overhang) {
     if (isPerimeterRole(role) || isSupportRole(role)) {
       overhangDegree = overhang < 0 ? 0 : (overhang > 10 ? 10 : overhang);
@@ -301,9 +300,6 @@ class ExtrusionPath2 extends ExtrusionEntity2 {
 
   int getCurveDegree() => curveDegree;
 
-  /// Exact source equality set for `ExtrusionPath::can_merge()`. In
-  /// particular it intentionally ignores polyline, overhang_degree,
-  /// customize_flag and cooling_node.
   bool canMerge(ExtrusionPath2 other) =>
       curveDegree == other.curveDegree &&
       mm3PerMm == other.mm3PerMm &&
@@ -388,8 +384,32 @@ class ExtrusionPathOriented2 extends ExtrusionPath2 {
           canReverse: false,
         );
 
+  factory ExtrusionPathOriented2.sourceCopy(
+    ExtrusionPathOriented2 source,
+  ) {
+    final copy = ExtrusionPathOriented2(
+      role: source.role,
+      mm3PerMm: source.mm3PerMm,
+      width: source.width,
+      height: source.height,
+      polyline: source.polyline.copy(),
+    );
+    copy
+      ..overhangDegree = source.overhangDegree
+      ..curveDegree = source.curveDegree
+      ..smoothSpeed = source.smoothSpeed
+      ..setForceNoExtrusion(source.isForceNoExtrusion)
+      ..customizeFlag = source.customizeFlag
+      ..coolingNode = source.coolingNode;
+    return copy;
+  }
+
   @override
   bool get canReverse => false;
+
+  @override
+  ExtrusionPathOriented2 cloneEntity() =>
+      ExtrusionPathOriented2.sourceCopy(this);
 }
 
 class ExtrusionMultiPath2 extends ExtrusionEntity2 {
@@ -401,8 +421,6 @@ class ExtrusionMultiPath2 extends ExtrusionEntity2 {
   })  : paths = [for (final path in paths) ExtrusionPath2.sourceCopy(path)],
         _canReverse = canReverse;
 
-  /// Mirrors the source single-path constructor, which copies that path's
-  /// can_reverse value instead of leaving the multipath default true.
   factory ExtrusionMultiPath2.fromSinglePath(ExtrusionPath2 path) =>
       ExtrusionMultiPath2(paths: [path], canReverse: path.canReverse);
 
@@ -420,12 +438,8 @@ class ExtrusionMultiPath2 extends ExtrusionEntity2 {
   void setReverseAllowedFalse() => _canReverse = false;
 
   @override
-  ExtrusionMultiPath2 cloneEntity() => ExtrusionMultiPath2(
-        paths: paths,
-        canReverse: _canReverse,
-        customizeFlag: customizeFlag,
-        coolingNode: coolingNode,
-      );
+  ExtrusionMultiPath2 cloneEntity() =>
+      ExtrusionMultiPath2(paths: paths, canReverse: _canReverse);
 
   @override
   void reverse() {
@@ -461,7 +475,7 @@ class ExtrusionMultiPath2 extends ExtrusionEntity2 {
     final out = SourcePolyline2();
     if (paths.isEmpty) return out;
 
-    out.points.add(paths.first.polyline.points.first);
+    var expectedLength = 0;
     for (var i = 0; i < paths.length; i++) {
       final current = paths[i].polyline;
       if (current.points.isEmpty) {
@@ -470,7 +484,16 @@ class ExtrusionMultiPath2 extends ExtrusionEntity2 {
       if (i > 0 && paths[i - 1].polyline.lastPoint != current.firstPoint) {
         throw StateError('ExtrusionMultiPath paths are not continuous');
       }
-      out.points.addAll(current.points.skip(1));
+      expectedLength += current.points.length;
+    }
+    expectedLength -= paths.length - 1;
+    if (expectedLength <= 0) {
+      throw StateError('ExtrusionMultiPath source point count must be > 0');
+    }
+
+    out.points.add(paths.first.polyline.points.first);
+    for (final path in paths) {
+      out.points.addAll(path.polyline.points.skip(1));
     }
     return out;
   }
@@ -661,15 +684,11 @@ class ExtrusionEntityCollection2 extends ExtrusionEntity2 {
         noSort: noSort,
         isReverse: _isReverse,
         loopNodeRange: loopNodeRange,
-        customizeFlag: customizeFlag,
-        coolingNode: coolingNode,
       );
 
   @override
   void reverse() {
     for (final entity in entities) {
-      // Exact source behavior: loops keep winding; only collection ordering is
-      // reversed around them.
       if (!entity.isLoop) entity.reverse();
     }
     entities.setAll(0, entities.reversed.toList(growable: false));
