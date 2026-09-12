@@ -85,8 +85,10 @@ class ClipperGeometry {
   }
 
   /// Mirrors ClipperUtils.cpp `offset_ex(ExPolygon)`: contour and holes are
-  /// offset separately, hole delta is reversed, and holes are then subtracted
-  /// or re-oriented according to the sign of the requested offset.
+  /// offset separately, hole delta is reversed, and holes are subtracted from
+  /// the offset contour. The explicit subtraction avoids relying on Clipper2's
+  /// standalone-path winding, which differs from the Clipper1 behavior used by
+  /// QIDI and may otherwise turn an offset hole into a filled contour.
   List<ExPolygon2> offsetExPolygon(
     ExPolygon2 expolygon,
     double delta, {
@@ -125,21 +127,11 @@ class ClipperGeometry {
     }
     if (holes.isEmpty) return _pathsToExPolygons(contours);
 
-    if (delta < 0) {
-      return _pathsToExPolygons(c2.Clipper.difference(
-        subject: contours,
-        clip: holes,
-        fillRule: c2.FillRule.nonZero,
-      ));
-    }
-
-    // Clipper1 (used by QIDI) reorients a standalone CW hole to CCW during
-    // Execute(), so source reverses that result before collecting it. Clipper2
-    // deliberately retains the input orientation in its offset solution. Our
-    // hole enters _offsetSinglePolygon() CW, therefore the Clipper2 result is
-    // already in the final CW hole orientation and must NOT be reversed again.
-    final raw = <c2.Path64>[...contours, ...holes];
-    return _pathsToExPolygons(raw);
+    return _pathsToExPolygons(c2.Clipper.difference(
+      subject: contours,
+      clip: holes,
+      fillRule: c2.FillRule.nonZero,
+    ));
   }
 
   List<ExPolygon2> offsetExPolygons(
