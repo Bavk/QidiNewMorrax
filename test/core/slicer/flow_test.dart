@@ -65,6 +65,72 @@ void main() {
     });
   });
 
+  group('Flow::extrusion_width source config behavior', () {
+    test('role-specific zero falls back to line_width then auto nozzle width', () {
+      const config = FlowConfigSnapshot(
+        widthOptions: {
+          'outer_wall_line_width': FlowWidthOption(0),
+          'line_width': FlowWidthOption(0),
+        },
+        scalarOptions: {'layer_height': 0.2},
+        nozzleDiameters: [0.4],
+      );
+      expect(
+        Flow.resolveExtrusionWidth('outer_wall_line_width', config),
+        closeTo(1.125 * 0.4, 1e-12),
+      );
+    });
+
+    test('percentage width resolves against layer height', () {
+      const config = FlowConfigSnapshot(
+        widthOptions: {
+          'outer_wall_line_width': FlowWidthOption(150, percent: true),
+        },
+        scalarOptions: {'layer_height': 0.2},
+        nozzleDiameters: [0.4],
+      );
+      expect(
+        Flow.resolveExtrusionWidth('outer_wall_line_width', config),
+        closeTo(0.3, 1e-12),
+      );
+    });
+
+    test('initial-layer percentage uses initial_layer_print_height', () {
+      const config = FlowConfigSnapshot(
+        widthOptions: {
+          'initial_layer_line_width': FlowWidthOption(120, percent: true),
+        },
+        scalarOptions: {
+          'layer_height': 0.2,
+          'initial_layer_print_height': 0.3,
+        },
+        nozzleDiameters: [0.4],
+      );
+      expect(
+        Flow.resolveExtrusionWidth('initial_layer_line_width', config),
+        closeTo(0.36, 1e-12),
+      );
+    });
+
+    test('initial-layer zero fallback deliberately switches to layer_height', () {
+      const config = FlowConfigSnapshot(
+        widthOptions: {
+          'initial_layer_line_width': FlowWidthOption(0),
+          'line_width': FlowWidthOption(150, percent: true),
+        },
+        scalarOptions: {
+          'layer_height': 0.2,
+          'initial_layer_print_height': 0.3,
+        },
+        nozzleDiameters: [0.4],
+      );
+      expect(
+        Flow.resolveExtrusionWidth('initial_layer_line_width', config),
+        closeTo(0.3, 1e-12),
+      );
+    });
+  });
+
   group('Flow source formulas', () {
     test('non-bridge mm3/mm is rounded-rectangle cross section', () {
       final flow = Flow.nonBridging(
