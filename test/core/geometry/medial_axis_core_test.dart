@@ -1,24 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/medial_axis_core.dart';
-import 'package:qidi_flow_flutter/core/geometry/point.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/voronoi_topology.dart';
 
 const facingSegments = [
-  BoundarySegment2(Point2(0, 0), Point2(0, 10)),
-  BoundarySegment2(Point2(2, 10), Point2(2, 0)),
+  BoundarySegment2(SourcePoint2(0, 0), SourcePoint2(0, 1000000)),
+  BoundarySegment2(SourcePoint2(200000, 1000000), SourcePoint2(200000, 0)),
 ];
 
-VoronoiTopology2 oneEdgeTopology({
-  List<BoundarySegment2> segments = facingSegments,
-}) {
+VoronoiTopology2 oneEdgeTopology() {
   return VoronoiTopology2(
     vertices: const [
       VoronoiVertex2(
-        point: Point2(1, 2),
+        point: VoronoiPoint2(100000, 200000),
         category: VoronoiVertexCategory.inside,
       ),
       VoronoiVertex2(
-        point: Point2(1, 8),
+        point: VoronoiPoint2(100000, 800000),
         category: VoronoiVertexCategory.inside,
       ),
     ],
@@ -56,26 +54,26 @@ VoronoiTopology2 oneEdgeTopology({
 void main() {
   test('validate_edge accepts facing segment cells and stores doubled width', () {
     final core = MedialAxisCore(
-      minWidth: 1,
-      maxWidth: 3,
+      minWidth: 100000,
+      maxWidth: 300000,
       boundarySegments: facingSegments,
     );
     final result = core.buildFromTopology(oneEdgeTopology());
 
     expect(result, hasLength(1));
-    expect(result.single.width, [2, 2]);
+    expect(result.single.width, [200000, 200000]);
     expect(result.single.startIsEndpoint, true);
     expect(result.single.endIsEndpoint, true);
   });
 
   test('validate_edge rejects non-facing long segment pair using PI/8 rule', () {
     const sameDirection = [
-      BoundarySegment2(Point2(0, 0), Point2(0, 10)),
-      BoundarySegment2(Point2(2, 0), Point2(2, 10)),
+      BoundarySegment2(SourcePoint2(0, 0), SourcePoint2(0, 1000000)),
+      BoundarySegment2(SourcePoint2(200000, 0), SourcePoint2(200000, 1000000)),
     ];
     final core = MedialAxisCore(
-      minWidth: 1,
-      maxWidth: 3,
+      minWidth: 100000,
+      maxWidth: 300000,
       boundarySegments: sameDirection,
     );
 
@@ -84,8 +82,8 @@ void main() {
 
   test('validate_edge rejects edges with both endpoint widths above max', () {
     final core = MedialAxisCore(
-      minWidth: 0.5,
-      maxWidth: 1.5,
+      minWidth: 50000,
+      maxWidth: 150000,
       boundarySegments: facingSegments,
     );
     expect(core.buildFromTopology(oneEdgeTopology()), isEmpty);
@@ -95,15 +93,15 @@ void main() {
     final topology = VoronoiTopology2(
       vertices: const [
         VoronoiVertex2(
-          point: Point2(1, 1),
+          point: VoronoiPoint2(100000, 100000),
           category: VoronoiVertexCategory.inside,
         ),
         VoronoiVertex2(
-          point: Point2(1, 4),
+          point: VoronoiPoint2(100000, 400000),
           category: VoronoiVertexCategory.inside,
         ),
         VoronoiVertex2(
-          point: Point2(1, 8),
+          point: VoronoiPoint2(100000, 800000),
           category: VoronoiVertexCategory.inside,
         ),
       ],
@@ -154,27 +152,30 @@ void main() {
     );
 
     final result = MedialAxisCore(
-      minWidth: 1,
-      maxWidth: 3,
+      minWidth: 100000,
+      maxWidth: 300000,
       boundarySegments: facingSegments,
     ).buildFromTopology(topology);
 
     expect(result, hasLength(1));
-    expect(result.single.points.map((p) => p.y).toList(), [1, 4, 8]);
-    expect(result.single.width, [2, 2, 2, 2]);
+    expect(
+      result.single.points.map((p) => p.y).toList(),
+      [100000, 400000, 800000],
+    );
+    expect(result.single.width, [200000, 200000, 200000, 200000]);
     expect(result.single.startIsEndpoint, true);
     expect(result.single.endIsEndpoint, true);
   });
 
-  test('Voronoi vertices are quantized like source double -> coord_t cast', () {
+  test('Voronoi double vertices use source Point(double) lrint semantics', () {
     final topology = VoronoiTopology2(
       vertices: const [
         VoronoiVertex2(
-          point: Point2(1.000019, 2.000019),
+          point: VoronoiPoint2(100001.5, 200002.5),
           category: VoronoiVertexCategory.inside,
         ),
         VoronoiVertex2(
-          point: Point2(1.000019, 8.000019),
+          point: VoronoiPoint2(100001.5, 800002.5),
           category: VoronoiVertexCategory.inside,
         ),
       ],
@@ -209,12 +210,12 @@ void main() {
     );
 
     final result = MedialAxisCore(
-      minWidth: 1,
-      maxWidth: 3,
+      minWidth: 100000,
+      maxWidth: 300000,
       boundarySegments: facingSegments,
     ).buildFromTopology(topology);
 
-    expect(result.single.firstPoint.x, 1.00001);
-    expect(result.single.firstPoint.y, 2.00001);
+    // FE_TONEAREST: 100001.5 -> 100002 (even), 200002.5 -> 200002 (even).
+    expect(result.single.firstPoint, const SourcePoint2(100002, 200002));
   });
 }
