@@ -181,10 +181,7 @@ void main() {
 
     expect(thinWalls, isEmpty);
     expect(output, hasLength(2));
-    expect(
-      output.where((entity) => entity is ExtrusionLoop2),
-      hasLength(1),
-    );
+    expect(output.whereType<ExtrusionLoop2>(), hasLength(1));
     final thin = output.firstWhere((entity) => entity is! ExtrusionLoop2);
     expect(thin.role, ExtrusionRole.externalPerimeter);
     expect(thin.length, greaterThan(0));
