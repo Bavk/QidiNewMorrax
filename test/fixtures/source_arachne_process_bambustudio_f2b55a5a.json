@@ -6,7 +6,7 @@
     "workflow_run": 34298498452,
     "artifact_id": 10085378329,
     "artifact_name": "BambuStudio_ubuntu-24.04_V02.08.03.66",
-    "artifact_zip_sha256": "912517d86774f470470fb3a8841af82890d8893",
+    "artifact_zip_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
     "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
     "cli_version": "02.08.03.66"
   },
