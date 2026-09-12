@@ -66,6 +66,19 @@ class SourceFuzzySkinPolicy2 {
       type == SourceFuzzySkinType2.disabledFuzzy ||
       (type == SourceFuzzySkinType2.none && perimeterRegionsEmpty);
 
+  /// Literal composition in classic `traverse_loops()`:
+  /// `is_enable_overhang_speed(pg) && fuzzy_skin_allows_overhang_slowdown(pg)`.
+  static bool enablesOverhangSpeed({
+    required bool configuredOverhangSpeedEnabled,
+    required SourceFuzzySkinType2 type,
+    required bool perimeterRegionsEmpty,
+  }) =>
+      configuredOverhangSpeedEnabled &&
+      allowsOverhangSlowdown(
+        type: type,
+        perimeterRegionsEmpty: perimeterRegionsEmpty,
+      );
+
   /// Safe identity-only representation of `apply_fuzzy_skin()`.
   ///
   /// The pinned source returns the input polygon unchanged whenever
