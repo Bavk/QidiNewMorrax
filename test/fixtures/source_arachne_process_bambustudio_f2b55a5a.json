@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "bambulab/BambuStudio",
+    "commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+    "workflow_run": 34298498452,
+    "artifact_id": 10085378329,
+    "artifact_name": "BambuStudio_ubuntu-24.04_V02.08.03.66",
+    "artifact_zip_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+    "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+    "cli_version": "02.08.03.66"
+  },
+  "fixture": {
+    "model": "axis-aligned 20x20x1 mm cube",
+    "machine_profile": "Bambu Lab X1 Carbon 0.4 nozzle",
+    "filament_profile": "Bambu PLA Basic @BBL X1C",
+    "base_process_profile": "0.20mm Standard @BBL X1C",
+    "resolved": {
+      "wall_generator": "arachne",
+      "wall_loops": 2,
+      "line_width_mm": 0.4,
+      "outer_wall_line_width_mm": 0.0,
+      "inner_wall_line_width_mm": 0.4,
+      "layer_height_mm": 0.2,
+      "resolution_mm": 0.01,
+      "wall_transition_length_percent": 100.0,
+      "wall_transition_filter_deviation_percent": 25.0,
+      "wall_transition_angle_deg": 10.0,
+      "wall_distribution_count": 1,
+      "min_bead_width_percent": 85.0,
+      "min_feature_size_percent": 25.0,
+      "wall_sequence": "inner wall/outer wall",
+      "infill_wall_overlap_percent": 15.0,
+      "detect_overhang_wall": true,
+      "enable_overhang_speed": false
+    }
+  },
+  "gcode_serialization_tolerance_mm": 0.00051,
+  "oracles": {
+    "interior_two_wall": {
+      "layer_index": 1,
+      "z_height_mm": 0.4,
+      "top_one_wall_type": "all top",
+      "only_one_wall_first_layer": false,
+      "feature_sequence": ["Inner wall", "Outer wall"],
+      "inner_wall": {
+        "bbox_width_mm": 18.886,
+        "bbox_height_mm": 18.886,
+        "line_width_mm": 0.39999,
+        "gcode_absolute_bbox_mm": [90.557, 109.443, 88.557, 107.443]
+      },
+      "outer_wall": {
+        "bbox_width_mm": 19.6,
+        "bbox_height_mm": 19.6,
+        "line_width_mm": 0.39999,
+        "gcode_absolute_bbox_mm": [90.2, 109.8, 88.2, 107.8],
+        "line_width_comment_inherited_from_inner_wall": true
+      }
+    },
+    "topmost_one_wall": {
+      "layer_index": 4,
+      "z_height_mm": 1.0,
+      "top_one_wall_type": "all top",
+      "only_one_wall_first_layer": false,
+      "feature_sequence": ["Outer wall"],
+      "outer_wall": {
+        "bbox_width_mm": 19.6,
+        "bbox_height_mm": 19.6,
+        "line_width_mm": 0.39999,
+        "gcode_absolute_bbox_mm": [90.2, 109.8, 88.2, 107.8]
+      }
+    },
+    "first_layer_one_wall": {
+      "layer_index": 0,
+      "z_height_mm": 0.2,
+      "top_one_wall_type": "none",
+      "only_one_wall_first_layer": true,
+      "feature_sequence": ["Outer wall"],
+      "outer_wall": {
+        "bbox_width_mm": 19.6,
+        "bbox_height_mm": 19.6,
+        "line_width_mm": 0.39999,
+        "gcode_absolute_bbox_mm": [90.2, 109.8, 88.2, 107.8]
+      }
+    }
+  }
+}
