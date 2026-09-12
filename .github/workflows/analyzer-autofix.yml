@@ -24,6 +24,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           def replace(path, old, new, expected=1):
               p = Path(path)
@@ -32,6 +33,31 @@ jobs:
               if count != expected:
                   raise SystemExit(f'{path}: expected {expected} occurrence(s), found {count}: {old!r}')
               p.write_text(text.replace(old, new))
+
+          def replace_regex(path, pattern, replacement, expected=1):
+              p = Path(path)
+              text = p.read_text()
+              updated, count = re.subn(pattern, replacement, text, flags=re.MULTILINE)
+              if count != expected:
+                  raise SystemExit(f'{path}: expected {expected} regex match(es), found {count}: {pattern!r}')
+              p.write_text(updated)
+
+          def replace_after(path, anchor, old, new):
+              p = Path(path)
+              text = p.read_text()
+              anchor_count = text.count(anchor)
+              if anchor_count != 1:
+                  raise SystemExit(f'{path}: expected one anchor, found {anchor_count}: {anchor!r}')
+              start = text.index(anchor) + len(anchor)
+              pos = text.find(old, start)
+              if pos < 0:
+                  raise SystemExit(f'{path}: target not found after anchor: {old!r}')
+              if text.find(old, pos + len(old)) >= 0:
+                  # Multiple later matches are allowed only outside the anchored section;
+                  # this replacement still changes exactly the first one after anchor.
+                  pass
+              text = text[:pos] + new + text[pos + len(old):]
+              p.write_text(text)
 
           replace(
               'lib/features/device/data/local_device_discovery.dart',
@@ -56,22 +82,9 @@ jobs:
               });''',
           )
 
-          replace(
+          replace_regex(
               'lib/core/slicer/extrusion_entity.dart',
-              '''  ExtrusionPathOriented2({
-                required ExtrusionRole role,
-                required double mm3PerMm,
-                required double width,
-                required double height,
-                SourcePolyline2? polyline,
-              }) : super(
-                        role: role,
-                        mm3PerMm: mm3PerMm,
-                        width: width,
-                        height: height,
-                        polyline: polyline,
-                        canReverse: false,
-                      );''',
+              r'''  ExtrusionPathOriented2\(\{\n    required ExtrusionRole role,\n    required double mm3PerMm,\n    required double width,\n    required double height,\n    SourcePolyline2\? polyline,\n  \}\) : super\(\n\s+role: role,\n\s+mm3PerMm: mm3PerMm,\n\s+width: width,\n\s+height: height,\n\s+polyline: polyline,\n\s+canReverse: false,\n\s+\);''',
               '''  ExtrusionPathOriented2({
                 required super.role,
                 required super.mm3PerMm,
@@ -86,21 +99,17 @@ jobs:
               '              value: selected != null && controller.devices.contains(selected)\n',
               '              initialValue: selected != null && controller.devices.contains(selected)\n',
           )
-          replace(
+          replace_after(
               'lib/features/device/presentation/device_page.dart',
-              '''                                if (!mounted) return;
-                                                await showDialog<void>(
-                                                  context: context,''',
-              '''                                if (!mounted) return;
-                                                await showDialog<void>(
-                                                  context: this.context,''',
+              'await widget.controller.listTimelapses();',
+              'context: context,',
+              'context: this.context,',
           )
-          replace(
+          replace_after(
               'lib/features/device/presentation/device_page.dart',
-              '''                                if (!mounted) return;
-                                                ScaffoldMessenger.of(context).showSnackBar(''',
-              '''                                if (!mounted) return;
-                                                ScaffoldMessenger.of(this.context).showSnackBar(''',
+              'await widget.controller.listTimelapses();',
+              'ScaffoldMessenger.of(context).showSnackBar(',
+              'ScaffoldMessenger.of(this.context).showSnackBar(',
           )
 
           replace(
