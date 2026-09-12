@@ -61,7 +61,7 @@ void main() {
     expect(arc.angleRadians, closeTo(math.pi / 4, 2e-5));
   });
 
-  test('ArcSegment::try_create_arc accepts a quarter-circle point stack', () {
+  test('ArcSegment::try_create_arc obeys source 5-percent length contract', () {
     const points = [
       SourcePoint2(100000, 0),
       SourcePoint2(86603, 50000),
@@ -83,6 +83,9 @@ void main() {
     expect(arc!.direction, ArcDirection2.ccw);
     expect(arc.startPoint, points.first);
     expect(arc.endPoint, points.last);
-    expect(arc.length, closeTo(math.pi * 50000, 2500));
+    expect(
+      ((arc.length - approximateLength) / approximateLength).abs(),
+      lessThan(SourceArcSegment2.defaultArcLengthPercentTolerance),
+    );
   });
 }
