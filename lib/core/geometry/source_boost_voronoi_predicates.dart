@@ -26,20 +26,27 @@ class BoostVoronoiPredicates2 {
 
   static const int ulps = 64;
   static const int ulpsX2 = 128;
-  static const int _uint64Mask = 0xffffffffffffffff;
+  static final BigInt _uint64Mask = (BigInt.one << 64) - BigInt.one;
 
   static bool isVerticalPoints(SourcePoint2 a, SourcePoint2 b) => a.x == b.x;
   static bool isVertical(BoostSiteEvent2 site) =>
       isVerticalPoints(site.point0, site.point1);
 
-  /// Literal arithmetic shape of Boost 1.83 `robust_cross_product`:
-  /// intermediate products/sums are uint64 and therefore wrap mod 2^64.
-  static double robustCrossProduct(int a1Signed, int b1Signed, int a2Signed,
-      int b2Signed) {
-    final a1 = a1Signed.abs();
-    final b1 = b1Signed.abs();
-    final a2 = a2Signed.abs();
-    final b2 = b2Signed.abs();
+  /// Literal arithmetic shape of Boost 1.83 `robust_cross_product`.
+  ///
+  /// Boost performs these products and sums in `uint64_t`. Dart native `int`
+  /// is signed 64-bit, so values crossing bit 63 must be represented with
+  /// [BigInt] here before applying modulo 2^64.
+  static double robustCrossProduct(
+    int a1Signed,
+    int b1Signed,
+    int a2Signed,
+    int b2Signed,
+  ) {
+    final a1 = BigInt.from(a1Signed).abs();
+    final b1 = BigInt.from(b1Signed).abs();
+    final a2 = BigInt.from(a2Signed).abs();
+    final b2 = BigInt.from(b2Signed).abs();
 
     final l = (a1 * b2) & _uint64Mask;
     final r = (b1 * a2) & _uint64Mask;
@@ -421,22 +428,21 @@ class BoostVoronoiPredicates2 {
   static BoostUlpResult2 ulpCompare(double a, double b, int maxUlps) {
     var llA = _doubleBits(a);
     var llB = _doubleBits(b);
-    const signBit = 0x8000000000000000;
+    final signBit = BigInt.one << 63;
     if (llA < signBit) llA = signBit - llA;
     if (llB < signBit) llB = signBit - llB;
 
+    final max = BigInt.from(maxUlps);
     if (llA > llB) {
-      return llA - llB <= maxUlps
-          ? BoostUlpResult2.equal
-          : BoostUlpResult2.less;
+      return llA - llB <= max ? BoostUlpResult2.equal : BoostUlpResult2.less;
     }
-    return llB - llA <= maxUlps
-        ? BoostUlpResult2.equal
-        : BoostUlpResult2.more;
+    return llB - llA <= max ? BoostUlpResult2.equal : BoostUlpResult2.more;
   }
 
-  static int _doubleBits(double value) {
-    final data = ByteData(8)..setFloat64(0, value, Endian.host);
-    return data.getUint64(0, Endian.host);
+  static BigInt _doubleBits(double value) {
+    final data = ByteData(8)..setFloat64(0, value, Endian.big);
+    final high = BigInt.from(data.getUint32(0, Endian.big));
+    final low = BigInt.from(data.getUint32(4, Endian.big));
+    return (high << 32) | low;
   }
 }
