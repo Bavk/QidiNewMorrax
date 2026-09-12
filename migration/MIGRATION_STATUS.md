@@ -15,10 +15,10 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-12
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `0d52a4272197bbbaa5a6c799023eed4c59dc0362`;
-- workflow `34718196236` (#346), conclusion **success**;
+- validated code `90eec08b5c8f6474bbbfa78d1e71f3996d2246e0`;
+- workflow `34718370244` (#353), conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **618/618 passing**.
+- `flutter test --reporter expanded` — **638/638 passing**.
 
 Milestones in the current source path:
 
@@ -28,7 +28,8 @@ Milestones in the current source path:
 - #330 / `5c77305...`: polygon → Boost Voronoi → skeletal graph → variable-width Arachne toolpaths composed, 584/584;
 - #340 / `f23293e...`: represented `WallToolPaths::generate()` source-order runtime composed, 604/604;
 - `4832008...` + `9ac38dc...`: pinned `computePointCellRange()` secondary-edge assertion restored to `!is_secondary()` behavior with regression coverage;
-- #346 / `41c8ffe...` + `0d52a42...`: first `PerimeterGenerator::process_arachne()` orchestration slice, 618/618.
+- #346 / `41c8ffe...` + `0d52a42...`: first `PerimeterGenerator::process_arachne()` orchestration slice, 618/618;
+- #353 / `3fcb49d...` + `90eec08...`: non-separated per-surface Arachne wall generation now composes simplify/offset, circle-compensation topology mapping, real `WallToolPaths`, and inner-contour output, 638/638.
 
 ## Top-level gates
 
@@ -77,7 +78,9 @@ These construction and `WallToolPaths` slices are scoped `parity_verified` for t
 
 ## `PerimeterGenerator::process_arachne()` — `port_started`
 
-The first orchestration slice is now represented by `SourceArachneProcessPlanner2` and is green under #346. It preserves:
+The represented orchestration now covers two source-order layers.
+
+`SourceArachneProcessPlanner2` preserves:
 
 - `only_one_wall_first_layer && layer_id == 0`;
 - top-most one-wall behavior when `top_one_wall_type != None && upper_slices == nullptr`;
@@ -88,22 +91,24 @@ The first orchestration slice is now represented by `SourceArachneProcessPlanner
 - negative loop-number no-generation seam;
 - normal and one-wall handoff into the represented `WallToolPaths::generate()` runtime.
 
-The `Alltop` separate-wall branch is deliberately **not** approximated. The open seam still includes `should_enable_top_one_wall()` geometry, upper/lower clipping and offsets, first-wall/top-fill/remainder split, second wall generation, recombination, source extrusion ordering/traversal, and final Arachne infill-contour boundaries.
+`SourceArachneProcessSurface2` additionally composes the non-separated per-surface path through surface simplify, external-wall offset, source-shaped circle-compensation topology gate and flag mapping, real `WallToolPaths` generation, and returned inner contour. It deliberately rejects the `Alltop` separate-wall candidate instead of approximating it.
+
+The `Alltop` separate-wall branch remains **open**. The unfinished seam includes `should_enable_top_one_wall()` geometry, upper/lower clipping and offsets, first-wall/top-fill/remainder split, second wall generation, recombination, source extrusion ordering/traversal, and final integration of the represented Arachne infill-contour boundary into `fill_surfaces` / `fill_no_overlap`.
 
 Therefore full Arachne wall generation remains `port_started`.
 
 ## Fuzzy skin / Arachne retained
 
-The 618-test suite re-executes the scoped fuzzy evidence: exact fuzzy policy and slowdown gates; one Classic RNG stream plus MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline fuzzy and painted-region LineSegmentation; source ZAttributes / Dart Clipper2 compatibility; source-shaped Arachne extrusion-line subset; all three fuzzy modes with seeded C++ goldens; and Arachne painted-region composition.
+The 638-test suite re-executes the scoped fuzzy evidence: exact fuzzy policy and slowdown gates; one Classic RNG stream plus MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline fuzzy and painted-region LineSegmentation; source ZAttributes / Dart Clipper2 compatibility; source-shaped Arachne extrusion-line subset; all three fuzzy modes with seeded C++ goldens; and Arachne painted-region composition.
 
 ## Immediate next dependency order
 
-Continue pinned `PerimeterGenerator::process_arachne()` from the exposed separate-wall seam:
+Continue pinned `PerimeterGenerator::process_arachne()` from the exposed `Alltop` separate-wall seam:
 
-1. port `should_enable_top_one_wall()` and its exact `Alltop` upper-slice bbox/offset/clipping behavior;
+1. port `should_enable_top_one_wall()` and its exact upper-slice bbox/offset/clipping behavior;
 2. compose separate first-wall generation, `top_fills` and remainder geometry, second `WallToolPaths` generation and source recombination;
 3. port/compose Arachne wall conversion and ordering (`getRegionOrder`, blocked-order nearest-candidate logic, `InnerOuterInner` adjustment and `traverse_extrusions`);
-4. compose `add_infill_contour_for_arachne()` and final `fill_surfaces` / `fill_no_overlap` behavior;
+4. integrate the represented Arachne infill-contour boundary into final `fill_surfaces` / `fill_no_overlap` behavior;
 5. add independent C++/source goldens for complete per-surface polygon → wall paths → ordered extrusions/fill boundaries, including holes, Alltop/topmost/first-layer one-wall and compensation cases;
 6. continue later fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order;
 7. publish and SHA-verify real runtime assets before any release-complete claim.
