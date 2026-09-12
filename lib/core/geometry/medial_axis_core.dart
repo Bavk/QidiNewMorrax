@@ -30,7 +30,7 @@ class _ReverseGrowth {
 /// Boost.Polygon. Conversion back to `Point(coord_t)` uses an lrint-compatible
 /// nearest-even conversion below.
 ///
-/// The Boost-compatible segment Voronoi constructor, repair pass and
+/// The Boost-compatible segment Voronoi constructor, repair pass and complete
 /// inside/outside annotation are separate mandatory migration layers. This
 /// class deliberately does not call a substitute skeletonizer.
 class MedialAxisCore {
@@ -62,11 +62,10 @@ class MedialAxisCore {
     // Source iterates one half-edge per twin pair and retains only primary,
     // finite edges with at least one vertex annotated Inside.
     for (final edge in diagram.canonicalHalfEdges) {
-      final v0 = diagram.vertex(edge.vertex0);
-      final v1 = diagram.vertex(edge.vertex1);
-      if (edge.primary &&
-          edge.finite &&
-          (v0.category == VoronoiVertexCategory.inside ||
+      if (!edge.primary || !edge.finite) continue;
+      final v0 = diagram.vertex(edge.vertex0!);
+      final v1 = diagram.vertex(edge.vertex1!);
+      if ((v0.category == VoronoiVertexCategory.inside ||
               v1.category == VoronoiVertexCategory.inside) &&
           validateEdge(edge)) {
         _edgeView(edge).data.active = true;
@@ -78,9 +77,12 @@ class MedialAxisCore {
       final seedView = _edgeView(seed);
       if (!seedView.data.active) continue;
       seedView.data.active = false;
+      if (!seed.finite) {
+        throw StateError('Active MedialAxis seed must be finite');
+      }
 
-      final v0 = _sourcePoint(diagram.vertex(seed.vertex0).point);
-      final v1 = _sourcePoint(diagram.vertex(seed.vertex1).point);
+      final v0 = _sourcePoint(diagram.vertex(seed.vertex0!).point);
+      final v1 = _sourcePoint(diagram.vertex(seed.vertex1!).point);
       final polyline = ThickPolyline2(
         points: [v0, v1],
         width: [seedView.data.widthStart, seedView.data.widthEnd],
@@ -101,7 +103,7 @@ class MedialAxisCore {
         polyline.endIsEndpoint = false;
       }
 
-      polyline.thickLines(); // assert source cardinality invariant
+      polyline.thickLines();
       result.add(polyline);
     }
 
@@ -110,14 +112,15 @@ class MedialAxisCore {
 
   /// Exact branch structure of source `MedialAxis::validate_edge()`.
   bool validateEdge(VoronoiHalfEdge2 edge) {
+    if (!edge.finite) return false;
     final twin = _diagram.edge(edge.twinId);
     final cellL = _diagram.cell(edge.cellIndex);
     final cellR = _diagram.cell(twin.cellIndex);
     final segmentL = _segmentFor(cellL);
     final segmentR = _segmentFor(cellR);
 
-    final a = _sourcePoint(_diagram.vertex(edge.vertex0).point);
-    final b = _sourcePoint(_diagram.vertex(edge.vertex1).point);
+    final a = _sourcePoint(_diagram.vertex(edge.vertex0!).point);
+    final b = _sourcePoint(_diagram.vertex(edge.vertex1!).point);
     final edgeLine = SourceLine2(a, b);
 
     var w0 = cellR.containsSegment
@@ -175,10 +178,13 @@ class MedialAxisCore {
       final neighbor = step.neighbor!;
       final view = _edgeView(neighbor);
       if (!view.data.active) return;
+      if (!neighbor.finite) {
+        throw StateError('Active MedialAxis neighbor must be finite');
+      }
       view.data.active = false;
 
       polyline.points.add(
-        _sourcePoint(_diagram.vertex(neighbor.vertex1).point),
+        _sourcePoint(_diagram.vertex(neighbor.vertex1!).point),
       );
       if (view.reversed) {
         polyline.width
@@ -205,10 +211,13 @@ class MedialAxisCore {
       final neighbor = step.neighbor!;
       final view = _edgeView(neighbor);
       if (!view.data.active) return;
+      if (!neighbor.finite) {
+        throw StateError('Active MedialAxis neighbor must be finite');
+      }
       view.data.active = false;
 
       growth.points.add(
-        _sourcePoint(_diagram.vertex(neighbor.vertex1).point),
+        _sourcePoint(_diagram.vertex(neighbor.vertex1!).point),
       );
       if (view.reversed) {
         growth.width
