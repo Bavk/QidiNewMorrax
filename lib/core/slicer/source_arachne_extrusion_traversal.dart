@@ -90,7 +90,7 @@ class SourceArachneExtrusionTraversal2 {
         role,
         flow,
         SourceVariableWidth2.qidiTolerance,
-        Slic3rUnits.scaledEpsilon,
+        Slic3rUnits.scaledEpsilon.toDouble(),
         0,
       );
       final paths = converted.paths;
