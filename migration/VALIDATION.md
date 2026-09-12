@@ -17,101 +17,86 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34695501638` (#273) executed code commit `0a9fa8155e0e860b82177280a379a7b9dccfeeb5` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34697866558` (#276) executed code commit `2a33afd97b4f987a7edf4b482eebf8d34da7f9c0` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+377: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+387: All tests passed!`**;
 - job conclusion — **success**.
 
-## BridgeDetector and counterbore evidence
+Feature commit `92d27b6ac300f1ce07207caf5100b9568eed3ce3` contained the ordered classic extrusion and loop-node implementation. Its run #275 already passed all **387** tests; it failed only the repository's strict analyze-enforcement because the new test file contained two unused imports. Commit `2a33afd...` removed only those imports; no algorithm or assertion was weakened.
 
-Run #264 (`34694708899`) first validated `SourceBridgeDetector2` at **359/359** total tests. The translated pinned upstream `t/bridges.t` cases cover:
+## Ordered classic surface → extrusion evidence
 
-- wide and tall O-shaped supports;
-- both rotated O-shaped source families;
-- a two-sided horizontal bridge;
-- C-shaped support selection;
-- L-shaped anchors with half-area coverage;
-- a fully airborne negative case.
+Run #276 is the first green checkpoint composing the represented classic source path through the per-island extrusion boundary. New end-to-end fixtures validate:
 
-These tests exercise source candidate generation, anchored scanline scoring, max-span tie behavior and coverage geometry instead of accepting a hand-picked bridge angle.
+- `chain_expolygons()` source order preserved all the way to the outer `loops` collection;
+- every produced island remains one nested `ExtrusionEntityCollection2`, matching source `loops->append(entities)` rather than flattening islands together;
+- `OuterInner` wall sequence is applied independently inside every island;
+- non-null empty lower slices produce the represented overhang branch for every ordered island;
+- one shared fuzzy RNG object is consumed across multiple islands instead of restarting a random stream per island;
+- the high-level classic seam uses smaller-width depth-zero loops before normal depth-zero loops, matching pinned source construction order;
+- gap-fill extrusion output remains a global collection accumulated in island order.
 
-Run #268 (`34695120637`) first validated `SourceClassicNoBridge2` at **365/365** total tests. Covered behavior includes:
+The implementation reuses already-green `SourceClassicPerimeterIslandProcess2` and `SourceClassicFuzzyPerimeterPipeline2`; it does not introduce duplicate fuzzy, overhang or wall-sequence algorithms.
 
-- pinned `CounterboreHoleBridgingOption` order;
-- `None`, null lower-slice and non-null empty lower-slice gates;
-- source `Surfaces all_surfaces = slices->surfaces` copy behavior;
-- `chbBridges` extraction;
-- `chbFilled` convex bridge path;
-- non-zero configured bridge angle passed through the detector;
-- safety-diff geometry and internal-fill output.
+## QIDI outwall / loop-node producer evidence
 
-A failed intermediate run exposed one real Dart implementation issue in `chbFilled`: a Clipper result was immutable while source code mutates the vector element. The implementation was corrected to make the result mutable. The other failures in that run were unsupported test assumptions about idealized area and forced-angle failure; the algorithm was not changed to satisfy them.
+Run #276 also first validates the represented classic `z_direction_outwall_speed_continuous` metadata producer:
 
-## Surface preprocessing / ordered-island composition evidence
+- literal `Point::is_in_lines(const Points&)` endpoint, horizontal/vertical and diagonal-distance behavior;
+- strict source comparison `abs(distance) < SCALED_EPSILON`;
+- exact loop-node bounding-box expansion by `SCALED_EPSILON = 10` source units;
+- one-outwall shortcut assigning `loop_id = 0` without geometric matching;
+- sequential `node_id` and `[start,end)` `loop_node_range` values over three ordered islands;
+- preexisting caller-owned global loop nodes shifting the next range and ID exactly;
+- multiple-outwall contour+hole case where matching follows the **post-traversal/post-wall-sequence entity order** while raw outwall paths retain their source contour order.
 
-Run #273 is the first green run composing the new source preprocessing boundary into the previously verified per-island fill path. It validates:
+This proves the represented producer side only. It does not prove downstream inter-layer loop-node relation construction or its eventual speed-control consumer.
 
-- constructor `m_scaled_resolution` with `max(resolution, EPSILON)`;
-- arc-fitting + `FuzzySkinType::None` selecting `0.2 * m_scaled_resolution`;
-- non-None fuzzy skin retaining the full base resolution;
-- source `chain_expolygons` ordering by ExPolygon bbox centers through the source shortest-path chain;
-- `Surface::extra_perimeters` and odd-layer alternate extra wall before one-wall gates;
-- source `Polygon::centroid() → Point(Vec2d)` nearest-even `lrint` behavior;
-- `eps = 1000` compensation-hole matching and split-island disable semantics;
-- `process_no_bridge` output feeding ordered prepared islands;
-- actual extra-perimeter count reaching the shell generator;
-- conditional shell simplification and base-resolution final-fill simplification staying distinct;
-- counterbore-created fill surfaces accumulating before per-island final fill surfaces;
-- topmost one-wall gate occurring after per-surface wall-count accounting;
-- the supplied `Surface` copy-constructor quirk resetting QIDI circle-compensation members before high-level preprocessing.
+## Earlier classic evidence retained
 
-One intermediate preprocessing run failed because the test used `SourcePoint2.fromMm(5,5)`, whose fixture boundary truncates to 499999, as the expected centroid. The pinned C++ centroid path uses `lrint` and correctly yields source coordinate 500000. Only the test oracle was corrected; the implementation remained unchanged.
+Run #276 re-executed all previously green classic preprocessing/fill evidence, including:
 
-## Previously verified classic fill evidence retained
-
-Run #273 re-executed the earlier green classic process evidence, including:
-
-- exact top-one-wall / null-vs-empty upper-slice ordering;
-- `TopOneWallType::Alltop` at the first source shell position;
-- source final-wall stop and optional extra gap-discovery iteration;
+- pinned upstream `BridgeDetector` fixtures and fully airborne negative case;
+- `process_no_bridge()` `None` / null / empty gates plus `chbBridges` and `chbFilled`;
+- conditional surface simplification resolution and `chain_expolygons` preprocessing;
+- per-surface extra-perimeter accounting before one-wall gates;
+- top-one-wall / Alltop source order;
 - thin-wall and gap-fill represented paths;
-- final `fill_surfaces` / `fill_no_overlap` boundary;
-- the source percentage-overlap floating-point result **7999** rather than idealized 8000.
-
-The high-level wrapper `SourceClassicPerimeterIslandProcess2` now composes counterbore preprocessing → surface order/resolution → per-island shell/fill in this represented scope.
+- final `fill_surfaces` / `fill_no_overlap` boundary and source **7999** overlap quirk;
+- source `Surface` copy-constructor reset of QIDI circle-compensation fields.
 
 ## Earlier Arachne / fuzzy evidence retained
 
-Run #273 re-executed all previously green Arachne/fuzzy evidence:
+Run #276 re-executed all previously green Arachne/fuzzy evidence:
 
 - one shared Classic `random_value()` stream and direct MT19937/libstdc++ double fixtures;
 - direct libnoise v1.0.0 value/gradient/vector-table/Perlin/Billow/RidgedMulti/Voronoi behavior;
-- scale clamp, octave/persistence, Voronoi displacement and `slice_z` inputs;
-- Polygon/Polyline fuzzy sampling/casts/fallback;
-- direct source ZAttributes LineSegmentation plus Dart Clipper2 compatibility normalization;
-- painted Polygon/Polyline region composition;
+- Polygon/Polyline fuzzy sampling/casts/fallback and painted-region LineSegmentation;
 - source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine` subset;
 - seeded C++ `Displacement`, `Extrusion`, `Combined` position/width goldens;
 - Arachne width interpolation, full-cover path, painted-region fuzzy application and seam behavior;
 - recursive classic fuzzy traversal and region-aware overhang slowdown policy.
 
-The same run re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
+The same run re-executed the represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry and source-style G-code path formatting/emission.
+
+## Next audited wall-generation dependency
+
+Pinned `PerimeterGenerator::process_arachne()` remains open. Source audit confirms it depends on `Arachne::WallToolPaths` from `src/libslic3r/Arachne/WallToolPaths.hpp/.cpp`; that class in turn includes `BeadingStrategyFactory`, `SkeletalTrapezoidation` and existing `ExtrusionLine` types. The next implementation should therefore start with `WallToolPathsParams` and independently testable constructor/input-normalization/simplification behavior, then follow the real `generate()` dependency chain. No full Arachne wall parity is claimed by the current `ExtrusionLine` fuzzy subset.
 
 ## Not proven by this checkpoint
 
-Run #273 does **not** prove:
+Run #276 does **not** prove:
 
-- composition of all ordered prepared islands into the existing loop-tree / recursive extrusion traversal as one high-level source path;
-- QIDI `outwall_paths`, `loop_nodes`, `loop_node_range` and `z_direction_outwall_speed_continuous` metadata;
-- any behavior that would restore QIDI circle-compensation members after the pinned `Surface` copy constructor has reset them;
+- full `Arachne::WallToolPaths` or `PerimeterGenerator::process_arachne()` wall generation;
+- downstream inter-layer QIDI loop-node matching / vertical wall speed-control consumption;
+- any behavior that would restore QIDI circle-compensation members after the pinned `Surface` copy constructor resets them;
 - every pathological counterbore, bridge-detector, simplify, overlap, hole or degenerate clipping topology;
-- full Arachne wall generation around the represented fuzzy helper;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;
 - complete Clipper/Boost regression spaces beyond represented fixtures;
 - complete G-code state/templates/travel/retraction/cooling/acceleration/multimaterial behavior;
-- all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
+- all later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
 - complete project/profile persistence, STEP/source-enabled formats, scene/editor, Preview, Device/cloud/P2P, calibration, desktop integration or full UI parity;
 - hardware-in-the-loop printer behavior;
 - remote publication and SHA verification of every runtime asset;
