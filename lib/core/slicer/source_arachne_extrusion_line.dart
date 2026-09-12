@@ -63,7 +63,7 @@ class SourceArachneExtrusionLine2 {
 
   final int insetIndex;
   final bool isOdd;
-  final bool isClosed;
+  bool isClosed;
   final List<SourceArachneExtrusionJunction2> junctions;
 
   bool get isEmpty => junctions.isEmpty;
