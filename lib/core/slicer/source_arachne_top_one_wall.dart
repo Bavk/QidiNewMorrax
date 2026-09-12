@@ -212,7 +212,7 @@ class SourceArachneTopOneWall2 {
     final solution = clipper.execute(type, c2.FillRule.nonZero);
     if (solution == null) return const [];
     return List.unmodifiable([
-      for (final path in solution.closedPaths)
+      for (final path in solution.closed)
         if (path.length >= 3)
           SourcePolygon2([
             for (final point in path) SourcePoint2(point.x, point.y),
