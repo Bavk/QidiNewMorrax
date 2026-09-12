@@ -19,10 +19,9 @@ As of 2026-09-12:
 - pinned Flutter: **3.47.2**;
 - Dart: **3.13.2**;
 - `flutter analyze`: **No issues found**;
-- `flutter test --reporter expanded`: **174/174 passing**;
-- `git diff --check`: passing;
-- validated code commit: `015dcdd4cbfb9b292a89642c0d736f2471483691`;
-- temporary analyzer-cleanup workflow removed in `2f2c8486e09640dd4d6d03ebc85cee843146d8b2`.
+- `flutter test --reporter expanded`: **185/185 passing**;
+- validated code commit: `704b9900820d4ed479ad192cebbbe1958f0b89fb`;
+- validation workflow: `.github/workflows/flutter-parity.yml` run `34679098241` (#152), conclusion **success**.
 
 See [`VALIDATION.md`](VALIDATION.md) for the executed evidence and exact scope.
 
@@ -81,14 +80,15 @@ Two critical implementation details must be preserved in future edits:
 
 ## Clipper / ClipperUtils
 
-The current pure-Dart Clipper2 adapter is `parity_verified` **for the translated fixtures currently in the suite**:
+The current pure-Dart Clipper2 adapter is `parity_verified` **for the translated fixtures/current consumers in the suite**:
 
 - union/difference/intersection fixture behavior;
 - contour/hole reconstruction in those fixtures;
 - positive/negative constant offsets;
 - `offset2`, opening/closing building blocks used by current slicer code;
 - Clipper1 miter-limit compatibility: source values below 2 behave as effective limit 2;
-- positive `ExPolygon` hole-offset orientation compatibility where Clipper2 preserves orientation differently from Clipper1.
+- positive `ExPolygon` hole reconstruction across offset;
+- source open-polyline offset used by `polygons_covered_by_width()`, with square join, open-butt end type and source integer coordinates.
 
 The broader Clipper/ClipperUtils module remains `port_started`: the source uses Clipper 6.x plus custom Slic3r/QIDI wrappers, so more original regression coverage is still required before calling the whole subsystem equivalent.
 
@@ -129,7 +129,9 @@ The represented source subsets are now `parity_verified`:
 - MultiPath continuity/reverse/copy behavior;
 - Loop basic behavior;
 - Collection role/reverse/flatten/copy behavior;
-- supportTransition filtering quirk.
+- supportTransition filtering quirk;
+- QIDI/libslic3r variable-width `ThickPolyline` conversion;
+- represented `polygons_covered_by_width()` path/multipath/loop/collection dispatch and open-line coverage geometry.
 
 The containing slicer/G-code modules remain `port_started` because many downstream source methods are still absent.
 
@@ -147,28 +149,33 @@ The containing slicer/G-code modules remain `port_started` because many downstre
 
 Sloped XYZ extrusion deliberately still refuses an XY-only approximation. Full native G-code state/templates/travel/retraction/cooling/speed/acceleration/multi-material/postprocessing remain `pending` or `port_started`.
 
-## Classic perimeter / thin wall
+## Classic perimeter / thin wall / gap fill
 
-The currently represented `PerimeterGenerator::process_classic()` shell/thin-wall subset is `parity_verified` by source-formula and end-to-end tests for:
+The currently represented `PerimeterGenerator::process_classic()` subset is `parity_verified` by source-formula and end-to-end tests for:
 
 - common inset overlap tolerance `0.4`;
 - QIDI smaller-external tolerance `0.22`;
 - narrow-loop threshold `10`;
 - requested/alternate extra wall count behavior;
 - first external and external→internal inset formulas in source integer coordinates;
-- one-coordinate-unit safety terms;
+- one-coordinate-unit and Clipper safety terms;
 - spiral-vase largest-island subset;
 - QIDI smaller-width external loop selection;
 - exact source quirk `last = offsets`: smaller-width outer loops are output only and do **not** seed inner loops;
-- `detect_thin_wall` geometry path: Clipper difference/opening → `SourceExPolygonMedialAxis2` → source-domain `ThickPolyline2`;
-- explicit requirement for the source external-nozzle diameter used by the thin-wall branch.
+- `detect_thin_wall`: Clipper difference/opening → `SourceExPolygonMedialAxis2` → `ThickPolyline2`;
+- thin-wall conversion through source `variable_width(... erExternalPerimeter, ext_perimeter_flow ...)`;
+- use of the same external perimeter `Flow` for nozzle-derived minimum width and converted extrusion semantics;
+- source covered-width geometry required by downstream subtraction;
+- classic gap collection on the extra shell iteration;
+- gap min/max width formulas, explicit float32 offset casts, opening/max-width clipping, closed-polygon Douglas–Peucker, MedialAxis, configured short-line removal, `variable_width(... erGapFill, solid_infill_flow ...)`, and covered-width subtraction from `last`.
 
 This does **not** complete `process_classic()`. Still pending include:
 
-- conversion of returned ThickPolyline data through the source variable-width extrusion path;
-- gap-fill generation and its MedialAxis/width rules;
-- remaining overhang/path-order/loop/extrusion-role behavior;
-- exact covered-area helpers and later perimeter stages;
+- structural loop → `ExtrusionLoop` construction with exact loop-role flags;
+- recursive `traverse_loops()` nesting/orientation semantics;
+- `chain_extrusion_entities()` nearest-neighbor ordering/reversal and thin-wall integration into that chain;
+- overhang clipping/degree/bridge-wall path splitting and source role/flow selection;
+- remaining fill-surface/fill-no-overlap and later perimeter stages;
 - Arachne variable-width wall generation.
 
 ## Model/project I/O
@@ -201,10 +208,10 @@ The earlier local audit verified 3,657/3,657 copied runtime entries against sour
 
 ## Immediate next dependency order
 
-1. Port the source variable-width conversion that consumes classic thin-wall `ThickPolyline` output and add source/differential fixtures.
-2. Port classic gap fill using the now-working MedialAxis chain.
-3. Continue `PerimeterGenerator::process_classic()` line-by-line through remaining path/role/order/overhang branches.
-4. Expand Clipper/ClipperUtils translated regression coverage and fix every discrepancy rather than relaxing fixtures.
+1. Port structural classic loop → `ExtrusionLoop` conversion and source loop-role/winding semantics.
+2. Port recursive `traverse_loops()` plus exact `chain_extrusion_entities()` ordering/reversal, including thin walls in the same chain.
+3. Continue `PerimeterGenerator::process_classic()` through overhang/path-role/covered-area/fill-surface branches.
+4. Expand Clipper/ClipperUtils translated regression coverage as new source consumers require it.
 5. Continue Arachne/surfaces/fill/bridge/support/seam toolpath modules.
 6. Expand the native G-code state machine and integrate the exact ExtrusionEntity model into Preview/G-code consumers.
 7. Continue project/profile/editor/device/cloud/calibration/desktop/UI parity in parallel.
