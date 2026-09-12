@@ -3,6 +3,7 @@ import '../geometry/source_polygon.dart';
 import '../geometry/source_polyline.dart';
 import '../geometry/thick_polyline.dart';
 import 'classic_overhang_splitter.dart';
+import 'classic_overhang_support.dart';
 import 'classic_perimeter_loop_tree.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
@@ -23,13 +24,14 @@ class SourceClassicPerimeterTraversalSettings2 {
   final double layerHeight;
 }
 
-/// Additional source state needed by the classic `detect_overhang_wall` branch
-/// when overhang-speed grading is disabled.
+/// Additional source state needed by the classic `detect_overhang_wall` branch.
 ///
-/// Each lower-polygon series is already generated for the matching wall width,
-/// exactly like `PerimeterGenerator::generate_lower_polygons_series()`. This
-/// class deliberately does not claim the separate fuzzy-skin or degree-grading
-/// branches.
+/// The raw constructor remains useful for source-oracle fixtures that provide
+/// already-generated polygon series. [fromLowerSlices] mirrors the setup at the
+/// start of `PerimeterGenerator::process_classic()`: generate the internal,
+/// external and smaller-external lower-polygon series from one lower layer and
+/// one wall-filament nozzle diameter, reusing the internal series when the
+/// source scaled external/internal widths are identical.
 class SourceClassicPerimeterOverhangSettings2 {
   const SourceClassicPerimeterOverhangSettings2({
     required this.overhangFlow,
@@ -37,13 +39,85 @@ class SourceClassicPerimeterOverhangSettings2 {
     required this.smallerExternalLowerPolygonsSeries,
     required this.perimeterLowerPolygonsSeries,
     required this.layerId,
+    this.externalOverhangDistBoundary,
+    this.smallerExternalOverhangDistBoundary,
+    this.perimeterOverhangDistBoundary,
     this.raftLayers = 0,
   });
+
+  factory SourceClassicPerimeterOverhangSettings2.fromLowerSlices({
+    required Flow overhangFlow,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required List<SourcePolygon2>? lowerSlices,
+    required double wallNozzleDiameter,
+    required int layerId,
+    int raftLayers = 0,
+  }) {
+    final perimeterSeries =
+        SourceClassicOverhangSupport2.generateLowerPolygonsSeries(
+      width: perimeterFlow.width,
+      nozzleDiameter: wallNozzleDiameter,
+      lowerSlices: lowerSlices,
+    );
+    final perimeterBoundary = SourceClassicOverhangSupport2.distBoundary(
+      width: perimeterFlow.width,
+      nozzleDiameter: wallNozzleDiameter,
+    );
+
+    // Source compares coord_t scaled widths, not raw floating widths.
+    final sameExternalAndInternalWidth =
+        externalPerimeterFlow.scaledWidth == perimeterFlow.scaledWidth;
+    final externalSeries = sameExternalAndInternalWidth
+        ? perimeterSeries
+        : SourceClassicOverhangSupport2.generateLowerPolygonsSeries(
+            width: externalPerimeterFlow.width,
+            nozzleDiameter: wallNozzleDiameter,
+            lowerSlices: lowerSlices,
+          );
+    final externalBoundary = sameExternalAndInternalWidth
+        ? perimeterBoundary
+        : SourceClassicOverhangSupport2.distBoundary(
+            width: externalPerimeterFlow.width,
+            nozzleDiameter: wallNozzleDiameter,
+          );
+
+    final smallerExternalSeries =
+        SourceClassicOverhangSupport2.generateLowerPolygonsSeries(
+      width: smallerExternalPerimeterFlow.width,
+      nozzleDiameter: wallNozzleDiameter,
+      lowerSlices: lowerSlices,
+    );
+    final smallerExternalBoundary = SourceClassicOverhangSupport2.distBoundary(
+      width: smallerExternalPerimeterFlow.width,
+      nozzleDiameter: wallNozzleDiameter,
+    );
+
+    return SourceClassicPerimeterOverhangSettings2(
+      overhangFlow: overhangFlow,
+      externalLowerPolygonsSeries: externalSeries,
+      smallerExternalLowerPolygonsSeries: smallerExternalSeries,
+      perimeterLowerPolygonsSeries: perimeterSeries,
+      externalOverhangDistBoundary: externalBoundary,
+      smallerExternalOverhangDistBoundary: smallerExternalBoundary,
+      perimeterOverhangDistBoundary: perimeterBoundary,
+      layerId: layerId,
+      raftLayers: raftLayers,
+    );
+  }
 
   final Flow overhangFlow;
   final List<List<SourcePolygon2>> externalLowerPolygonsSeries;
   final List<List<SourcePolygon2>> smallerExternalLowerPolygonsSeries;
   final List<List<SourcePolygon2>> perimeterLowerPolygonsSeries;
+
+  /// Populated by [fromLowerSlices]. Raw fixture construction may omit these
+  /// until speed grading is requested.
+  final SourceOverhangDistanceBoundary2? externalOverhangDistBoundary;
+  final SourceOverhangDistanceBoundary2? smallerExternalOverhangDistBoundary;
+  final SourceOverhangDistanceBoundary2? perimeterOverhangDistBoundary;
+
   final int layerId;
   final int raftLayers;
 }
