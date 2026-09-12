@@ -267,29 +267,40 @@ void main() {
     );
   });
 
-  test('speed-graded Arachne overhang remains an explicit seam', () {
+  test('speed-graded overhang composes supported degrees and bridge tail', () {
     final line = SourceArachneExtrusionLine2(
       insetIndex: 0,
       isOdd: false,
-      junctions: [junction(0, 0), junction(100000, 0)],
+      junctions: [junction(0, 0), junction(300000, 0)],
     );
 
-    expect(
-      () => SourceArachneExtrusionTraversal2.traverse(
-        orderedExtrusions: [
-          SourceArachneOrderedExtrusion2(
-            extrusion: line,
-            isContour: false,
-          ),
-        ],
-        settings: settings(
-          detectOverhangWall: true,
-          enableOverhangSpeed: true,
+    final result = SourceArachneExtrusionTraversal2.traverse(
+      orderedExtrusions: [
+        SourceArachneOrderedExtrusion2(
+          extrusion: line,
+          isContour: false,
         ),
-        random: EmptyRandom(),
+      ],
+      settings: settings(
+        detectOverhangWall: true,
+        enableOverhangSpeed: true,
+        lowerLayerPolygons: [rect(-500000, -500000, 150000, 500000)],
       ),
-      throwsUnsupportedError,
+      random: EmptyRandom(),
     );
+
+    expect(result.entities, hasLength(1));
+    final multi = result.entities.single as ExtrusionMultiPath2;
+    expect(multi.firstPoint, const SourcePoint2(0, 0));
+    expect(multi.lastPoint, const SourcePoint2(300000, 0));
+    expect(
+      multi.paths.any(
+        (path) => path.role == ExtrusionRole.externalPerimeter,
+      ),
+      isTrue,
+    );
+    expect(multi.paths.last.role, ExtrusionRole.overhangPerimeter);
+    expect(multi.paths.last.overhangDegree, 6);
   });
 
   test('QIDI outwall-node producer is rejected until composed', () {
