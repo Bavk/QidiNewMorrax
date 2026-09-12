@@ -1,4 +1,5 @@
 import 'source_geometry.dart';
+export 'source_geometry.dart' show SourcePoint2;
 
 enum VoronoiVertexCategory { onContour, inside, outside, unknown }
 enum VoronoiEdgeCategory { pointsInside, pointsOutside, pointsToContour, unknown }
@@ -140,10 +141,6 @@ class VoronoiTopology2 {
           'Voronoi edge ${edge.id} finite flag disagrees with nullable endpoints',
         );
       }
-      // Boost line diagrams with no finite Voronoi vertices (for example two
-      // point sites) legitimately have both endpoints null. Do not reject that
-      // source representation merely because MedialAxis normally sees rays
-      // with one finite endpoint.
       if (edge.cellIndex < 0 || edge.cellIndex >= this.cells.length) {
         throw StateError('Voronoi edge ${edge.id} has invalid cell index');
       }
