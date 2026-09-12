@@ -9,6 +9,7 @@ class Slic3rUnits {
   static const int scaledEpsilon = 10;
 
   static double unscale(int value) => value * scalingFactor;
+  static double unscaleDouble(double value) => value * scalingFactor;
   static int scaleTruncated(double millimeters) =>
       (millimeters / scalingFactor).truncate();
 }
@@ -52,7 +53,7 @@ class SourcePoint2 {
     final dy = y.toDouble() - center.y;
     return SourcePoint2(
       _cppRound(center.x + c * dx - s * dy),
-      _cppRound(center.y + c * dy + s * dx),
+      _cppRound(center.y + s * dx + c * dy),
     );
   }
 
