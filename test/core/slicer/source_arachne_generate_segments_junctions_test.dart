@@ -146,31 +146,7 @@ void main() {
     expect(downward.data.extrusionJunctions, isNull);
   });
 
-  test('exact 0.005mm snap boundary is not snapped', () {
-    final low = _node(0, 1000, beadCount: 1);
-    final high = _node(10000, 5000, beadCount: 2);
-    final up = _pair(low, high).$1;
-    final topBeading = _beading(
-      widths: const [100, 450, 500],
-      locations: const [1000, 4500, 5000],
-    );
-    high.data.setBeading(topBeading);
-    final graph = SourceArachneSkeletalTrapezoidationGraph2()
-      ..nodes.addAll([low, high])
-      ..edges.add(up);
-
-    final result = graph.generateJunctions(
-      <SourceArachneBeadingPropagation2>[topBeading],
-      _Strategy(),
-    );
-
-    // scaled(0.005)=500, so bead_R == start_R - 500 must take the
-    // interpolated branch because source snap comparison is strict `>`.
-    expect(result.single.first.p, const SourcePoint2(8750, 0));
-    expect(result.single.first.w, 450);
-  });
-
-  test('one source unit inside snap threshold snaps to high-R node', () {
+  test('exact literal scaled 0.005mm snap boundary is not snapped', () {
     final low = _node(0, 1000, beadCount: 1);
     final high = _node(10000, 5000, beadCount: 2);
     final up = _pair(low, high).$1;
@@ -188,8 +164,33 @@ void main() {
       _Strategy(),
     );
 
-    expect(result.single.first.p, const SourcePoint2(10000, 0));
+    // `0.005 / 0.00001` is 499.99999999999994 in source double math,
+    // therefore scaled<coord_t>(0.005) truncates to 499. Equality at
+    // start_R - 499 must not snap because the source comparison is strict `>`.
+    expect(result.single.first.p, const SourcePoint2(8753, 0));
     expect(result.single.first.w, 451);
+  });
+
+  test('one source unit inside literal snap threshold snaps to high-R node', () {
+    final low = _node(0, 1000, beadCount: 1);
+    final high = _node(10000, 5000, beadCount: 2);
+    final up = _pair(low, high).$1;
+    final topBeading = _beading(
+      widths: const [100, 452, 500],
+      locations: const [1000, 4502, 5000],
+    );
+    high.data.setBeading(topBeading);
+    final graph = SourceArachneSkeletalTrapezoidationGraph2()
+      ..nodes.addAll([low, high])
+      ..edges.add(up);
+
+    final result = graph.generateJunctions(
+      <SourceArachneBeadingPropagation2>[topBeading],
+      _Strategy(),
+    );
+
+    expect(result.single.first.p, const SourcePoint2(10000, 0));
+    expect(result.single.first.w, 452);
   });
 
   test('lazy top beading is created and owned before junction generation', () {
