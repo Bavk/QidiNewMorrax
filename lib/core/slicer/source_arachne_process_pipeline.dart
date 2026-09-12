@@ -21,8 +21,8 @@ class SourceArachneProcessPipelineSettings2 {
   final SourceArachneSurfaceProcessSettings2 surfaceSettings;
   final SourceArachneExtrusionTraversalSettings2 traversalSettings;
 
-  /// Pinned `ext_perimeter_spacing2 = scaled<coord_t>(0.5f *
-  /// (ext_perimeter_flow.spacing() + perimeter_flow.spacing()))`.
+  /// Pinned source expression
+  /// `ext_perimeter_spacing2 = scaled<coord_t>(0.5f * (ext_perimeter_flow.spacing() + perimeter_flow.spacing()))`.
   ///
   /// The value is supplied after the caller's exact Flow/float conversion so
   /// this composition layer does not re-derive and normalize that boundary.
