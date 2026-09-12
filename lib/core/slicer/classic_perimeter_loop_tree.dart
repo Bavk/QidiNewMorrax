@@ -1,3 +1,4 @@
+import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 
 /// Source `PerimeterGeneratorLoop` value used by classic perimeter nesting and
@@ -132,7 +133,7 @@ class SourceClassicPerimeterLoopNester2 {
     return List.unmodifiable(contours[0]);
   }
 
-  static dynamic _firstPoint(SourcePerimeterLoop2 loop) {
+  static SourcePoint2 _firstPoint(SourcePerimeterLoop2 loop) {
     if (loop.polygon.points.isEmpty) {
       throw StateError('PerimeterGeneratorLoop polygon must not be empty');
     }
