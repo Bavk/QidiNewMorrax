@@ -303,7 +303,7 @@ class SourceClassicTopFillAllTop2 {
     _SourceBounds2 bounds,
   ) {
     final points = source.points;
-    if (points.length < 3) return const SourcePolygon2([]);
+    if (points.length < 3) return SourcePolygon2(const []);
 
     int sides(SourcePoint2 point) {
       var value = 0;
