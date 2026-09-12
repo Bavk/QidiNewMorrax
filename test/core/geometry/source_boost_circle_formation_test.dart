@@ -195,22 +195,68 @@ void main() {
     expect(circle.lowerX, closeTo(8.8173923819799693, 1e-11));
   });
 
-  test('SSS stays explicit until its exact source formula exists', () {
+  test('SSS triangle matches Boost 1.83 C++ oracle', () {
     final segment1 = BoostSiteEvent2.segment(
       const SourcePoint2(0, 0),
-      const SourcePoint2(10, 10),
+      const SourcePoint2(10, 0),
     )..setSortedIndex(0);
     final segment2 = BoostSiteEvent2.segment(
-      const SourcePoint2(0, 10),
       const SourcePoint2(10, 0),
+      const SourcePoint2(5, 10),
     )..setSortedIndex(1);
     final segment3 = BoostSiteEvent2.segment(
-      const SourcePoint2(5, -5),
-      const SourcePoint2(5, 15),
+      const SourcePoint2(5, 10),
+      const SourcePoint2(0, 0),
     )..setSortedIndex(2);
-    expect(
-      () => formation.tryForm(segment1, segment2, segment3, BoostCircleEvent2()),
-      throwsUnsupportedError,
-    );
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(segment1, segment2, segment3, circle), true);
+    expect(circle.x, closeTo(5, 1e-12));
+    expect(circle.y, closeTo(3.0901699437494741, 1e-12));
+    expect(circle.lowerX, closeTo(1.9098300562505259, 1e-12));
+  });
+
+  test('SSS three square sides match Boost 1.83 C++ oracle', () {
+    final segment1 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 0),
+      const SourcePoint2(100, 0),
+    )..setSortedIndex(0);
+    final segment2 = BoostSiteEvent2.segment(
+      const SourcePoint2(100, 0),
+      const SourcePoint2(100, 100),
+    )..setSortedIndex(1);
+    final segment3 = BoostSiteEvent2.segment(
+      const SourcePoint2(100, 100),
+      const SourcePoint2(0, 100),
+    )..setSortedIndex(2);
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(segment1, segment2, segment3, circle), true);
+    expect(circle.x, closeTo(50, 1e-12));
+    expect(circle.y, closeTo(50, 1e-12));
+    expect(circle.lowerX, closeTo(0, 1e-12));
+  });
+
+  test('SSS inverse segment follows Boost side selection oracle', () {
+    final segment1 = BoostSiteEvent2.segment(
+      const SourcePoint2(-10, 0),
+      const SourcePoint2(10, 20),
+    )..setSortedIndex(0);
+    final segment2 = BoostSiteEvent2.segment(
+      const SourcePoint2(0, 20),
+      const SourcePoint2(20, -5),
+    )..setSortedIndex(1);
+    final segment3 = BoostSiteEvent2.segment(
+      const SourcePoint2(-20, 10),
+      const SourcePoint2(20, 12),
+    )
+      ..setSortedIndex(2)
+      ..inverse();
+    final circle = BoostCircleEvent2();
+
+    expect(formation.tryForm(segment1, segment2, segment3, circle), true);
+    expect(circle.x, closeTo(4.3373242234503921, 1e-11));
+    expect(circle.y, closeTo(12.510347598314434, 1e-11));
+    expect(circle.lowerX, closeTo(5.629191784153341, 1e-11));
   });
 }
