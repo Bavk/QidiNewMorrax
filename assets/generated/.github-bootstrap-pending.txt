@@ -1,0 +1,3 @@
+This marker only keeps the declared Flutter asset directory present in Git.
+It is NOT a replacement for the original runtime assets.
+See migration/VALIDATION.md and migration/original_file_manifest.json.
