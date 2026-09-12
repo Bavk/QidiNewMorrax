@@ -5,6 +5,8 @@ import 'package:clipper2/clipper2.dart' as c2;
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import 'source_arachne_extrusion_line.dart';
+import 'source_arachne_extrusion_line_simplify.dart';
+import 'source_arachne_wall_tool_paths.dart';
 
 /// Result of pinned `WallToolPaths::separateOutInnerContour()`.
 class SourceArachneSeparatedContours2 {
@@ -117,6 +119,27 @@ class SourceArachneWallToolPathsPostprocess2 {
       innerContour: _unionEvenOdd(innerContour),
       firstWallContour: _unionEvenOdd(firstWallContour),
     );
+  }
+
+  /// Direct port of `WallToolPaths::simplifyToolPaths()`.
+  static void simplifyToolPaths(
+    List<List<SourceArachneExtrusionLine2>> toolpaths,
+  ) {
+    final maximumResolution =
+        SourceArachneWallToolPathsPreprocess2.meshfixMaximumResolution;
+    final maximumDeviation =
+        SourceArachneWallToolPathsPreprocess2.meshfixMaximumDeviation;
+    final maximumExtrusionAreaDeviation = SourceArachneWallToolPathsPreprocess2
+        .meshfixMaximumExtrusionAreaDeviation;
+    for (final inset in toolpaths) {
+      for (final line in inset) {
+        line.simplifySource(
+          maximumResolution * maximumResolution,
+          maximumDeviation * maximumDeviation,
+          maximumExtrusionAreaDeviation,
+        );
+      }
+    }
   }
 
   /// Direct port of `WallToolPaths::removeEmptyToolPaths()`.
