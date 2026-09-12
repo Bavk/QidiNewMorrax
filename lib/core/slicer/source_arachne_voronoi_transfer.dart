@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import '../geometry/source_geometry.dart';
 import '../geometry/source_voronoi_utils.dart';
 import '../geometry/voronoi_topology.dart';
 import 'source_arachne_polygon_indices.dart';
