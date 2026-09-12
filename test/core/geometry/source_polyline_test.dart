@@ -33,13 +33,17 @@ void main() {
     expect(line.points, const [SourcePoint2(0, 0), SourcePoint2(50, 0)]);
   });
 
-  test('clipEnd clears a path when clipping its complete length', () {
+  test('clipEnd exact total length leaves the source first-point quirk', () {
     final line = SourcePolyline2(const [
       SourcePoint2(0, 0),
       SourcePoint2(100, 0),
     ]);
     line.clipEnd(100);
-    expect(line.points, isEmpty);
+
+    // `Polyline::clip_end()` pops the last point, subtracts the exact segment
+    // length to zero and exits the `while (distance > 0)` loop. It therefore
+    // retains the original first point instead of clearing the polyline.
+    expect(line.points, const [SourcePoint2(0, 0)]);
   });
 
   test('clipStart mirrors source reverse/clip/reverse behavior', () {
