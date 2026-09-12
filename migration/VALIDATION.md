@@ -17,80 +17,102 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34698420757` (#278) executed code commit `69780005918e63a58485ebf7caf645214eacc37b` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34714922159` (#317) executed code commit `10f642e0d3952b61eefe4c8bdda2fcd909a4eba2` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+395: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+551: All tests passed!`**;
 - job conclusion — **success**.
 
-## Arachne `WallToolPaths` foundation evidence
+## Arachne post-construction skeletal runtime evidence
 
-Run #278 is the first green checkpoint for the source-shaped foundation immediately below pinned `PerimeterGenerator::process_arachne()`.
+Run #317 is the first green checkpoint where the represented `SkeletalTrapezoidation::generateToolpaths()` runtime is composed as one source-order entrypoint after the skeletal graph already exists.
 
-Eight new tests passed for `source_arachne_wall_tool_paths.dart`:
+The validated top-level order is:
 
-- pinned `scaled<coord_t>(double)` constant truncation quirks: `0.5 → 49999`, `0.025 → 2500`, `2.0 → 199999`, `0.01 → 999`, `0.005 → 499`;
-- exact `process_arachne()` percentage × minimum-nozzle assignments stored through a source `float`/IEEE float32 boundary;
-- `WallToolPaths` constructor scaling from stored float parameters using float arithmetic and coord truncation;
-- `<3`-vertex simplifier clear behavior;
-- exactly-three-vertex identity behavior;
-- exact collinear vertex removal;
-- pinned 5-micron near-collinear deletion behavior;
-- vector wrapper removal of polygons simplified below three vertices.
+1. `updateIsCentral()`;
+2. `filterCentral(central_filter_dist)`;
+3. optional `filterOuterCentral()`;
+4. `updateBeadCount()`;
+5. `filterNoncentralRegions()`;
+6. `generateTransitioningRibs()`;
+7. `generateExtraRibs()`;
+8. `generateSegments()`.
 
-The represented constructor state also freezes `fill_outline_gaps == true`, `small_area_length = bead_width_0 / 2.` and `toolpaths_generated=false`.
+The two top-level fixtures in #317 prove both the normal runtime composition and that `filter_outermost_central_edges` executes at the pinned source position between central filtering and bead-count assignment.
 
-This checkpoint does **not** contain generated Arachne walls. It does not yet port the complete prepared-outline repair/union chain, beading strategies or `SkeletalTrapezoidation`.
+`generateTransitioningRibs()` is separately covered as the source four-stage sequence `generateTransitionMids → filterTransitionMids → generateAllTransitionEnds → applyTransitions`.
+
+`generateSegments()` is separately covered as seven represented source-order stages:
+
+- upward quad-mid collection / source comparator ordering;
+- node beading materialization and source three-argument interpolation;
+- upward beading propagation;
+- downward propagation, lazy nearest/create lookup and switching-radius interpolation;
+- extrusion-junction generation;
+- junction connection into variable-width lines;
+- isolated local-maximum odd single beads.
+
+Important executed source seams include:
+
+- `scaled<coord_t>(0.1) == 10000`;
+- `scaled<coord_t>(0.02) == 2000`;
+- literal double/truncation quirks `scaled<coord_t>(0.010) == 999` and `scaled<coord_t>(0.005) == 499`;
+- strict versus inclusive snap/filter comparisons;
+- source float32 transition/interpolation ratios;
+- integer coordinate normals/interpolation/truncation;
+- `BeadingPropagation` assignment mutating the existing shared object identity, matching C++ reference/shared_ptr semantics;
+- stable transition sorting / Dart list-mutation compatibility seams;
+- six-point local-max circle with integer `width / 8`, float angle and source point rounding.
+
+## Arachne `WallToolPaths` dependency evidence retained
+
+The #317 suite also re-executed all represented dependencies below `WallToolPaths::generate()`:
+
+- `WallToolPathsParams` and constructor source float/scaled state;
+- standalone simplifier;
+- prepared-outline offset/repair/degenerate/collinear/small-area chain fixtures;
+- scalar pre-beading width/threshold input casts;
+- beading strategy implementations and factory wrapper order;
+- half-edge graph model, pointy-end separation, graph mutation helpers and `collapseSmallEdges()`;
+- fuzzy `ExtrusionLine` / LineSegmentation consumers.
+
+This does **not** prove full Arachne walls from polygons. The still-open constructor path is real polygon segments → Boost Voronoi diagram → Arachne skeletal half-edge graph.
 
 ## Ordered classic surface → extrusion evidence retained
 
-Run #278 re-executed the complete 387-test checkpoint from #276, including:
-
-- `chain_expolygons()` order preserved to nested outer `loops` collections;
-- per-island classic fuzzy/overhang recursive traversal and wall-sequence handling;
-- one shared fuzzy RNG across ordered islands;
-- non-null empty lower-slice overhang semantics;
-- QIDI `outwall_paths`, literal `Point::is_in_lines`, global `LoopNode` IDs and per-island `loop_node_range` producer behavior.
-
-It also re-executed all earlier classic preprocessing/fill evidence: pinned `BridgeDetector`, `process_no_bridge`, conditional surface simplification, extra-perimeter accounting, top-one-wall/Alltop, thin-wall/gap-fill, final fill boundary and the source **7999** overlap quirk.
+Run #317 re-executed the existing classic evidence, including source `Surface` copy semantics; `BridgeDetector` / `process_no_bridge`; conditional simplification and island order; per-surface wall accounting; top-one-wall / Alltop; thin-wall/gap-fill/final fill boundaries; recursive fuzzy/overhang traversal; shared fuzzy RNG; wall sequence; QIDI `outwall_paths` / `LoopNode` metadata; and non-null empty lower-slice semantics.
 
 ## Earlier Arachne / fuzzy evidence retained
 
-Run #278 re-executed all previously green Arachne/fuzzy evidence:
+Run #317 re-executed shared Classic `random_value()` and MT19937/libstdc++ fixtures; pinned libnoise; Polygon/Polyline fuzzy geometry and painted regions; source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine`; seeded C++ `Displacement`, `Extrusion`, `Combined` goldens; Arachne width interpolation and region-aware fuzzy composition.
 
-- shared Classic `random_value()` stream and MT19937/libstdc++ fixtures;
-- pinned libnoise value/gradient/Perlin/Billow/RidgedMulti/Voronoi behavior;
-- Polygon/Polyline fuzzy geometry and painted-region LineSegmentation;
-- source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine` subset;
-- seeded C++ `Displacement`, `Extrusion`, `Combined` goldens;
-- Arachne width interpolation and region-aware fuzzy composition.
+The same run re-executed represented source geometry, ArcFitter/Circle, ThickPolyline, direct Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width and G-code path formatting/emission subsets.
 
-The same run re-executed represented source geometry, ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width and G-code path formatting/emission subsets.
+## Next audited Arachne boundary: `constructFromPolygons()`
 
-## Next audited Arachne boundary
+Pinned source `SkeletalTrapezoidation::constructFromPolygons()` remains the next missing integration seam. The audited source order is:
 
-Pinned `WallToolPaths::generate()` continues from the now-verified constructor/simplifier through this prepared-outline chain:
+1. create polygon `Segment` entries and construct the Boost Voronoi diagram;
+2. for each cell derive source start/end range (`computePointCellRange()` for point cells or `compute_segment_cell_range()` for segment cells);
+3. apply source hole-compensation selection from polygon index;
+4. `transferEdge()` the starting, middle and ending Voronoi edges, inserting ribs at the exact source positions;
+5. `transferEdge()` either reuses already-transferred twin chains or discretizes the first side;
+6. `discretize()` handles straight/secondary, point-line parabola and point-point source branches;
+7. set boundary-node distance-to-boundary to zero;
+8. `separatePointyQuadEndNodes()`;
+9. `collapseSmallEdges()`;
+10. normalize chain-start `incident_edge` pointers.
 
-1. triple epsilon offset: `offset(-epsilon) → offset(+2*epsilon) → offset(-epsilon)`;
-2. `simplify()`;
-3. `fixSelfIntersections()`;
-4. `removeDegenerateVerts()`;
-5. `removeColinearEdges(..., scaled<double>(0.005))`;
-6. second `fixSelfIntersections()` and `removeDegenerateVerts()`;
-7. `removeSmallAreas(..., small_area_length², false)`;
-8. `union_()`;
-9. source `outline_size_change` update after each mutation and `area(prepared_outline) <= 0` early return.
-
-After that come rounded-rectangle extrusion width calculations, wall-transition/split/add thresholds, `BeadingStrategyFactory` composition, then `SkeletalTrapezoidation`. These are the next real dependencies; no full Arachne wall parity is claimed yet.
+Existing Dart initialization helpers intentionally begin **after** this transfer and therefore do not close it.
 
 ## Not proven by this checkpoint
 
-Run #278 does **not** prove:
+Run #317 does **not** prove:
 
-- the complete prepared-outline cleanup/union chain listed above;
-- `BeadingStrategyFactory`, individual beading strategies or `SkeletalTrapezoidation`;
-- full `Arachne::WallToolPaths::generate()` or `PerimeterGenerator::process_arachne()`;
+- `SkeletalTrapezoidation::constructFromPolygons()` or the real Voronoi-to-half-edge transfer;
+- full polygon → `WallToolPaths::generate()` → generated Arachne wall output;
+- full `PerimeterGenerator::process_arachne()` integration / one-wall / separate-wall branches;
 - downstream inter-layer QIDI loop-node matching / vertical wall speed-control consumption;
 - every pathological geometry topology beyond represented fixtures;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;
