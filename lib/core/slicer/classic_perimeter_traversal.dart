@@ -124,11 +124,11 @@ class SourceClassicPerimeterOverhangSettings2 {
 
 /// Source classic `traverse_loops()` representation.
 ///
-/// [traverseNoOverhang] preserves the already-verified branch where overhang
-/// detection is not active. [traverseWithoutSpeedGrading] additionally ports
-/// the exact `detect_overhang_wall` split for configurations where QIDI's
-/// overhang-speed grading is disabled. Fuzzy-skin and degree grading remain
-/// outside this class's parity scope.
+/// [traverseNoOverhang] preserves the branch where overhang detection is not
+/// active. [traverseWithoutSpeedGrading] ports the `detect_overhang_wall`
+/// branch with slowdown disabled. [traverseWithSpeedGrading] adds the source
+/// intermediate 0..5 degree calculation. Fuzzy-skin transformation/gating is
+/// deliberately still outside this class's parity scope.
 class SourceClassicPerimeterTraversal2 {
   const SourceClassicPerimeterTraversal2._();
 
@@ -156,11 +156,26 @@ class SourceClassicPerimeterTraversal2 {
         overhangSettings: overhangSettings,
       );
 
+  static List<ExtrusionEntity2> traverseWithSpeedGrading({
+    required List<SourcePerimeterLoop2> loops,
+    required List<ThickPolyline2> thinWalls,
+    required SourceClassicPerimeterTraversalSettings2 settings,
+    required SourceClassicPerimeterOverhangSettings2 overhangSettings,
+  }) =>
+      _traverse(
+        loops: loops,
+        thinWalls: thinWalls,
+        settings: settings,
+        overhangSettings: overhangSettings,
+        speedGrading: true,
+      );
+
   static List<ExtrusionEntity2> _traverse({
     required List<SourcePerimeterLoop2> loops,
     required List<ThickPolyline2> thinWalls,
     required SourceClassicPerimeterTraversalSettings2 settings,
     SourceClassicPerimeterOverhangSettings2? overhangSettings,
+    bool speedGrading = false,
   }) {
     final coll = <ExtrusionEntity2>[];
     final structuralLoops = <SourcePerimeterLoop2>[];
@@ -202,6 +217,7 @@ class SourceClassicPerimeterTraversal2 {
         flag: flag,
         settings: settings,
         overhangSettings: overhangSettings,
+        speedGrading: speedGrading,
       );
       if (paths.isEmpty) {
         // Literal source branch: `if (paths.empty()) continue;`.
@@ -265,6 +281,7 @@ class SourceClassicPerimeterTraversal2 {
         thinWalls: thinWalls,
         settings: settings,
         overhangSettings: overhangSettings,
+        speedGrading: speedGrading,
       );
       final extrusionLoop = entity as ExtrusionLoop2;
       if (loop.isContour) {
@@ -290,23 +307,47 @@ class SourceClassicPerimeterTraversal2 {
     required CustomizeFlag flag,
     required SourceClassicPerimeterTraversalSettings2 settings,
     required SourceClassicPerimeterOverhangSettings2? overhangSettings,
+    required bool speedGrading,
   }) {
     if (overhangSettings != null &&
         overhangSettings.layerId > overhangSettings.raftLayers) {
-      final lowerSeries = loop.isExternal
-          ? (loop.isSmallerWidthPerimeter
-              ? overhangSettings.smallerExternalLowerPolygonsSeries
-              : overhangSettings.externalLowerPolygonsSeries)
-          : overhangSettings.perimeterLowerPolygonsSeries;
-      final paths = const SourceClassicOverhangSplitter2()
-          .splitWithoutSpeedGrading(
-        polygon: loop.polygon,
-        lowerPolygonsSeries: lowerSeries,
-        supportedRole: role,
-        supportedFlow: flow,
-        overhangFlow: overhangSettings.overhangFlow,
-        layerHeight: settings.layerHeight,
-      );
+      late final List<List<SourcePolygon2>> lowerSeries;
+      late final SourceOverhangDistanceBoundary2? boundary;
+      if (loop.isExternal) {
+        if (loop.isSmallerWidthPerimeter) {
+          lowerSeries = overhangSettings.smallerExternalLowerPolygonsSeries;
+          boundary = overhangSettings.smallerExternalOverhangDistBoundary;
+        } else {
+          lowerSeries = overhangSettings.externalLowerPolygonsSeries;
+          boundary = overhangSettings.externalOverhangDistBoundary;
+        }
+      } else {
+        lowerSeries = overhangSettings.perimeterLowerPolygonsSeries;
+        boundary = overhangSettings.perimeterOverhangDistBoundary;
+      }
+
+      final splitter = const SourceClassicOverhangSplitter2();
+      final paths = speedGrading
+          ? splitter.splitWithSpeedGrading(
+              polygon: loop.polygon,
+              lowerPolygonsSeries: lowerSeries,
+              overhangDistBoundary: boundary ??
+                  (throw StateError(
+                    'source speed grading requires the selected wall boundary',
+                  )),
+              supportedRole: role,
+              supportedFlow: flow,
+              overhangFlow: overhangSettings.overhangFlow,
+              layerHeight: settings.layerHeight,
+            )
+          : splitter.splitWithoutSpeedGrading(
+              polygon: loop.polygon,
+              lowerPolygonsSeries: lowerSeries,
+              supportedRole: role,
+              supportedFlow: flow,
+              overhangFlow: overhangSettings.overhangFlow,
+              layerHeight: settings.layerHeight,
+            );
       for (final path in paths) {
         path.customizeFlag = flag;
       }
