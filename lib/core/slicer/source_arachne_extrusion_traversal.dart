@@ -1,8 +1,10 @@
 import '../geometry/source_geometry.dart';
+import '../geometry/source_polygon.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
 import 'source_arachne_extrusion_line_variable_width.dart';
 import 'source_arachne_extrusion_order.dart';
+import 'source_arachne_overhang.dart';
 import 'source_fuzzy_skin_apply.dart';
 import 'source_fuzzy_skin_geometry.dart';
 import 'variable_width.dart';
@@ -17,6 +19,10 @@ class SourceArachneExtrusionTraversalSettings2 {
     required this.sliceZMm,
     this.detectOverhangWall = false,
     this.raftLayers = 0,
+    this.lowerLayerPolygons = const [],
+    this.overhangFlow,
+    this.nozzleDiameterMm = 0,
+    this.enableOverhangSpeed = false,
     this.zDirectionOutwallSpeedContinuous = false,
   });
 
@@ -28,17 +34,29 @@ class SourceArachneExtrusionTraversalSettings2 {
   final double sliceZMm;
   final bool detectOverhangWall;
   final int raftLayers;
+
+  /// Pinned `m_lower_slices_polygons`: the lower slices already grown by half
+  /// the active wall nozzle diameter before `traverse_extrusions()` is called.
+  final List<SourcePolygon2> lowerLayerPolygons;
+  final Flow? overhangFlow;
+  final double nozzleDiameterMm;
+
+  /// `is_enable_overhang_speed()` after process/filament override resolution.
+  /// The speed-graded branch is the next explicit migration seam.
+  final bool enableOverhangSpeed;
   final bool zDirectionOutwallSpeedContinuous;
 }
 
-/// Source-order slice of `PerimeterGenerator::traverse_extrusions()` for the
-/// non-overhang path.
+/// Source-order slice of `PerimeterGenerator::traverse_extrusions()`.
 ///
-/// This composes the already represented fuzzy-skin transform, Arachne
-/// `to_thick_polyline()`, the source variable-width adapter, loop/open entity
+/// This composes the represented fuzzy-skin transform, Arachne
+/// `to_thick_polyline()`, source variable-width adapters, loop/open entity
 /// construction, orientation restoration and circle-compensation propagation.
-/// The overhang clipping/speed branch and QIDI loop-node producer are rejected
-/// explicitly until their complete source dependencies are composed here.
+/// The active overhang branch is represented for the source path where
+/// overhang-speed grading is disabled (or fuzzy skin disallows it), including
+/// width-carrying clipping, unsupported bridge-wall classification and
+/// path re-chaining. The speed-graded overhang branch and QIDI loop-node
+/// producer remain explicit seams.
 class SourceArachneExtrusionTraversal2 {
   const SourceArachneExtrusionTraversal2._();
 
@@ -51,11 +69,6 @@ class SourceArachneExtrusionTraversal2 {
       throw UnsupportedError(
         'Pinned Arachne z-direction outwall loop-node traversal is not yet '
         'composed',
-      );
-    }
-    if (settings.detectOverhangWall && settings.layerId > settings.raftLayers) {
-      throw UnsupportedError(
-        'Pinned Arachne overhang clipping/speed traversal is not yet composed',
       );
     }
 
@@ -85,15 +98,38 @@ class SourceArachneExtrusionTraversal2 {
           ? settings.externalPerimeterFlow
           : settings.perimeterFlow;
 
-      final converted = variableWidth.thickPolylineToMultiPath(
-        extrusion.toThickPolylineSource(),
-        role,
-        flow,
-        SourceVariableWidth2.qidiTolerance,
-        Slic3rUnits.scaledEpsilon.toDouble(),
-        0,
-      );
-      final paths = converted.paths;
+      late final List<ExtrusionPath2> paths;
+      if (settings.detectOverhangWall && settings.layerId > settings.raftLayers) {
+        if (settings.enableOverhangSpeed) {
+          throw UnsupportedError(
+            'Pinned Arachne speed-graded overhang traversal is not yet composed',
+          );
+        }
+        final overhangFlow = settings.overhangFlow;
+        if (overhangFlow == null) {
+          throw ArgumentError(
+            'Pinned Arachne overhang traversal requires overhangFlow',
+          );
+        }
+        paths = SourceArachneOverhang2.splitWithoutSpeedGrading(
+          extrusion: extrusion,
+          lowerLayerPolygons: settings.lowerLayerPolygons,
+          nozzleDiameterMm: settings.nozzleDiameterMm,
+          supportedRole: role,
+          supportedFlow: flow,
+          overhangFlow: overhangFlow,
+        );
+      } else {
+        final converted = variableWidth.thickPolylineToMultiPath(
+          extrusion.toThickPolylineSource(),
+          role,
+          flow,
+          SourceVariableWidth2.qidiTolerance,
+          Slic3rUnits.scaledEpsilon.toDouble(),
+          0,
+        );
+        paths = converted.paths;
+      }
       if (paths.isEmpty) continue;
 
       final applyHoleCompensation =
