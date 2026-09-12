@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
 import 'package:qidi_flow_flutter/core/geometry/thick_polyline.dart';
+import 'package:qidi_flow_flutter/core/slicer/classic_overhang_support.dart';
 import 'package:qidi_flow_flutter/core/slicer/classic_perimeter_loop_tree.dart';
 import 'package:qidi_flow_flutter/core/slicer/classic_perimeter_traversal.dart';
 import 'package:qidi_flow_flutter/core/slicer/extrusion_entity.dart';
@@ -246,6 +247,86 @@ void main() {
       ),
       true,
     );
+  });
+
+  test('speed grading survives recursive loop wrapping and customize flags', () {
+    final root = SourcePerimeterLoop2(
+      polygon: box(0, 200000),
+      depth: 0,
+      isContour: true,
+      needCircleCompensation: true,
+    );
+    final lowerSeries = <List<SourcePolygon2>>[
+      [rectangle(-50000, -50000, 100000, 250000)],
+      [rectangle(-50000, -50000, 250000, 250000)],
+    ];
+
+    final output = SourceClassicPerimeterTraversal2.traverseWithSpeedGrading(
+      loops: [root],
+      thinWalls: <ThickPolyline2>[],
+      settings: settings,
+      overhangSettings: SourceClassicPerimeterOverhangSettings2(
+        overhangFlow: overhangFlow,
+        externalLowerPolygonsSeries: lowerSeries,
+        smallerExternalLowerPolygonsSeries: lowerSeries,
+        perimeterLowerPolygonsSeries: lowerSeries,
+        externalOverhangDistBoundary:
+            const SourceOverhangDistanceBoundary2(0, 200000),
+        layerId: 1,
+      ),
+    );
+
+    final loop = onlyLoop(output);
+    expect(loop.isCounterClockwise, true);
+    expect(loop.paths, isNotEmpty);
+    expect(
+      loop.paths.every((path) => path.role == ExtrusionRole.externalPerimeter),
+      true,
+    );
+    expect(loop.paths.any((path) => path.overhangDegree == 0), true);
+    expect(
+      loop.paths.any((path) => path.overhangDegree > 0 && path.overhangDegree < 5),
+      true,
+    );
+    expect(
+      loop.paths.every(
+        (path) => path.customizeFlag == CustomizeFlag.circleCompensation,
+      ),
+      true,
+    );
+  });
+
+  test('speed grading selects the smaller-external boundary with its flow', () {
+    final root = SourcePerimeterLoop2(
+      polygon: box(0, 200000),
+      depth: 0,
+      isContour: true,
+      isSmallerWidthPerimeter: true,
+    );
+    final support = <List<SourcePolygon2>>[
+      [rectangle(-50000, -50000, 250000, 250000)],
+      [rectangle(-50000, -50000, 250000, 250000)],
+    ];
+
+    final output = SourceClassicPerimeterTraversal2.traverseWithSpeedGrading(
+      loops: [root],
+      thinWalls: <ThickPolyline2>[],
+      settings: settings,
+      overhangSettings: SourceClassicPerimeterOverhangSettings2(
+        overhangFlow: overhangFlow,
+        externalLowerPolygonsSeries: support,
+        smallerExternalLowerPolygonsSeries: support,
+        perimeterLowerPolygonsSeries: support,
+        smallerExternalOverhangDistBoundary:
+            const SourceOverhangDistanceBoundary2(0, 200000),
+        layerId: 1,
+      ),
+    );
+
+    final loop = onlyLoop(output);
+    expect(loop.paths, hasLength(1));
+    expect(loop.paths.single.width, smallFlow.width);
+    expect(loop.paths.single.mm3PerMm, closeTo(smallFlow.mm3PerMm, 1e-12));
   });
 
   test('raft-layer boundary bypasses overhang split like source condition', () {
