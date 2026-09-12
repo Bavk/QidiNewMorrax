@@ -25,9 +25,15 @@ void main() {
     expect(SourceClassicOverhangDegree2.mappedDegree(125, 0, 100), 5);
   });
 
-  test('classic base degree truncates to 0.1 terrace and caps at five', () {
-    expect(SourceClassicOverhangDegree2.baseDegree(1.29, 0.1), 1.2);
-    expect(SourceClassicOverhangDegree2.baseDegree(2.99, 0.1), 2.9);
+  test('classic base degree preserves binary 0.1 terrace and caps at five', () {
+    expect(
+      SourceClassicOverhangDegree2.baseDegree(1.29, 0.1),
+      1.2000000000000002,
+    );
+    expect(
+      SourceClassicOverhangDegree2.baseDegree(2.99, 0.1),
+      2.9000000000000004,
+    );
     expect(SourceClassicOverhangDegree2.baseDegree(5.2, 0.1), 5);
   });
 
