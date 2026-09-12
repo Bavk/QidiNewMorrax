@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "bambulab/BambuStudio",
+    "commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+    "workflow_run": 34298498452,
+    "artifact_id": 10085378329,
+    "artifact_name": "BambuStudio_ubuntu-24.04_V02.08.03.66",
+    "artifact_zip_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+    "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+    "cli_version": "02.08.03.66"
+  },
+  "profile": {
+    "machine": "Bambu Lab X1 Carbon 0.4 nozzle",
+    "filament": "Bambu PLA Basic @BBL X1C",
+    "process": "0.20mm Standard @BBL X1C",
+    "wall_generator": "arachne",
+    "wall_loops": 2,
+    "line_width_mm": 0.4,
+    "outer_wall_line_width_mm": 0.0,
+    "inner_wall_line_width_mm": 0.4,
+    "layer_height_mm": 0.2,
+    "resolution_mm": 0.01,
+    "top_one_wall_type": "all top",
+    "detect_overhang_wall": false,
+    "enable_overhang_speed": false,
+    "wall_transition_length_percent": 100.0,
+    "wall_transition_filter_deviation_percent": 25.0,
+    "wall_transition_angle_deg": 10.0,
+    "wall_distribution_count": 1,
+    "min_bead_width_percent": 85.0,
+    "min_feature_size_percent": 25.0,
+    "wall_sequence": "inner wall/outer wall"
+  },
+  "gcode_serialization_tolerance_mm": 0.00051,
+  "oracle": {
+    "name": "square_through_hole",
+    "model": "20x20x1 mm square frame with 10x10 mm through hole at x=5..15,y=5..15",
+    "layer_index": 1,
+    "z_height_mm": 0.4,
+    "feature_sequence": ["Inner wall", "Outer wall", "Inner wall", "Outer wall"],
+    "outer_contour": {
+      "inner_wall_bbox_width_mm": 18.886,
+      "inner_wall_bbox_height_mm": 18.886,
+      "outer_wall_bbox_width_mm": 19.6,
+      "outer_wall_bbox_height_mm": 19.6,
+      "inner_wall_absolute_bbox_mm": [90.557, 109.443, 88.557, 107.443],
+      "outer_wall_absolute_bbox_mm": [90.2, 109.8, 88.2, 107.8]
+    },
+    "hole_contour": {
+      "inner_wall_bbox_width_mm": 11.114,
+      "inner_wall_bbox_height_mm": 11.114,
+      "outer_wall_bbox_width_mm": 10.4,
+      "outer_wall_bbox_height_mm": 10.4,
+      "inner_wall_absolute_bbox_mm": [94.443, 105.557, 92.443, 103.557],
+      "outer_wall_absolute_bbox_mm": [94.8, 105.2, 92.8, 103.2]
+    },
+    "line_width_mm": 0.39999
+  }
+}
