@@ -3,12 +3,23 @@ import 'package:qidi_flow_flutter/core/geometry/clipper_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/expolygon.dart';
 import 'package:qidi_flow_flutter/core/geometry/point.dart';
 import 'package:qidi_flow_flutter/core/geometry/polygon.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_polyline.dart';
 
 Polygon2 box(double minX, double minY, double maxX, double maxY) => Polygon2([
       Point2(minX, minY),
       Point2(maxX, minY),
       Point2(maxX, maxY),
       Point2(minX, maxY),
+    ]);
+
+SourcePolygon2 sourceBox(int minX, int minY, int maxX, int maxY) =>
+    SourcePolygon2([
+      SourcePoint2(minX, minY),
+      SourcePoint2(maxX, minY),
+      SourcePoint2(maxX, maxY),
+      SourcePoint2(minX, maxY),
     ]);
 
 void main() {
@@ -96,6 +107,79 @@ void main() {
       expect(result, hasLength(1));
       expect(result.single.holes, hasLength(1));
       expect(result.single.area, closeTo(40 * 40 - 10 * 10, 1e-9));
+    });
+  });
+
+  group('ported Clipper2Utils.cpp open polyline clipping', () {
+    test('intersection_pl_2 clips an open line in source integer units', () {
+      final result = clipper.intersectionSourceOpenPolylines(
+        [
+          SourcePolyline2(const [
+            SourcePoint2(-50, 50),
+            SourcePoint2(50, 50),
+          ]),
+        ],
+        [sourceBox(0, 0, 100, 100)],
+      );
+
+      expect(result, hasLength(1));
+      expect(result.single.points, const [
+        SourcePoint2(0, 50),
+        SourcePoint2(50, 50),
+      ]);
+    });
+
+    test('diff_pl_2 keeps the complementary open line segment', () {
+      final result = clipper.differenceSourceOpenPolylines(
+        [
+          SourcePolyline2(const [
+            SourcePoint2(-50, 50),
+            SourcePoint2(50, 50),
+          ]),
+        ],
+        [sourceBox(0, 0, 100, 100)],
+      );
+
+      expect(result, hasLength(1));
+      expect(result.single.points, const [
+        SourcePoint2(-50, 50),
+        SourcePoint2(0, 50),
+      ]);
+    });
+
+    test('closed perimeter polyline is split into the same open boundary run', () {
+      final perimeter = SourcePolyline2(const [
+        SourcePoint2(0, 0),
+        SourcePoint2(100, 0),
+        SourcePoint2(100, 100),
+        SourcePoint2(0, 100),
+        SourcePoint2(0, 0),
+      ]);
+      final clip = sourceBox(50, -50, 150, 150);
+
+      final inside = clipper.intersectionSourceOpenPolylines(
+        [perimeter],
+        [clip],
+      );
+      final outside = clipper.differenceSourceOpenPolylines(
+        [perimeter],
+        [clip],
+      );
+
+      expect(inside, hasLength(1));
+      expect(inside.single.points, const [
+        SourcePoint2(50, 0),
+        SourcePoint2(100, 0),
+        SourcePoint2(100, 100),
+        SourcePoint2(50, 100),
+      ]);
+      expect(outside, hasLength(1));
+      expect(outside.single.points, const [
+        SourcePoint2(50, 100),
+        SourcePoint2(0, 100),
+        SourcePoint2(0, 0),
+        SourcePoint2(50, 0),
+      ]);
     });
   });
 }
