@@ -16,15 +16,20 @@ The source of truth for acceptance is [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md)
 
 Current normal GitHub Actions checkpoint:
 
-- `.github/workflows/flutter-parity.yml` run `34681600348` (#185) on code commit `4a235117a905bf94fe7732031b1b3b8a7556867b`;
+- `.github/workflows/flutter-parity.yml` run `34682700807` (#203) on code commit `b6809d50912e5135a3d4851177093934a715adf9`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - `flutter analyze` = **No issues found**;
-- `flutter test --reporter expanded` = **225/225 passing**;
+- `flutter test --reporter expanded` = **248/248 passing**;
 - job conclusion = **success**.
 
 Relevant independently green intermediate runs in the same source chain:
 
-- run `34681547786` (#183): **224/224**, open-subject Clipper2 seam + no-speed overhang splitter integrated into recursive traversal;
+- run `34682605150` (#201): speed-graded recursive traversal;
+- run `34682507521` (#199): speed-grading splitter branch;
+- run `34682411840` (#197): standalone classic overhang degree helpers;
+- run `34682165435` (#194): automatic overhang state from raw lower slices;
+- run `34681985037` (#191): **231/231**, source lower-series generation and distance boundaries;
+- run `34681547786` (#183): **224/224**, no-speed overhang splitter integrated into recursive traversal;
 - run `34680042259` (#172): classic wall-sequence helper/source quirks;
 - run `34678782013` (#147): thin-wall MedialAxis output → source variable-width extrusion integration;
 - run `34678922719` (#150): source open-polyline offset and `polygons_covered_by_width()` dispatch.
@@ -61,7 +66,8 @@ Implementation constraints that must not be simplified:
 | positive ExPolygon hole reconstruction | explicit contour/hole offset + difference | expanded-hole fixture | `parity_verified` | More multi-hole/nested cases pending. |
 | open Polyline offset for covered-width geometry | `offsetSourceOpenPolyline` | exact source-coordinate square/open-butt fixture | `parity_verified` | Other open-line wrappers/end types remain open. |
 | QIDI Clipper2 open-subject intersection/difference | `intersectionSourceOpenPolylines`, `differenceSourceOpenPolylines` | source-integer line fixtures + duplicated-start seam golden | `parity_verified` | Other open/closed mixed operations remain open. |
-| complete Slic3r/QIDI ClipperUtils | partial adapter | incomplete original regression coverage | `port_started` | Translate remaining source tests and wrappers; lower-series negative polygon offsets are the next consumer. |
+| classic lower-support closed polygon offset subset | `SourceClassicOverhangSupport2` source-coordinate offset path | float32/scaling, positive/negative box and opposite-winding hole fixtures; run #191 | `parity_verified` | Broader Clipper1 offset/cleanup/degenerate regression space remains open. |
+| complete Slic3r/QIDI ClipperUtils | partial adapter | incomplete original regression coverage | `port_started` | Translate remaining source tests/wrappers as new consumers require them. |
 
 ## Slicer semantic-model traceability
 
@@ -71,7 +77,7 @@ Implementation constraints that must not be simplified:
 | Extruder represented E/retract/variant behavior | `ExtruderState`, `QidiConfigVariantResolver` | exact state/math and QIDI resolver tests | `parity_verified` | Full native print-state integration pending. |
 | Surface represented classification/copy/assignment quirks | Dart Surface model | source-style Surface tests | `parity_verified` | Surface-processing pipeline remains incomplete. |
 | ExtrusionRole/Path/MultiPath/Loop/Collection represented behavior | Dart extrusion entity model | source-semantic regression tests | `parity_verified` | Remaining entity operations/consumers pending. |
-| QIDI/libslic3r variable-width ThickPolyline conversion | `SourceVariableWidth2` | seven translated/source-specific width segmentation and loop tests | `parity_verified` | Later unrepresented consumers remain open. |
+| QIDI/libslic3r variable-width ThickPolyline conversion | `SourceVariableWidth2` | translated/source-specific width segmentation and loop tests | `parity_verified` | Later unrepresented consumers remain open. |
 | `ExtrusionEntity::polygons_covered_by_width()` represented dispatch | `extrusion_covered_geometry.dart` + integer open-line Clipper adapter | exact path coverage fixture + recursive collection/iterable fixture | `parity_verified` | Other source entity geometry methods remain open. |
 | Linear infill current subset | `LinearInfill` | square/hole clipping fixtures | `implemented_unverified` | Not enough source-pattern/reference coverage for parity claim. |
 
@@ -91,12 +97,14 @@ Implementation constraints that must not be simplified:
 | gap covered-width subtraction from `last` | `ExtrusionEntitiesCoveredGeometry2` + `differenceEx` | covered-width unit tests + classic gap end-to-end run | `parity_verified` | Other covered-area source helpers remain open. |
 | loop nesting / `is_internal_contour()` | `SourcePerimeterLoop2`, `SourceClassicPerimeterLoopNester2`, `SourcePolygon2.contains` | hole/contour nesting fixtures | `parity_verified` | More pathological containment inputs may be added later. |
 | source `chain_extrusion_entities()` ordering/reversal | `SourceShortestPath2` | reversal, fallback, loop suppression, reorder fixtures | `parity_verified` | KD-tree is replaced only as an acceleration detail; tie-specific oracle coverage can still be expanded. |
-| structural loop → `ExtrusionLoop` and recursive `traverse_loops()` | `SourceClassicPerimeterTraversal2` | role/flow/loop-role, recursive order, winding, thin-wall-chain tests | `parity_verified` | Fuzzy-skin and speed-graded overhang branches remain outside this row. |
+| structural loop → `ExtrusionLoop` and recursive `traverse_loops()` | `SourceClassicPerimeterTraversal2` | role/flow/loop-role, recursive order, winding, thin-wall-chain tests | `parity_verified` | Fuzzy-skin transform/gating remains outside this row. |
 | source wall sequence | `SourceClassicWallSequence2` + pipeline integration | outer-inner, brim, inner-outer-inner and source quirk fixtures | `parity_verified` | Other higher-level config interactions may remain. |
-| no-speed `detect_overhang_wall` supported/unsupported split | `SourceClassicOverhangSplitter2`, traversal/pipeline integration | open-subject seam, role/flow, degree 5/6, raft boundary, e2e pipeline fixtures; runs #183/#185 | `parity_verified` | Speed grading 1–4, fuzzy skin and automatic lower-series construction remain open. |
-| `generate_lower_polygons_series(width)` / `dist_boundary(width)` | not yet wired | source located; no Dart/oracle checkpoint yet | `pending` | Immediate next source dependency; preserve float32/scaling and Clipper offset behavior. |
-| overhang speed grading / `detect_overhang_degree()` | not ported | incomplete | `pending` | Port after lower-series generation. |
-| fuzzy-skin overhang interaction | not ported | incomplete | `pending` | Port source transform + slowdown gating after graded overhang path. |
+| no-speed `detect_overhang_wall` supported/unsupported split | `SourceClassicOverhangSplitter2`, traversal/pipeline integration | open-subject seam, role/flow, degree 5/6, raft boundary, e2e pipeline fixtures | `parity_verified` | Fuzzy-skin interaction remains open. |
+| `generate_lower_polygons_series(width)` / `dist_boundary(width)` | `SourceClassicOverhangSupport2` + `SourceClassicPerimeterOverhangSettings2.fromLowerSlices` | source float32/scaling, box/hole offset, equal-scaled-width reuse and pipeline fixtures; runs #191/#194 | `parity_verified` | More pathological Clipper1 offset inputs may expand coverage. |
+| classic `detect_overhang_degree()` mapping/split/smoothing | `SourceClassicOverhangDegree2`, `SourceClassicOverhangDistancer2` | mapping, 0.6 mm cut, float query, smoothing, binary terrace, extrusion fixtures; run #197 | `parity_verified` | AABB tree is replaced only as an acceleration detail; fuzzy gating remains open. |
+| speed-graded supported/zero/middle/unsupported split | `SourceClassicOverhangSplitter2.splitWithSpeedGrading` | independent splitter fixtures; run #199 | `parity_verified` | Fuzzy transform/gating remains open. |
+| recursive speed-graded traversal / raw-lower-slices pipeline | `traverseWithSpeedGrading`, `buildExtrusionsFromLowerSlicesWithSpeedGrading` | selected boundary/Flow, customize, graded + unsupported e2e fixtures; runs #201/#203 | `parity_verified` | Fuzzy skin and perimeter-region segmentation remain open. |
+| fuzzy-skin overhang interaction | not ported | source located; no Dart checkpoint yet | `pending` | Port enum/policy/identity first, then deterministic/random geometry and per-region segmentation. |
 | remaining fill-surface/fill-no-overlap stages | partial | incomplete | `port_started` | Continue line-by-line. |
 | Arachne wall generator | not ported | none | `pending` | Full source port required. |
 
