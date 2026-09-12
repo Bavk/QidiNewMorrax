@@ -38,7 +38,16 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
+        id: analyze
+        continue-on-error: true
         run: flutter analyze
 
       - name: Unit and parity tests
+        if: always()
         run: flutter test --reporter expanded
+
+      - name: Enforce clean analyze
+        if: always() && steps.analyze.outcome != 'success'
+        run: |
+          echo 'flutter analyze reported issues; see Analyze step above.'
+          exit 1
