@@ -17,56 +17,74 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34694164752` (#260) executed code commit `ae218afee234afa92f7ef2967d61db8485a82d5a` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34695501638` (#273) executed code commit `0a9fa8155e0e860b82177280a379a7b9dccfeeb5` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+351: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+377: All tests passed!`**;
 - job conclusion — **success**.
 
-## Classic source-order fill process evidence
+## BridgeDetector and counterbore evidence
 
-Run #260 is the first green run containing the current represented classic per-island fill process as one composition. `SourceClassicPerimeterFillProcess2` executes the verified stages in pinned source order:
+Run #264 (`34694708899`) first validated `SourceBridgeDetector2` at **359/359** total tests. The translated pinned upstream `t/bridges.t` cases cover:
 
-1. shell settings / pre-shell top-one-wall gate;
-2. classic onion-shell generation;
-3. in-loop `TopOneWallType::Alltop` immediately after the first `last = offsets`;
-4. source final-wall stop, with an extra iteration only when gap discovery is required;
-5. thin-wall / gap-fill processing and subtraction from `last`;
-6. final `not_filled_exp` → `fill_surfaces` / `fill_no_overlap` construction.
+- wide and tall O-shaped supports;
+- both rotated O-shaped source families;
+- a two-sided horizontal bridge;
+- C-shaped support selection;
+- L-shaped anchors with half-area coverage;
+- a fully airborne negative case.
 
-Five end-to-end process fixtures passed in #260:
+These tests exercise source candidate generation, anchored scanline scoring, max-span tie behavior and coverage geometry instead of accepting a hand-picked bridge angle.
 
-- ordinary two-wall shell feeding final fill geometry;
-- topmost `upper_slices == nullptr` forcing one wall before shell generation;
-- non-null empty upper slices entering Alltop and yielding the represented top-fill-only output;
-- percentage wall overlap preserving the source **7999** truncation quirk end-to-end;
-- zero wall loops leaving the entire represented island for fill.
+Run #268 (`34695120637`) first validated `SourceClassicNoBridge2` at **365/365** total tests. Covered behavior includes:
 
-## Top-one-wall shell ordering evidence
+- pinned `CounterboreHoleBridgingOption` order;
+- `None`, null lower-slice and non-null empty lower-slice gates;
+- source `Surfaces all_surfaces = slices->surfaces` copy behavior;
+- `chbBridges` extraction;
+- `chbFilled` convex bridge path;
+- non-zero configured bridge angle passed through the detector;
+- safety-diff geometry and internal-fill output.
 
-Run #258 (`34694064452`) first validated six source-order integration fixtures at **346/346** total tests, and #260 re-ran them:
+A failed intermediate run exposed one real Dart implementation issue in `chbFilled`: a Clipper result was immutable while source code mutates the vector element. The implementation was corrected to make the result mutable. The other failures in that run were unsupported test assumptions about idealized area and forced-angle failure; the algorithm was not changed to satisfy them.
 
-- pinned `TopOneWallType` order `None, Alltop, Topmost`;
-- null upper slices force one wall before shell generation;
-- `only_one_wall_first_layer` affects layer zero but not layer one;
-- non-null empty upper slices run Alltop inside the first shell iteration and can collapse the following inner shell;
-- full upper coverage preserves the next wall;
-- zero sparse infill density skips the source extra gap-discovery iteration.
+## Surface preprocessing / ordered-island composition evidence
 
-Run #257 had already shown the integration code itself did not regress the prior 340-test suite before these six fixtures were added.
+Run #273 is the first green run composing the new source preprocessing boundary into the previously verified per-island fill path. It validates:
 
-## Standalone Alltop producer and fill-boundary evidence
+- constructor `m_scaled_resolution` with `max(resolution, EPSILON)`;
+- arc-fitting + `FuzzySkinType::None` selecting `0.2 * m_scaled_resolution`;
+- non-None fuzzy skin retaining the full base resolution;
+- source `chain_expolygons` ordering by ExPolygon bbox centers through the source shortest-path chain;
+- `Surface::extra_perimeters` and odd-layer alternate extra wall before one-wall gates;
+- source `Polygon::centroid() → Point(Vec2d)` nearest-even `lrint` behavior;
+- `eps = 1000` compensation-hole matching and split-island disable semantics;
+- `process_no_bridge` output feeding ordered prepared islands;
+- actual extra-perimeter count reaching the shell generator;
+- conditional shell simplification and base-resolution final-fill simplification staying distinct;
+- counterbore-created fill surfaces accumulating before per-island final fill surfaces;
+- topmost one-wall gate occurring after per-surface wall-count accounting;
+- the supplied `Surface` copy-constructor quirk resetting QIDI circle-compensation members before high-level preprocessing.
 
-Run #254 (`34693713324`) first validated `SourceClassicTopFillAllTop2` at **340/340** total tests. Covered behavior includes source scalar order for `offset_top_surface`, `top_area_threshold`, bbox pruning, implicit float offset boundaries, represented 10-unit safety offset, `temp_gap`, lower-slice bridge merge, `top_fills`, `fill_clip`, mutated `last`, optional gap-fill re-union, and composition into the final boundary helper.
+One intermediate preprocessing run failed because the test used `SourcePoint2.fromMm(5,5)`, whose fixture boundary truncates to 499999, as the expected centroid. The pinned C++ centroid path uses `lrint` and correctly yields source coordinate 500000. Only the test oracle was corrected; the implementation remained unchanged.
 
-Run #252 (`34691194040`) first validated `SourceClassicFillBoundary2` at **333/333** total tests. It covers zero/one/multiple-wall inset choice, absolute/percentage wall overlap, `min_perimeter_infill_spacing`, `offset2_ex` collapse, `stInternal` output, both no-overlap branches and top-fill consumer behavior.
+## Previously verified classic fill evidence retained
 
-A literal C++ oracle confirmed the represented percentage-overlap floating-point result: 20% of the source `ratio_over` becomes **7999** source units after binary-double evaluation, `scale_`, and `coord_t` truncation. The Dart implementation was not changed to produce an idealized 8000.
+Run #273 re-executed the earlier green classic process evidence, including:
+
+- exact top-one-wall / null-vs-empty upper-slice ordering;
+- `TopOneWallType::Alltop` at the first source shell position;
+- source final-wall stop and optional extra gap-discovery iteration;
+- thin-wall and gap-fill represented paths;
+- final `fill_surfaces` / `fill_no_overlap` boundary;
+- the source percentage-overlap floating-point result **7999** rather than idealized 8000.
+
+The high-level wrapper `SourceClassicPerimeterIslandProcess2` now composes counterbore preprocessing → surface order/resolution → per-island shell/fill in this represented scope.
 
 ## Earlier Arachne / fuzzy evidence retained
 
-Run #260 re-executed all previously green Arachne/fuzzy evidence from run #249 and later checkpoints:
+Run #273 re-executed all previously green Arachne/fuzzy evidence:
 
 - one shared Classic `random_value()` stream and direct MT19937/libstdc++ double fixtures;
 - direct libnoise v1.0.0 value/gradient/vector-table/Perlin/Billow/RidgedMulti/Voronoi behavior;
@@ -83,14 +101,13 @@ The same run re-executed the previously green represented subsets of source geom
 
 ## Not proven by this checkpoint
 
-Run #260 does **not** prove:
+Run #273 does **not** prove:
 
-- `PerimeterGenerator::process_no_bridge(all_surfaces, ...)` or the complete source surface preprocessing that precedes the represented per-island process;
-- conditional classic surface simplification resolution and `chain_expolygons` island ordering;
-- per-surface `extra_perimeters` propagation from `Surface` through the process wrapper;
-- QIDI circle-compensation metadata consumption, including `holes_circle_compensation` centroid matching and split-island disable behavior;
+- composition of all ordered prepared islands into the existing loop-tree / recursive extrusion traversal as one high-level source path;
+- QIDI `outwall_paths`, `loop_nodes`, `loop_node_range` and `z_direction_outwall_speed_continuous` metadata;
+- any behavior that would restore QIDI circle-compensation members after the pinned `Surface` copy constructor has reset them;
+- every pathological counterbore, bridge-detector, simplify, overlap, hole or degenerate clipping topology;
 - full Arachne wall generation around the represented fuzzy helper;
-- every pathological overlap/hole/degenerate LineSegmentation or top-fill clipping case;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;
 - complete Clipper/Boost regression spaces beyond represented fixtures;
 - complete G-code state/templates/travel/retraction/cooling/acceleration/multimaterial behavior;

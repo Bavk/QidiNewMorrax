@@ -27,13 +27,13 @@ This map is generated from the supplied source tree. Line counts are audit sizin
 ## Current Dart replacement areas
 
 - `lib/core/model_io`: STL, OBJ, AMF/ZIP.AMF and package-aware 3MF import with external component models, build transforms and retention/repacking of every ZIP entry.
-- `lib/core/geometry`: point, bounding-box and polygon primitives.
-- `lib/core/slicer`: triangle-plane slicing with closed/open contour reconstruction, even-odd clipped linear infill, and a first basic perimeter/infill toolpath plan (not native slicer parity).
-- `lib/core/gcode`: G-code tokenization/statistics plus a deterministic basic G-code writer for the new pure-Dart toolpath foundation.
-- `lib/core/profiles`: original JSON profile catalog and inheritance loading.
-- `lib/features/device`: local SSDP discovery, Moonraker JSON-RPC, raw+typed printer state, exact local command strings, cloud task contract and Pass28-style Flutter device UI.
-- `lib/features/prepare` / `preview`: model loading/wireframe scene and G-code layer preview.
+- `lib/core/geometry`: source integer geometry primitives, Clipper compatibility, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi and represented MedialAxis behavior.
+- `lib/core/slicer`: source-shaped classic parity slices now include Flow/Surface/ExtrusionEntity foundations, BridgeDetector, counterbore `process_no_bridge`, conditional surface preprocessing and island ordering, per-surface wall accounting, classic shell/top-one-wall/thin-wall/gap-fill/final fill-boundary composition, overhang traversal, fuzzy/LineSegmentation and represented Arachne fuzzy helpers. This remains far short of full native slicer/toolpath parity.
+- `lib/core/gcode`: source-style formatter/path-emitter subset plus the earlier deterministic basic G-code foundation; the complete native G-code state machine remains open.
+- `lib/core/profiles`: original JSON profile catalog and inheritance loading foundations.
+- `lib/features/device`: local SSDP discovery, Moonraker JSON-RPC, raw+typed printer state, exact local command strings, cloud task contract and Pass28-style Flutter device UI foundations.
+- `lib/features/prepare` / `preview`: model loading/wireframe scene and G-code layer preview foundations.
 
 ## Completion rule
 
-A module moves from `port_started` to a completed status only after behavior-level parity tests exist. Native C++/wxWidgets/React code is not counted as migrated merely because a Flutter screen resembles it.
+A module moves from `port_started` to a completed status only after behavior-level parity tests exist for its full contract. Native C++/wxWidgets/React code is not counted as migrated merely because a Flutter screen resembles it, and a scoped `parity_verified` helper does not close its containing module.

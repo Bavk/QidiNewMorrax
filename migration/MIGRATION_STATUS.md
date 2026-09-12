@@ -15,12 +15,17 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-12
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `ae218afee234afa92f7ef2967d61db8485a82d5a`;
-- workflow `34694164752` (#260), conclusion **success**;
+- validated code `0a9fa8155e0e860b82177280a379a7b9dccfeeb5`;
+- workflow `34695501638` (#273), conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **351/351 passing**.
+- `flutter test --reporter expanded` — **377/377 passing**.
 
-Run #260 is the first green checkpoint that composes the currently represented classic per-island fill path in source order: wall-count gates → shell → in-loop Alltop → optional gap discovery/fill mutation → final `fill_surfaces` / `fill_no_overlap`. Run #258 first validated the top-one-wall shell ordering at 346/346; #254 first validated the standalone Alltop producer at 340/340; #252 first validated the final fill boundary at 333/333.
+Milestones in the current classic source-preprocessing slice:
+
+- #260 / `ae218af...`: represented per-island shell → Alltop → gap-fill → final fill boundary, 351/351;
+- #264 / `1b2f5f4...`: pinned `BridgeDetector` plus translated upstream `t/bridges.t` fixtures, 359/359;
+- #268 / `d9ad4a5...`: `process_no_bridge()` source gates and both active counterbore branches, 365/365;
+- #273 / `0a9fa815...`: counterbore pre-pass → surface preprocessing/order → per-island fill composition, 377/377.
 
 ## Top-level gates
 
@@ -32,54 +37,64 @@ The current green suite retains scoped `parity_verified` coverage for represente
 
 The broader containing modules remain `port_started`.
 
-## Classic `process_classic()` represented fill path — scoped `parity_verified`
+## Classic `process_classic()` surface → fill path — scoped `parity_verified`
 
 Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
 
-### Shell and wall-count ordering
+### Bridge detection and counterbore pre-pass
 
-The green suite now covers:
+`SourceBridgeDetector2` is scoped `parity_verified` for the source behavior exercised by translated pinned `t/bridges.t` fixtures:
 
-- requested wall count and alternate-extra-wall behavior already represented by `ClassicPerimeterShellGenerator`;
-- exact pre-shell one-wall gate for top-one-wall/topmost and first-layer-one-wall policy;
-- semantic distinction between `upper_slices == nullptr` and a non-null empty upper-slice collection;
-- source `TopOneWallType` order `None, Alltop, Topmost`;
-- source stop at the final requested wall unless an extra gap-discovery iteration is required (`has_gap_fill && sparse_infill_density != 0`);
-- effective wall-count collapse when the in-loop Alltop mutation leaves no next inner shell.
+- source 5-degree candidate family plus boundary/support-edge directions;
+- source direction de-duplication;
+- support-edge and safety-grown anchor construction;
+- anchored scanline coverage and max-span selection;
+- source coverage trapezoids and final clipping;
+- O/rotated-O, two-sided, C-shaped and L-shaped support cases plus airborne failure.
 
-### `TopOneWallType::Alltop` producer
+`SourceClassicNoBridge2` is scoped `parity_verified` for:
 
-`SourceClassicTopFillAllTop2` remains scoped `parity_verified` for:
+- `CounterboreHoleBridgingOption` order `None, Bridges, Filled`;
+- exact `None` / null lower / empty lower gate;
+- source surface-vector copy semantics;
+- both `ApplySafetyOffset::Yes` difference boundaries used before bridge detection;
+- 1 mm `BRIDGE_INFILL_MARGIN`;
+- `chbBridges` square/miter iterative offset order;
+- `chbFilled` convexity/bridgeability/containment path and nested-surface mutation;
+- internal bridge-fill extraction and source-style surface vector replacement/splitting.
 
-- configured `wall_loops` vs current `loop_number` distinction;
-- source `offset_top_surface` and `top_area_threshold` arithmetic;
-- literal bbox-pruning helper using `SCALED_EPSILON`-inflated `last` bounds;
-- implicit source `float` boundaries on offset deltas;
-- represented 10-source-unit `ApplySafetyOffset::Yes` clip growth;
-- `top_polygons`, `temp_gap`, `inner_polygons`, optional lower-slice bridge checker/merge;
-- `top_fills`, final `fill_clip`, mutation of `last`, and optional gap-fill re-union.
+### Surface preprocessing and island order
 
-The producer is now invoked at the correct source position immediately after the first `last = offsets`, so its mutated `last` feeds the next shell iteration.
+`SourceClassicSurfacePrepare2` is scoped `parity_verified` for:
 
-### Final fill boundary and process composition
+- `m_scaled_resolution = scaled<double>(max(resolution, EPSILON))`;
+- `0.2 * m_scaled_resolution` only with arc fitting enabled and fuzzy skin `None`;
+- `chain_expolygons()` via source ExPolygon bbox centers and source shortest-path chaining;
+- `wall_loops + Surface::extra_perimeters - 1` before top-one-wall gates;
+- odd-layer alternate extra wall when not spiral vase;
+- represented `simplify_p → union_ex` preprocessing;
+- source centroid `lrint` behavior and `eps = 1000` compensation-hole matching;
+- local compensation disable when simplification/union yields multiple ExPolygons.
 
-`SourceClassicFillBoundary2` plus `SourceClassicPerimeterFillProcess2` are scoped `parity_verified` for:
+Important source quirk: the supplied `Surface` copy constructor omits QIDI `counter_circle_compensation` and `holes_circle_compensation`. Therefore `Surfaces all_surfaces = this->slices->surfaces` resets those fields before later classic processing. The high-level Dart path preserves this rather than restoring the apparent intended metadata.
 
-- post-gap-fill `last` input;
-- zero/one/two-or-more-wall inset selection;
-- absolute and percentage `infill_wall_overlap`;
-- exact source floating-point/truncation behavior, including the 20% oracle value **7999** source units;
-- `simplify_p → union_ex` represented boundary;
-- `min_perimeter_infill_spacing` coord truncation;
-- `offset2_ex` collapse for `infill_exp`;
-- represented `stInternal` fill surfaces;
-- both `fill_no_overlap` branches;
-- consumption of carried `top_fills` / `fill_clip`;
-- ordinary two-wall, topmost one-wall, Alltop-only, zero-wall and percentage-overlap end-to-end fixtures.
+### Ordered islands into fill process
+
+`SourceClassicPerimeterIslandProcess2` is scoped `parity_verified` for composing:
+
+1. source surface-vector copy + `process_no_bridge()`;
+2. conditional resolution and `chain_expolygons` order;
+3. per-surface extra-perimeter accounting;
+4. source-order per-island call into `SourceClassicPerimeterFillProcess2`;
+5. counterbore-generated fill surfaces before per-island final fill surfaces;
+6. distinct conditional shell simplification versus base-resolution final fill-boundary simplification;
+7. topmost one-wall gate after per-surface wall-count accounting.
+
+The nested shell/Alltop/thin-wall/gap-fill/final-fill portion remains scoped `parity_verified`, including the source 20% wall-overlap result **7999** source units.
 
 ### Classic work still open
 
-The verified process starts from already supplied island geometry. Pinned source still has an unported preprocessing block immediately before it: `process_no_bridge`, conditional surface simplification, island chaining/order, per-surface extra perimeters, and QIDI circle-compensation metadata. Loop traversal/extrusion conversion and later fill generation also remain broader `port_started` work.
+The next integration boundary is after each prepared island's shell result. Existing loop-tree, `traverse_loops()`, overhang/fuzzy traversal and wall-sequence helpers are already individually represented; they still need to be composed across the new ordered-island source path. QIDI `outwall_paths`, `loop_nodes`, `loop_node_range` and `z_direction_outwall_speed_continuous` metadata also remain open. The verified `Surface` copy-reset quirk must be preserved during that integration.
 
 ## Fuzzy skin / Arachne retained
 
@@ -89,8 +104,7 @@ The fuzzy scope still does not prove the full Arachne wall generator or every pa
 
 ## Other major open areas
 
-- `process_no_bridge` and source surface preprocessing before the verified classic per-island process;
-- remaining classic traversal/metadata integration;
+- ordered-island composition into classic loop tree/traversal and QIDI loop-node/outwall metadata;
 - full Arachne wall generation;
 - fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
 - full native G-code state/templates/travel/retraction/cooling/speed/acceleration/multimaterial/postprocessing;
@@ -105,13 +119,12 @@ The fuzzy scope still does not prove the full Arachne wall generator or every pa
 
 ## Immediate next dependency order
 
-1. Port `PerimeterGenerator::process_no_bridge(all_surfaces, perimeter_spacing, ext_perimeter_width)` with translated/source fixtures for the counterbore sacrificial bridge behavior.
-2. Port conditional classic surface simplification resolution (`0.2 * m_scaled_resolution` only with arc fitting enabled and fuzzy skin `None`).
-3. Port `chain_expolygons(surface_exp)` ordering and feed `Surface::extra_perimeters` into each island's wall count.
-4. Port QIDI circle-compensation propagation: surface flag, hole centroid matching with source `eps = 1000`, and compensation disable when simplification/union produces multiple islands.
-5. Feed the prepared ordered surfaces into `SourceClassicPerimeterFillProcess2` and add end-to-end preprocessing→fill fixtures.
-6. Continue remaining classic process/traversal integration, then broader Arachne wall generation.
-7. Continue fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order.
-8. Publish and SHA-verify real runtime assets before any release-complete claim.
+1. Compose each ordered `SourceClassicProcessedIsland2.process.perimeter` into the existing `SourceClassicPerimeterPipeline2` loop-tree / recursive traversal path, preserving per-island and collection append order.
+2. Reuse the existing lower-slice overhang and fuzzy traversal helpers on that ordered-island path; do not create duplicate geometry implementations.
+3. Audit and port QIDI `outwall_paths`, `loop_nodes`, `loop_node_range` and `z_direction_outwall_speed_continuous` behavior around classic traversal.
+4. Preserve the source `Surface` compensation-field copy-reset quirk; do not restore metadata the pinned source loses.
+5. Continue broader Arachne wall generation.
+6. Continue fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order.
+7. Publish and SHA-verify real runtime assets before any release-complete claim.
 
 No item may be promoted because it merely looks equivalent or passes only common-case smoke tests.
