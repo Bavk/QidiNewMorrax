@@ -5,10 +5,8 @@ import 'package:qidi_flow_flutter/core/slicer/source_arachne_skeletal_graph.dart
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_skeletal_transition_ends.dart';
 
 class _Strategy extends SourceArachneBeadingStrategy2 {
-  _Strategy({
-    int transitionLength = 20,
-    this.anchor = 0.5,
-  }) : super(
+  _Strategy({int transitionLength = 20})
+      : super(
           optimalWidth: 100,
           wallSplitMiddleThreshold: 0.5,
           wallAddMiddleThreshold: 0.5,
@@ -16,8 +14,6 @@ class _Strategy extends SourceArachneBeadingStrategy2 {
           transitioningAngle: 1,
           name: 'transition-end-fixture',
         );
-
-  final double anchor;
 
   @override
   SourceArachneBeading2 compute(int thickness, int beadCount) =>
@@ -27,7 +23,7 @@ class _Strategy extends SourceArachneBeadingStrategy2 {
   int getOptimalBeadCount(int thickness) => thickness ~/ 100;
 
   @override
-  double getTransitionAnchorPos(int lowerBeadCount) => anchor;
+  double getTransitionAnchorPos(int lowerBeadCount) => 0.5;
 }
 
 SourceArachneSTHalfEdgeNode2 _node(
