@@ -254,9 +254,13 @@ extension SourceArachneGenerateSegmentsPropagation2
     ratioOfTop = math.max(0.0, ratioOfTop);
 
     if (ratioOfTop >= 1.0) {
-      final replacement = _copyPropagation(topBeading)
-        ..distFromTopSource += length;
-      _replacePropagationAliases(bottomBeading, replacement, nodeBeadings);
+      // Source assigns through a BeadingPropagation& reference. Preserve the
+      // object identity so every shared_ptr alias observes the same mutation.
+      bottomBeading
+        ..beading = topBeading.beading
+        ..distToBottomSource = topBeading.distToBottomSource
+        ..distFromTopSource = topBeading.distFromTopSource + length
+        ..isUpwardPropagatedOnly = topBeading.isUpwardPropagatedOnly;
     } else {
       final mergedBeading = sourceInterpolateBeadingAtRadius(
         topBeading.beading,
@@ -264,28 +268,15 @@ extension SourceArachneGenerateSegmentsPropagation2
         bottomBeading.beading,
         from.data.distanceToBoundary,
       );
-      final replacement = SourceArachneBeadingPropagation2(mergedBeading)
+      // `bottom_beading = BeadingPropagation(merged_beading)` also assigns
+      // into the existing shared object and resets propagation metadata.
+      bottomBeading
+        ..beading = mergedBeading
+        ..distToBottomSource = 0
+        ..distFromTopSource = 0
         ..isUpwardPropagatedOnly = false;
-      _replacePropagationAliases(bottomBeading, replacement, nodeBeadings);
       assert(mergedBeading.totalThickness >=
           from.data.distanceToBoundary * 2);
-    }
-  }
-
-  void _replacePropagationAliases(
-    SourceArachneBeadingPropagation2 previous,
-    SourceArachneBeadingPropagation2 replacement,
-    List<SourceArachneBeadingPropagation2> nodeBeadings,
-  ) {
-    for (var index = 0; index < nodeBeadings.length; index++) {
-      if (identical(nodeBeadings[index], previous)) {
-        nodeBeadings[index] = replacement;
-      }
-    }
-    for (final graphNode in nodes) {
-      if (identical(graphNode.data.beading, previous)) {
-        graphNode.data.setBeading(replacement);
-      }
     }
   }
 }

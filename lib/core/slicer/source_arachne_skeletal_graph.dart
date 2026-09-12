@@ -103,7 +103,7 @@ class SourceArachneSkeletalEdgeData2 {
 class SourceArachneBeadingPropagation2 {
   SourceArachneBeadingPropagation2(this.beading);
 
-  final SourceArachneBeading2 beading;
+  SourceArachneBeading2 beading;
   int distToBottomSource = 0;
   int distFromTopSource = 0;
   bool isUpwardPropagatedOnly = false;

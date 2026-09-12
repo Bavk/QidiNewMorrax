@@ -161,7 +161,7 @@ void main() {
     expect(ownership, hasLength(2));
   });
 
-  test('downward merge resets propagation distances and upward-only flag', () {
+  test('downward merge mutates the shared propagation object in place', () {
     final lower = _node(0, 50);
     final upper = _node(50, 100, beadCount: 2);
     final edge = _pair(lower, upper, central: false).$1;
@@ -172,6 +172,7 @@ void main() {
       bottom: 20,
       upwardOnly: true,
     );
+    final externalAlias = bottom;
     final top = _beading(200, 200, 40);
     lower.data.setBeading(bottom);
     upper.data.setBeading(top);
@@ -187,7 +188,8 @@ void main() {
     );
 
     final merged = lower.data.beading!;
-    expect(merged, isNot(same(bottom)));
+    expect(merged, same(bottom));
+    expect(merged, same(externalAlias));
     expect(merged.isUpwardPropagatedOnly, isFalse);
     expect(merged.distToBottomSource, 0);
     expect(merged.distFromTopSource, 0);
@@ -195,15 +197,15 @@ void main() {
     // float ratio top = 20 / 70; source interpolation truncates the width.
     expect(merged.beading.beadWidths.single, 128);
     expect(merged.beading.toolpathLocations.single, 25);
-    expect(ownership.where((value) => identical(value, merged)), hasLength(1));
-    expect(ownership.any((value) => identical(value, bottom)), isFalse);
+    expect(ownership.first, same(bottom));
   });
 
-  test('ratio at or above one replaces bottom state with top state', () {
+  test('ratio at or above one assigns top state into bottom object', () {
     final lower = _node(0, 50);
     final upper = _node(10, 100, beadCount: 2);
     final edge = _pair(lower, upper, central: false).$1;
     final bottom = _beading(100, 100, 20, bottom: 100, upwardOnly: true);
+    final externalAlias = bottom;
     final top = _beading(200, 200, 40, top: 3);
     lower.data.setBeading(bottom);
     upper.data.setBeading(top);
@@ -219,11 +221,13 @@ void main() {
     );
 
     final replaced = lower.data.beading!;
+    expect(replaced, same(bottom));
+    expect(replaced, same(externalAlias));
     expect(identical(replaced.beading, top.beading), isTrue);
     expect(replaced.distFromTopSource, 13);
     expect(replaced.distToBottomSource, top.distToBottomSource);
     expect(replaced.isUpwardPropagatedOnly, top.isUpwardPropagatedOnly);
-    expect(ownership.any((value) => identical(value, bottom)), isFalse);
+    expect(ownership.first, same(bottom));
   });
 
   test('switching-radius interpolation keeps pinned float ratio quirk', () {
@@ -260,9 +264,10 @@ void main() {
     expect(graph.getNearestBeading(start, 99999), isNull);
   });
 
-  test('getOrCreate returns nearby beading without attaching it to unknown node', () {
+  test('getOrCreate accepts nearby beading at pinned scaled 0.1mm boundary', () {
     final start = _node(0, 10);
-    final target = _node(100000, 20, beadCount: 1);
+    // SCALING_FACTOR=1e-5, therefore scaled<coord_t>(0.1) == 10000.
+    final target = _node(10000, 20, beadCount: 1);
     final pair = _pair(start, target);
     pair.$2.next = pair.$1;
     start.incidentEdge = pair.$1;
