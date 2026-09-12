@@ -10,8 +10,7 @@ import 'flow.dart';
 import 'source_fuzzy_skin_apply.dart';
 import 'source_fuzzy_skin_geometry.dart';
 
-/// End-to-end represented `process_classic()` loop-output branch for a single
-/// region config with no painted/per-region fuzzy segmentation.
+/// End-to-end represented `process_classic()` loop-output fuzzy branch.
 class SourceClassicFuzzyPerimeterPipeline2 {
   const SourceClassicFuzzyPerimeterPipeline2._();
 
@@ -25,6 +24,49 @@ class SourceClassicFuzzyPerimeterPipeline2 {
     required int layerId,
     required double sliceZMm,
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
+    SourceFuzzyUnitRandom2? random,
+    required bool detectOverhangWall,
+    required bool configuredOverhangSpeedEnabled,
+    List<SourcePolygon2>? lowerSlices,
+    double wallNozzleDiameter = 0.4,
+    int raftLayers = 0,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
+  }) =>
+      build(
+        result: result,
+        externalPerimeterFlow: externalPerimeterFlow,
+        smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+        perimeterFlow: perimeterFlow,
+        overhangFlow: overhangFlow,
+        layerHeight: layerHeight,
+        layerId: layerId,
+        sliceZMm: sliceZMm,
+        fuzzyConfig: fuzzyConfig,
+        perimeterRegions: const [],
+        random: random,
+        detectOverhangWall: detectOverhangWall,
+        configuredOverhangSpeedEnabled: configuredOverhangSpeedEnabled,
+        lowerSlices: lowerSlices,
+        wallNozzleDiameter: wallNozzleDiameter,
+        raftLayers: raftLayers,
+        wallSequence: wallSequence,
+        brimOuterOnly: brimOuterOnly,
+        brimWidth: brimWidth,
+      );
+
+  static List<ExtrusionEntity2> build({
+    required ClassicPerimeterResult result,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required Flow overhangFlow,
+    required double layerHeight,
+    required int layerId,
+    required double sliceZMm,
+    required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
+    required List<SourceFuzzySkinPerimeterRegion2> perimeterRegions,
     SourceFuzzyUnitRandom2? random,
     required bool detectOverhangWall,
     required bool configuredOverhangSpeedEnabled,
@@ -55,11 +97,12 @@ class SourceClassicFuzzyPerimeterPipeline2 {
           )
         : null;
 
-    final traversed = SourceClassicFuzzyPerimeterTraversal2.traverseNoRegion(
+    final traversed = SourceClassicFuzzyPerimeterTraversal2.traverse(
       loops: SourceClassicPerimeterPipeline2.buildLoopTree(result),
       thinWalls: _cloneThinWalls(result),
       settings: traversalSettings,
       fuzzyConfig: fuzzyConfig,
+      perimeterRegions: perimeterRegions,
       random: random ?? sourceFuzzyProductionRandom2(),
       layerId: layerId,
       sliceZMm: sliceZMm,

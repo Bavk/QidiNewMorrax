@@ -13,7 +13,7 @@ import 'source_fuzzy_skin_policy.dart';
 import 'source_shortest_path.dart';
 import 'variable_width.dart';
 
-/// Classic `traverse_loops()` branch with no painted/per-region fuzzy segments.
+/// Classic `traverse_loops()` branch with fuzzy-skin composition.
 ///
 /// Sibling loops consume the source spacing RNG before shortest-path chaining;
 /// child loops consume it only when recursion reaches the selected parent.
@@ -30,17 +30,43 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     required double sliceZMm,
     required bool configuredOverhangSpeedEnabled,
     SourceClassicPerimeterOverhangSettings2? overhangSettings,
+  }) =>
+      traverse(
+        loops: loops,
+        thinWalls: thinWalls,
+        settings: settings,
+        fuzzyConfig: fuzzyConfig,
+        perimeterRegions: const [],
+        random: random,
+        layerId: layerId,
+        sliceZMm: sliceZMm,
+        configuredOverhangSpeedEnabled: configuredOverhangSpeedEnabled,
+        overhangSettings: overhangSettings,
+      );
+
+  static List<ExtrusionEntity2> traverse({
+    required List<SourcePerimeterLoop2> loops,
+    required List<ThickPolyline2> thinWalls,
+    required SourceClassicPerimeterTraversalSettings2 settings,
+    required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
+    required List<SourceFuzzySkinPerimeterRegion2> perimeterRegions,
+    required SourceFuzzyUnitRandom2 random,
+    required int layerId,
+    required double sliceZMm,
+    required bool configuredOverhangSpeedEnabled,
+    SourceClassicPerimeterOverhangSettings2? overhangSettings,
   }) {
     final speedGrading = SourceFuzzySkinPolicy2.enablesOverhangSpeed(
       configuredOverhangSpeedEnabled: configuredOverhangSpeedEnabled,
       type: fuzzyConfig.type,
-      perimeterRegionsEmpty: true,
+      perimeterRegionsEmpty: perimeterRegions.isEmpty,
     );
     return _traverse(
       loops: loops,
       thinWalls: thinWalls,
       settings: settings,
       fuzzyConfig: fuzzyConfig,
+      perimeterRegions: perimeterRegions,
       random: random,
       layerId: layerId,
       sliceZMm: sliceZMm,
@@ -54,6 +80,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     required List<ThickPolyline2> thinWalls,
     required SourceClassicPerimeterTraversalSettings2 settings,
     required SourceFuzzySkinNoRegionConfig2 fuzzyConfig,
+    required List<SourceFuzzySkinPerimeterRegion2> perimeterRegions,
     required SourceFuzzyUnitRandom2 random,
     required int layerId,
     required double sliceZMm,
@@ -64,9 +91,10 @@ class SourceClassicFuzzyPerimeterTraversal2 {
     final structuralLoops = <SourcePerimeterLoop2>[];
 
     for (final loop in loops) {
-      final polygon = SourceFuzzySkinNoRegionApply2.applyPolygon(
+      final polygon = SourceFuzzySkinApply2.applyPolygon(
         polygon: loop.polygon,
-        config: fuzzyConfig,
+        baseConfig: fuzzyConfig,
+        perimeterRegions: perimeterRegions,
         layerIndex: layerId,
         perimeterIndex: loop.depth,
         isContour: loop.isContour,
@@ -164,6 +192,7 @@ class SourceClassicFuzzyPerimeterTraversal2 {
         thinWalls: thinWalls,
         settings: settings,
         fuzzyConfig: fuzzyConfig,
+        perimeterRegions: perimeterRegions,
         random: random,
         layerId: layerId,
         sliceZMm: sliceZMm,
