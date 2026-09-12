@@ -9,6 +9,7 @@ import 'source_arachne_overhang_speed.dart';
 import 'source_fuzzy_skin_apply.dart';
 import 'source_fuzzy_skin_geometry.dart';
 import 'source_fuzzy_skin_policy.dart';
+import 'source_loop_node.dart';
 import 'variable_width.dart';
 
 class SourceArachneExtrusionTraversalSettings2 {
@@ -26,6 +27,8 @@ class SourceArachneExtrusionTraversalSettings2 {
     this.nozzleDiameterMm = 0,
     this.enableOverhangSpeed = false,
     this.zDirectionOutwallSpeedContinuous = false,
+    this.loopNodes,
+    this.outerWallLineWidthMm = 0,
   });
 
   final Flow perimeterFlow;
@@ -46,15 +49,26 @@ class SourceArachneExtrusionTraversalSettings2 {
   /// Result of source `is_enable_overhang_speed()` before its fuzzy-skin gate.
   final bool enableOverhangSpeed;
   final bool zDirectionOutwallSpeedContinuous;
+
+  /// Mutable global source `loop_nodes` storage. Required only when the QIDI
+  /// z-direction outer-wall continuity producer is enabled.
+  final List<SourceLoopNode2>? loopNodes;
+
+  /// Literal `config->outer_wall_line_width` value in millimeters.
+  ///
+  /// Pinned source passes `outer_wall_line_width / 2` directly to integer
+  /// `BoundingBox::offset(coordf_t)`. The resulting `Point(coordf_t,coordf_t)`
+  /// narrows to coord_t without `scale_()`, so common sub-2mm line widths
+  /// intentionally produce a zero-unit bbox expansion.
+  final double outerWallLineWidthMm;
 }
 
 /// Source-order slice of `PerimeterGenerator::traverse_extrusions()`.
 ///
-/// This composes the represented fuzzy-skin transform, Arachne
-/// `to_thick_polyline()`, source variable-width adapters, both active-overhang
-/// branches, loop/open entity construction, orientation restoration and
-/// circle-compensation propagation. The Arachne-specific QIDI loop-node
-/// producer remains the next explicit seam.
+/// This composes fuzzy skin, Arachne `to_thick_polyline()`, source
+/// variable-width adapters, both active-overhang branches, the QIDI direct
+/// external-wall LoopNode producer, loop/open entity construction, orientation
+/// restoration and circle-compensation propagation.
 class SourceArachneExtrusionTraversal2 {
   const SourceArachneExtrusionTraversal2._();
 
@@ -63,19 +77,59 @@ class SourceArachneExtrusionTraversal2 {
     required SourceArachneExtrusionTraversalSettings2 settings,
     required SourceFuzzyUnitRandom2 random,
   }) {
-    if (settings.zDirectionOutwallSpeedContinuous) {
-      throw UnsupportedError(
-        'Pinned Arachne z-direction outwall loop-node traversal is not yet '
-        'composed',
-      );
-    }
-
     final collection = ExtrusionEntityCollection2();
     final variableWidth = SourceVariableWidth2();
+    final loopNodes = settings.loopNodes;
+
+    if (settings.zDirectionOutwallSpeedContinuous) {
+      if (loopNodes == null) {
+        throw ArgumentError(
+          'Pinned Arachne QIDI loop-node traversal requires global loopNodes',
+        );
+      }
+      if (!settings.outerWallLineWidthMm.isFinite ||
+          settings.outerWallLineWidthMm < 0) {
+        throw ArgumentError.value(
+          settings.outerWallLineWidthMm,
+          'outerWallLineWidthMm',
+          'Pinned outer-wall line width must be finite and nonnegative',
+        );
+      }
+      collection.loopNodeRange = (loopNodes.length, loopNodes.length);
+    }
 
     for (final ordered in orderedExtrusions) {
       final sourceExtrusion = ordered.extrusion;
       if (sourceExtrusion.isEmpty) continue;
+
+      // QIDI source captures the raw Arachne line before fuzzy skin, overhang
+      // clipping, orientation restoration or variable-width conversion.
+      if (settings.zDirectionOutwallSpeedContinuous &&
+          sourceExtrusion.insetIndex == 0) {
+        final points = <SourcePoint2>[
+          for (final junction in sourceExtrusion.junctions) junction.p,
+        ];
+        final contour = SourceNodeContour2(
+          points: points,
+          widths: [
+            for (final junction in sourceExtrusion.junctions) junction.w,
+          ],
+          isLoop: sourceExtrusion.isClosed,
+        );
+        final sourceBboxOffset =
+            (settings.outerWallLineWidthMm / 2.0).toInt();
+        loopNodes!.add(
+          SourceLoopNode2(
+            nodeContour: contour,
+            nodeId: loopNodes.length,
+            loopId: collection.entities.length,
+            bounds: SourceLoopNodeBounds2.fromPoints(
+              points,
+              offset: sourceBboxOffset,
+            ),
+          ),
+        );
+      }
 
       final extrusion = SourceFuzzySkinApply2.applyExtrusionLine(
         extrusion: sourceExtrusion,
@@ -195,6 +249,12 @@ class SourceArachneExtrusionTraversal2 {
       collection.append(multiPath);
     }
 
+    if (settings.zDirectionOutwallSpeedContinuous) {
+      collection.loopNodeRange = (
+        collection.loopNodeRange.$1,
+        loopNodes!.length,
+      );
+    }
     return collection;
   }
 }
