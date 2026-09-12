@@ -146,4 +146,76 @@ void main() {
     expect(edge.data.centralIsSet, isFalse);
     expect(() => edge.data.isCentral, throwsStateError);
   });
+
+  test('isEndOfCentral accepts boundary end and rejects noncentral edge', () {
+    final edges = pair(node(0, 0, 10), node(10, 0, 20));
+    final graph = SourceArachneSkeletalTrapezoidationGraph2();
+
+    edges.$1.data.setIsCentral(true);
+    expect(graph.isEndOfCentral(edges.$1), isTrue);
+
+    edges.$1.data.setIsCentral(false);
+    expect(graph.isEndOfCentral(edges.$1), isFalse);
+  });
+
+  test('isEndOfCentral scans radial next edges for another central branch', () {
+    final end = pair(node(0, 0, 10), node(10, 0, 20));
+    final radial = pair(node(10, 0, 20), node(20, 0, 15));
+    end.$1.data.setIsCentral(true);
+    end.$2.data.setIsCentral(true);
+    radial.$1.data.setIsCentral(false);
+    radial.$2.data.setIsCentral(false);
+    end.$1.next = radial.$1;
+    radial.$2.next = end.$2;
+    final graph = SourceArachneSkeletalTrapezoidationGraph2();
+
+    expect(graph.isEndOfCentral(end.$1), isTrue);
+
+    radial.$1.data.setIsCentral(true);
+    expect(graph.isEndOfCentral(end.$1), isFalse);
+  });
+
+  test('filterCentral preserves pinned contradictory top-level predicate', () {
+    final low = node(0, 0, 10);
+    final maximum = node(10, 0, 20);
+    final end = pair(low, maximum);
+    end.$1.data.setIsCentral(true);
+    end.$2.data.setIsCentral(true);
+
+    final downhill = pair(maximum, node(20, 0, 5));
+    downhill.$2.next = downhill.$1;
+    maximum.incidentEdge = downhill.$1;
+
+    final graph = SourceArachneSkeletalTrapezoidationGraph2()
+      ..edges.addAll([end.$1, end.$2, downhill.$1, downhill.$2]);
+
+    expect(maximum.isLocalMaximum(), isTrue);
+    graph.filterCentral(1000);
+
+    // Pinned source asks for localMaximum && !localMaximum, so recursion is
+    // unreachable and this otherwise eligible central end is left untouched.
+    expect(end.$1.data.isCentral, isTrue);
+    expect(end.$2.data.isCentral, isTrue);
+  });
+
+  test('filterOuterCentral clears only prev-null edge pairs', () {
+    final boundary = pair(node(0, 0, 10), node(10, 0, 20));
+    final chained = pair(node(20, 0, 20), node(30, 0, 30));
+    for (final edge in [boundary.$1, boundary.$2, chained.$1, chained.$2]) {
+      edge.data.setIsCentral(true);
+    }
+    final sentinel = SourceArachneSTHalfEdge2();
+    chained.$1.prev = sentinel;
+    chained.$2.prev = sentinel;
+
+    final graph = SourceArachneSkeletalTrapezoidationGraph2()
+      ..edges.addAll([boundary.$1, boundary.$2, chained.$1, chained.$2]);
+
+    graph.filterOuterCentral();
+
+    expect(boundary.$1.data.isCentral, isFalse);
+    expect(boundary.$2.data.isCentral, isFalse);
+    expect(chained.$1.data.isCentral, isTrue);
+    expect(chained.$2.data.isCentral, isTrue);
+  });
 }
