@@ -14,19 +14,17 @@ Do not infer completion from visual similarity, a compiling app shell, or a pass
 
 ## Current validated checkpoint — 2026-09-12
 
-Code checkpoint before this documentation update:
+Last validated code checkpoint before this documentation batch:
 
-- validated code commit: `015dcdd4cbfb9b292a89642c0d736f2471483691` (`chore: finish analyzer cleanup`);
-- current normal-workflow base after removing the temporary cleanup workflow: `2f2c8486e09640dd4d6d03ebc85cee843146d8b2`;
+- code commit: `704b9900820d4ed479ad192cebbbe1958f0b89fb` (`test: cover classic gap fill pipeline`);
+- normal workflow: `.github/workflows/flutter-parity.yml` run `34679098241` (#152);
 - Flutter `3.47.2`;
-- Dart `3.13.2`.
+- Dart `3.13.2`;
+- `flutter analyze` → **No issues found!**;
+- `flutter test --reporter expanded` → **185/185 passed**;
+- job conclusion → **success**.
 
-Executed evidence:
-
-- cleanup validation run `34668728368`: `flutter analyze` → **No issues found!**, `flutter test --reporter expanded` → **174/174 passed**, `git diff --check` passed;
-- ordinary read-only parity run `34668800262` (#139) after the temporary workflow was removed: Analyze **success**, Unit and parity tests **success**, final `+174: All tests passed!`.
-
-The temporary write-enabled analyzer-cleanup workflow has been deleted. Continue using only `.github/workflows/flutter-parity.yml` for normal validation.
+Earlier independently green milestones in the same chain include thin-wall → variable-width extrusion run `34678782013` (#147) and source covered-width geometry run `34678922719` (#150).
 
 ## Numeric/source rules that must be preserved
 
@@ -43,57 +41,62 @@ Rounding/truncation-sensitive algorithms must stay in source integer types (`Sou
 
 ### Boost.Polygon 1.83
 
-The direct Dart Fortune/Voronoi port is now passing the represented Boost/QIDI oracle suite. Two implementation details are especially easy to break:
+The direct Dart Fortune/Voronoi port is passing the represented Boost/QIDI oracle suite. Two implementation details are especially easy to break:
 
-- Boost `uint64_t` arithmetic and double-bit ULP comparison cannot be represented by signed native Dart `int` when bit 63 is crossed; the port deliberately uses `BigInt` at those boundaries.
+- Boost `uint64_t` arithmetic and double-bit ULP comparison cannot be represented safely by signed native Dart `int` when bit 63 is crossed; the port deliberately uses `BigInt` at those boundaries.
 - PPP circle formation keeps the **literal Boost 1.83 operand order** for `robust_cross_product`. Do not reorder it into a mathematically nicer cross product without a Boost oracle proving equivalence.
 
-The square segment full half-edge golden, extreme-int32 circle cases, known Voronoi regressions, QIDI repair-angle sequence and annotation are currently green.
+The square segment full half-edge golden, extreme-int32 circle cases, known Voronoi regressions, QIDI repair-angle sequence and annotation are green.
 
 ### Clipper compatibility
 
 The project uses pure-Dart Clipper2 behind a compatibility adapter, while QIDI/libslic3r source behavior is Clipper 6.x/ClipperUtils-shaped. Current verified compatibility includes:
 
 - Clipper1 miter-limit values below 2 behaving as effective 2;
-- positive ExPolygon hole offsets retaining the final CW hole orientation despite Clipper2 preserving input orientation differently from Clipper1;
-- translated constant-offset and basic boolean fixtures.
+- positive ExPolygon hole offsets retaining holes by explicit contour-minus-hole reconstruction;
+- translated constant-offset/basic boolean fixtures;
+- source-domain open-polyline offset used by `ExtrusionPath::polygons_covered_by_width()`: square joins, open-butt ends, non-zero union, and no millimeter round trip.
 
 Do not remove these adapter quirks just because native Clipper2 defaults differ.
 
 ## Classic perimeter / MedialAxis checkpoint
 
-The following source subset now works end-to-end and is covered by tests:
+The following source subset now works end-to-end and is covered by the 185-test suite:
 
 - classic onion-shell inset formulas;
 - QIDI smaller-external-width branch;
 - exact source behavior `last = offsets` — smaller-width outer loops are output only and do **not** feed subsequent inner loops;
-- source one-coordinate-unit safety terms;
+- source one-coordinate-unit / Clipper safety terms;
 - alternate extra wall behavior;
 - `detect_thin_wall` path:
   `Clipper difference/opening → SourceExPolygonMedialAxis2 → ThickPolyline2`;
-- explicit use of source external nozzle diameter (`nozzle / 3` minimum thin-wall width path).
+- exact QIDI/libslic3r variable-width conversion from `ThickPolyline2` to extrusion entities;
+- use of the same source `ext_perimeter_flow` for `nozzle/3` and thin-wall extrusion conversion;
+- `ExtrusionEntity::polygons_covered_by_width()` represented path/multipath/loop/collection dispatch;
+- classic gap collection on the **extra shell iteration**, source float32 casts, opening/max-width subtraction, closed-polygon Douglas–Peucker, MedialAxis, short-line filter, `variable_width(... erGapFill, solid_infill_flow ...)`, and covered-width subtraction from `last`.
 
-The next missing source stage is **not** more Voronoi. It is what consumes these `ThickPolyline2` objects.
+Raw `thinWalls` and `gapFillPolylines` are deliberately retained in `ClassicPerimeterResult` as regression evidence in addition to the converted extrusion entities.
 
 ## Immediate next code task
 
-Port the source variable-width extrusion conversion used by classic thin walls, with translated/reference fixtures before integrating it into `ClassicPerimeterShellGenerator`.
+Continue `PerimeterGenerator::process_classic()` at the next source boundary: **loop extrusion construction, recursive `traverse_loops`, and nearest-neighbor ordering**.
 
-Dependency order:
+Source behavior already located in `PerimeterGenerator.cpp`:
 
-1. Locate the exact QIDI/libslic3r helper called after thin-wall `medial_axis()` in `PerimeterGenerator::process_classic()` (the variable-width ThickPolyline → extrusion path conversion).
-2. Port its width clamping/interpolation, segment splitting, role/flow/mm3-per-mm construction, endpoint/continuity and any resolution rules literally into Dart.
-3. Add source-derived or differential fixtures that exercise constant width, changing width, endpoint flags, short segments and source rounding.
-4. Wire classic `detect_thin_wall` output through that helper without deleting the raw ThickPolyline evidence path unless the source structure requires it.
-5. Then port the classic **gap-fill** branch, reusing the now-working MedialAxis chain and its source width limits.
-6. Continue `PerimeterGenerator::process_classic()` line-by-line through covered-area, path ordering, overhang and extrusion-role stages.
-7. Only after those stages, continue Arachne and broader fill/support/seam/bridge toolpaths.
+1. convert each structural loop into `ExtrusionLoop` with external/internal role, loop-role flags, source flow/mm3/width/height and polygon split semantics;
+2. add thin-wall variable-width entities into the same nearest-neighbor candidate collection;
+3. choose thin-wall search origin from the far bbox corner as source does;
+4. port `chain_extrusion_entities(...)` source ordering/reversal decisions instead of substituting a generic sort;
+5. recurse children in source order: contour children before the contour loop, hole loop before its children;
+6. force contour CCW and hole CW through source loop methods;
+7. then continue overhang clipping/path-role branches and remaining fill-surface/covered-area stages;
+8. only after the classic path is represented, continue Arachne and broader toolpaths.
 
-Do not substitute a simple average-width `ExtrusionPath` for the source variable-width algorithm.
+Do not flatten the loop tree prematurely and do not replace source nearest-neighbor chaining with a convenience sort.
 
 ## Current represented parity evidence
 
-The 174-test suite currently covers explicitly scoped subsets of:
+The 185-test suite currently covers explicitly scoped subsets of:
 
 - Point/Line source geometry;
 - Polyline/QIDI append/clip/extend and ArcFitter metadata;
@@ -102,21 +105,22 @@ The 174-test suite currently covers explicitly scoped subsets of:
 - Boost robust numeric helpers, predicates, circle formation and Fortune construction;
 - QIDI Voronoi detection/repair/annotation;
 - MedialAxis and ExPolygon post-processing;
-- translated Clipper boolean/offset fixtures;
+- translated Clipper boolean/offset fixtures plus source open-line covered-width offset;
 - Flow;
 - Extruder/QIDI variant resolution;
 - Surface;
 - ExtrusionEntity/Path/MultiPath/Loop/Collection;
+- source variable-width extrusion conversion and extrusion covered-width geometry;
 - source-style G-code formatting and fitting-result extrusion branch;
-- classic perimeter represented formulas and thin-wall geometry;
+- classic perimeter shell, thin-wall conversion, and gap-fill pipeline represented so far;
 - existing linear-infill/basic writer fixtures.
 
 These are **scoped parity claims only**. All top-level product gates remain open.
 
 ## Major open areas
 
-- ThickPolyline → variable-width extrusion conversion and classic gap fill;
-- remaining classic perimeter stages and Arachne;
+- remaining classic perimeter loop tree, ordering, overhang splitting/roles, fill-surface and later stages;
+- Arachne;
 - full fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
 - complete native G-code templates/state/travel/retract/cooling/acceleration/multi-material behavior;
 - complete project/profile persistence, STEP and source-enabled import formats;
