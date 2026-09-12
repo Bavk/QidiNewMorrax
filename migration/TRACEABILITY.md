@@ -14,12 +14,18 @@ The source of truth for acceptance is [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md)
 
 ## Executed validation checkpoint
 
-Two independent GitHub Actions executions confirm the current code checkpoint:
+Current normal GitHub Actions checkpoint:
 
-- cleanup validation run `34668728368`: Flutter 3.47.2 / Dart 3.13.2, `flutter analyze` = **No issues found**, `flutter test` = **174/174 passing**, `git diff --check` clean; it produced code commit `015dcdd4cbfb9b292a89642c0d736f2471483691`;
-- ordinary read-only parity run `34668800262` (#139) on commit `2f2c8486e09640dd4d6d03ebc85cee843146d8b2`: Analyze **success**, Unit and parity tests **success**, final `+174: All tests passed!`.
+- `.github/workflows/flutter-parity.yml` run `34679098241` (#152) on code commit `704b9900820d4ed479ad192cebbbe1958f0b89fb`;
+- Flutter `3.47.2`, Dart `3.13.2`;
+- `flutter analyze` = **No issues found**;
+- `flutter test --reporter expanded` = **185/185 passing**;
+- job conclusion = **success**.
 
-The temporary write-enabled cleanup workflow was removed before the ordinary confirmation. Normal CI is `.github/workflows/flutter-parity.yml`.
+Relevant independently green intermediate runs in the same source chain:
+
+- run `34678782013` (#147): thin-wall MedialAxis output → source variable-width extrusion integration;
+- run `34678922719` (#150): source open-polyline offset and `polygons_covered_by_width()` dispatch.
 
 ## Numeric / geometry traceability
 
@@ -28,13 +34,13 @@ The temporary write-enabled cleanup workflow was removed before the ordinary con
 | libslic3r scaling constants / integer Point | `Slic3rUnits`, `SourcePoint2` | source-formula geometry tests | `parity_verified` | Broader source geometry APIs remain outside this row. |
 | `Line` represented math | `SourceLine2` | translated/source-formula Line tests | `parity_verified` | Only represented Line methods are claimed. |
 | QIDI `Polyline` append/clip/extend/reverse and fitting metadata | `SourcePolyline2`, `PathFittingData2` | Polyline regression tests including exact-length and arc metadata quirks | `parity_verified` | Other Polyline APIs/consumers pending as encountered. |
-| Arc fitting | `SourceArcFitter2`, `SourceCircle2`, `SourceArcSegment2` | ArcFitter/Circle/ArcSegment source-formula tests | `parity_verified` | Broader arc consumers still depend on later toolpath/G-code stages. |
-| `ThickPolyline` represented behavior | `ThickPolyline2` | width-cardinality, reverse, `rebase_at`, `get_width_at` tests | `parity_verified` | Variable-width extrusion conversion is a separate pending stage. |
+| Arc fitting / Douglas–Peucker represented helpers | `SourceArcFitter2`, `SourceCircle2`, `SourceArcSegment2` | ArcFitter/Circle/ArcSegment tests plus classic closed-polygon gap consumer | `parity_verified` | Broader arc/simplification consumers still depend on later toolpath stages. |
+| `ThickPolyline` represented behavior | `ThickPolyline2` | width-cardinality, reverse, `rebase_at`, `get_width_at` tests | `parity_verified` | Additional downstream consumers may expose more quirks. |
 | Boost.Polygon robust numeric helpers | `BoostRobustFpt2`, extended-int/sqrt helpers | Boost 1.83 C++ oracle goldens | `parity_verified` | Only helpers currently required by direct Voronoi port are claimed. |
 | Boost site/circle predicates and PPP/PPS/PSS/SSS formation | `BoostVoronoiPredicates2`, circle-formation ports | Boost 1.83 oracle fixtures incl. extreme int32 cases | `parity_verified` | Additional unrepresented Boost cases may still be added. |
 | Boost direct Fortune construction | source Boost Voronoi builder + topology adapter | point/segment construction tests, square full half-edge golden, regression inputs | `parity_verified` | Broader source inputs not yet represented remain open. |
 | QIDI Voronoi issue detection / rotation repair / annotation | `SourceVoronoiDiagram2`, annotator/utils | repair-angle, endpoint-remap, contour-category tests | `parity_verified` | Other consumers may expose additional source cases. |
-| MedialAxis represented core and ExPolygon postprocess | `MedialAxisCore`, `SourceMedialAxis2`, `SourceExPolygonMedialAxis2` | edge validation/traversal/postprocess and composition tests | `parity_verified` | Downstream variable-width/gap-fill conversion is not part of this row. |
+| MedialAxis represented core and ExPolygon postprocess | `MedialAxisCore`, `SourceMedialAxis2`, `SourceExPolygonMedialAxis2` | edge validation/traversal/postprocess, thin-wall and gap-fill composition tests | `parity_verified` | Other MedialAxis callers may expose additional branches. |
 | Remaining Polygon/ExPolygon geometry APIs | mixed partial Dart types | no complete reference matrix | `port_started` | Continue as source consumers require them. |
 
 Implementation constraints that must not be simplified:
@@ -49,7 +55,8 @@ Implementation constraints that must not be simplified:
 | translated boolean fixtures | `ClipperGeometry` over pure-Dart Clipper2 | translated intersection/union/difference fixtures | `parity_verified` | Full ClipperUtils source regression matrix pending. |
 | translated constant offset fixtures | `offsetPolygonsEx`, `offsetExPolygon` | positive/negative box and hole fixtures | `parity_verified` | More join/end/fill/degenerate combinations pending. |
 | Clipper1 miter-limit compatibility | adapter `_clipper2MiterLimit` | source fixture using low miter limit | `parity_verified` | Keep adapter boundary explicit; do not rely on Clipper2 default semantics. |
-| positive ExPolygon hole orientation | Clipper2 adapter orientation handling | source-equivalent expanded-hole fixture | `parity_verified` | More multi-hole/nested cases pending. |
+| positive ExPolygon hole reconstruction | explicit contour/hole offset + difference | expanded-hole fixture | `parity_verified` | More multi-hole/nested cases pending. |
+| open Polyline offset for covered-width geometry | `offsetSourceOpenPolyline` | exact source-coordinate square/open-butt fixture | `parity_verified` | Other open-line wrappers/end types remain open. |
 | complete Slic3r/QIDI ClipperUtils | partial adapter | incomplete original regression coverage | `port_started` | Translate remaining source tests and wrappers. |
 
 ## Slicer semantic-model traceability
@@ -60,6 +67,8 @@ Implementation constraints that must not be simplified:
 | Extruder represented E/retract/variant behavior | `ExtruderState`, `QidiConfigVariantResolver` | exact state/math and QIDI resolver tests | `parity_verified` | Full native print-state integration pending. |
 | Surface represented classification/copy/assignment quirks | Dart Surface model | source-style Surface tests | `parity_verified` | Surface-processing pipeline remains incomplete. |
 | ExtrusionRole/Path/MultiPath/Loop/Collection represented behavior | Dart extrusion entity model | source-semantic regression tests | `parity_verified` | Remaining entity operations/consumers pending. |
+| QIDI/libslic3r variable-width ThickPolyline conversion | `SourceVariableWidth2` | seven translated/source-specific width segmentation and loop tests | `parity_verified` | Later ordering/overhang consumers remain open. |
+| `ExtrusionEntity::polygons_covered_by_width()` represented dispatch | `extrusion_covered_geometry.dart` + integer open-line Clipper adapter | exact path coverage fixture + recursive collection/iterable fixture | `parity_verified` | Other source entity geometry methods remain open. |
 | Linear infill current subset | `LinearInfill` | square/hole clipping fixtures | `implemented_unverified` | Not enough source-pattern/reference coverage for parity claim. |
 
 ## Classic perimeter traceability
@@ -68,13 +77,17 @@ Implementation constraints that must not be simplified:
 |---|---|---|---|---|
 | common onion-shell inset formulas | `ClassicPerimeterShellGenerator` | equal-flow source-formula fixture | `parity_verified` | Later `process_classic()` stages remain open. |
 | alternate extra wall count | same | odd/even layer test | `parity_verified` | Other wall ordering rules pending. |
-| QIDI smaller-external-width decision | same | narrow-loop regression | `parity_verified` | Later extrusion conversion pending. |
+| QIDI smaller-external-width decision | same | narrow-loop regression | `parity_verified` | Structural extrusion loop construction/order still pending. |
 | source quirk `last = offsets` | same | regression proving smaller-width outer loop does not seed inner loops | `parity_verified` | Keep exact behavior in future refactors. |
-| `detect_thin_wall` geometric branch | Clipper difference/opening → `SourceExPolygonMedialAxis2` → `ThickPolyline2` | end-to-end thin-wall tests | `parity_verified` | Returned ThickPolyline → variable-width extrusion-path conversion pending. |
-| source nozzle-diameter dependency | explicit `externalNozzleDiameter` | required-input regression | `parity_verified` | Must be wired from full Flow/config caller later. |
-| variable-width conversion after thin-wall medial axis | none complete | no Dart reference tests | `pending` | Immediate next source unit. |
-| classic gap fill | none complete | no Dart reference tests | `pending` | Follow variable-width conversion using working MedialAxis chain. |
-| remaining `process_classic()` path/order/overhang/covered-area stages | partial | incomplete | `port_started` | Continue line-by-line. |
+| `detect_thin_wall` geometric branch | Clipper difference/opening → `SourceExPolygonMedialAxis2` → `ThickPolyline2` | end-to-end thin-wall tests | `parity_verified` | Later loop-tree ordering remains open. |
+| source external Flow dependency | `ClassicPerimeterSettings.externalPerimeterFlow` | required-input + converted-extrusion tests | `parity_verified` | Full config caller wiring remains later integration work. |
+| variable-width conversion after thin-wall MedialAxis | `SourceVariableWidth2` wired into `ClassicPerimeterResult.thinWallExtrusions` | run #147 end-to-end test | `parity_verified` | Thin walls still need insertion into source nearest-neighbor loop chain. |
+| classic gap collection extra iteration | source-literal i>0 gap difference in `ClassicPerimeterShellGenerator` | classic gap fixture | `parity_verified` | More complex gap geometries should be added as later regressions appear. |
+| classic gap region filtering/MedialAxis/variable width | opening + max-width subtraction + DP + MedialAxis + length filter + `SourceVariableWidth2` | classic gap fixture, run #152 | `parity_verified` | Full surrounding process_classic path remains incomplete. |
+| gap covered-width subtraction from `last` | `ExtrusionEntitiesCoveredGeometry2` + `differenceEx` | covered-width unit tests + classic gap end-to-end run | `parity_verified` | Other covered-area source helpers remain open. |
+| structural loop → `ExtrusionLoop`, recursive `traverse_loops`, `chain_extrusion_entities` | partial structural loop values only | no complete source-order evidence yet | `port_started` | Immediate next source unit. |
+| overhang clipping/role/flow path splitting | not complete | incomplete | `pending` / `port_started` | Follow traversal/order port. |
+| remaining fill-surface/fill-no-overlap stages | partial | incomplete | `port_started` | Continue line-by-line. |
 | Arachne wall generator | not ported | none | `pending` | Full source port required. |
 
 ## G-code traceability
