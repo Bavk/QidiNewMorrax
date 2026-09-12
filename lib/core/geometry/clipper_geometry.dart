@@ -3,6 +3,8 @@ import 'package:clipper2/clipper2.dart' as c2;
 import 'expolygon.dart';
 import 'point.dart';
 import 'polygon.dart';
+import 'source_geometry.dart';
+import 'source_polygon.dart';
 
 enum PolygonFillRule { evenOdd, nonZero, positive, negative }
 enum PolygonJoinType { square, round, miter }
@@ -62,6 +64,45 @@ class ClipperGeometry {
   }) {
     if (subject.isEmpty && clip.isEmpty) return const [];
     return _booleanEx(c2.ClipType.xor, subject, clip, fillRule: fillRule);
+  }
+
+  /// Integer-domain port of the source `offset(Polyline, delta)` primitive.
+  ///
+  /// `ClipperUtils.hpp` defaults line offsets to `jtSquare` and `etOpenButt`.
+  /// Coordinates and [delta] are already in source `coord_t` units, so this
+  /// method deliberately bypasses the millimeter scaling used by polygon APIs.
+  /// The final non-zero union mirrors `clipper_union(raw_offset_polyline(...))`.
+  List<SourcePolygon2> offsetSourceOpenPolyline(
+    List<SourcePoint2> points,
+    double delta, {
+    PolygonJoinType joinType = PolygonJoinType.square,
+    double miterLimit = 0,
+  }) {
+    if (points.length < 2) return const [];
+    if (!delta.isFinite || delta <= 0) {
+      throw ArgumentError.value(delta, 'delta', 'must be finite and > 0');
+    }
+
+    final inflated = c2.Clipper.inflatePaths(
+      paths: [
+        [for (final point in points) c2.Point64(point.x, point.y)],
+      ],
+      delta: delta,
+      joinType: _joinType(joinType),
+      endType: c2.EndType.butt,
+      miterLimit: _clipper2MiterLimit(joinType, miterLimit),
+    );
+    final unioned = c2.Clipper.union(
+      subject: inflated,
+      fillRule: c2.FillRule.nonZero,
+    );
+    return List.unmodifiable([
+      for (final path in unioned)
+        if (path.length >= 3)
+          SourcePolygon2([
+            for (final point in path) SourcePoint2(point.x, point.y),
+          ]),
+    ]);
   }
 
   List<ExPolygon2> offsetPolygonsEx(
