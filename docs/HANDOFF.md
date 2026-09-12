@@ -1,200 +1,394 @@
-# QidiNewMorrax — development handoff and continuation guide
+# QidiNewMorrax — canonical development handoff
 
 > **Canonical repository:** `https://github.com/Bavk/QidiNewMorrax`
 >
-> **Goal:** completely rewrite the supplied Qidi Flow 2.07.02.60 Pass28 application in Flutter + Dart without silently dropping functionality or data. Native C++/wxWidgets/React code is reference material only; it is not considered a migrated implementation.
+> **Source target:** supplied Qidi Flow 2.07.02.60 Pass28 tree.
+>
+> **Final requirement:** reproduce the application **1:1 in Flutter + Dart**. It must be the same application and implementation behavior on another language/runtime, with no lost function, workflow, data contract, algorithmic edge case or runtime resource.
 
-This file is the primary handoff for continuing development from another ChatGPT chat, another machine, or another developer. **Update it in every meaningful development batch** together with `migration/MIGRATION_STATUS.md`, tests, and the migration ledger.
+This is the primary continuation document for every future ChatGPT chat/developer. **Read it before coding and update it after every meaningful development batch.**
 
-## 1. Non-negotiable completion definition
+The strict acceptance authority is [`migration/PARITY_CONTRACT.md`](../migration/PARITY_CONTRACT.md). If any shortcut conflicts with that contract, the contract wins.
 
-The project is complete only when the Flutter/Dart application has behavior-level parity for all relevant capabilities of the supplied source archive:
+---
 
-1. model/project formats and metadata round-tripping;
-2. complete 3D scene/editor behavior;
-3. slicing/toolpath generation used by QIDI profiles;
-4. G-code preview/statistics/estimation;
-5. profile inheritance, compatibility and user presets;
-6. local + cloud printer integration, QIDI Box/AMS, files, camera, diagnostics and firmware capabilities;
-7. all calibration flows;
-8. desktop OS integration;
-9. localization/accessibility;
-10. translated/replaced automated tests and parity fixtures.
+## 1. Non-negotiable meaning of “rewrite 1:1”
 
-A visually similar screen, an FFI bridge to the old slicer, a copied native executable/library, or an embedded legacy WebView does **not** satisfy the rewrite requirement.
+The target is **not**:
 
-## 2. Source-of-truth files
+- a similar slicer;
+- a compatible printer client;
+- a redesigned Flutter UI;
+- a subset containing the most commonly used features;
+- a UI shell around the old C++ engine;
+- an FFI/subprocess/native-library wrapper;
+- an embedded copy of the old React DeviceWeb application;
+- an implementation that produces roughly comparable output in normal cases.
 
-Read these before changing code:
+The target **is the supplied application, completely reimplemented in Flutter/Dart**.
 
-- `docs/HANDOFF.md` — this document; current plan and continuation procedure.
-- `migration/MIGRATION_STATUS.md` — parity gates and honest current status.
-- `migration/MODULE_MAP.md` — source module sizing and port-start coverage.
-- `migration/original_file_manifest.json` — per-source-file SHA-256/status ledger.
-- `migration/status_counts.json` — summarized migration ledger counts.
-- `migration/VALIDATION.md` — what has and has not actually been validated.
-- `README.md` — end-user/developer overview.
+For every source capability, preserve where applicable:
 
-The original archive used for the audit was `QidiFlow-2.07.02.60-Pass28-Device-Reference-Redesign-Clean(1).zip`.
+1. screens, dialogs, popovers, context menus, wizards and navigation;
+2. every command/action and its enabled/disabled/hidden rules;
+3. keyboard shortcuts, mouse/drag/drop and selection behavior;
+4. validation, warnings, errors, confirmations and recovery paths;
+5. source defaults, settings, inheritance, compatibility expressions and user presets;
+6. all supported file/project formats and QIDI/Bambu/Prusa/vendor metadata behavior;
+7. slicing/geometry/toolpath algorithms and source-required numeric/degenerate behavior;
+8. G-code templates, command ordering, flow/speed/cooling/travel behavior, statistics and estimates;
+9. preview feature classification and interactions;
+10. LAN/cloud/P2P/device protocols, reconnects, capability gating, QIDI Box/AMS, camera, HMS, files, timelapses and firmware flows;
+11. every calibration workflow and generated artifact/toolpath;
+12. desktop integration and release behavior present in the source;
+13. every shipped localization/resource that participates in runtime presentation/behavior;
+14. quirks and edge cases relied upon by other source modules;
+15. applicable original tests and fixtures.
 
-## 3. What has already been implemented
+A module is not “done” because a Dart class exists or because the UI looks correct.
 
-### Application architecture/UI
+### Runtime language rule
 
-- Flutter desktop-first shell with Prepare, Preview, Device, Project and Calibration areas.
-- Pass28-inspired Device workspace with Overview / Control / Files / Automation organization.
-- Unported actions are intentionally disabled instead of being fake clickable no-ops.
+The old C++/wxWidgets/React code may be inspected as specification/reference material only. Production behavior must not remain delegated to it through FFI, copied `.dll/.so/.dylib`, native executables, subprocesses, hidden local services or embedded legacy WebViews.
 
-### Model I/O and project preservation
+### Algorithm rule
 
-- ASCII + binary STL import.
+For application-owned algorithms, preserve the same source decision logic unless a deliberately different Dart implementation is proven equivalent against source/reference fixtures across normal and edge cases.
+
+For third-party algorithms used by the source, use the same algorithm semantics/version where feasible, or prove a replacement with the original regression suite. “Works for typical geometry” does not establish parity.
+
+---
+
+## 2. Required source-of-truth files
+
+Read these first, in this order:
+
+1. `migration/PARITY_CONTRACT.md` — strict 1:1 acceptance contract.
+2. `docs/HANDOFF.md` — this continuation document.
+3. `migration/MIGRATION_STATUS.md` — current gates and exact verification state.
+4. `migration/MODULE_MAP.md` — source sizing/module coverage.
+5. `migration/original_file_manifest.json` — source-file SHA-256/status ledger.
+6. `migration/status_counts.json` — ledger summary.
+7. `migration/VALIDATION.md` — tests/builds actually executed versus merely authored.
+8. `README.md` — repository overview.
+9. GitHub Issue #1 — long-running top-level parity tracker.
+10. latest commits/PRs before changing any code.
+
+Original audited archive:
+
+`QidiFlow-2.07.02.60-Pass28-Device-Reference-Redesign-Clean(1).zip`
+
+The archive audit inventoried **8,632 source-tree files**. A previous local integrity pass verified **3,657/3,657 copied runtime assets** against source SHA-256 with 0 missing and 0 mismatches.
+
+---
+
+## 3. Traceability rule — mandatory from now on
+
+The migration must converge to symbol/behavior traceability, not just file-level checkboxes:
+
+`source file → source class/function/behavior → Dart file → Dart symbol → reference/parity tests → status`
+
+Use these meanings:
+
+- **`pending`** — no real Dart replacement.
+- **`port_started`** — only a subset of the source behavior exists.
+- **`implemented_unverified`** — intended implementation exists but source parity has not actually been executed/proven.
+- **`parity_verified`** — required implementation plus translated/differential tests pass against source expectations.
+- **`runtime_asset_verified`** — data preserved byte-for-byte or with a specifically documented canonical transformation.
+
+Only `parity_verified` closes executable source behavior.
+
+When a Dart substitute deliberately differs internally, record why and which differential fixtures prove equivalent relevant behavior.
+
+---
+
+## 4. Test rule — original tests are specification
+
+Do not replace the original test intent with easier tests.
+
+For every migrated subsystem:
+
+1. locate applicable original unit/regression/integration tests;
+2. translate their fixtures, numeric tolerances and edge cases to Dart/Flutter;
+3. preserve source reference files where licensing/project structure permits;
+4. add differential/golden comparisons for observable behavior not covered by the original tests;
+5. compare serialized packages, generated G-code/toolpaths, protocol payloads and state transitions against source outputs whenever deterministic comparison is possible;
+6. keep failure/degenerate cases, not only happy paths;
+7. do not upgrade a module to `parity_verified` before the required tests have actually run successfully.
+
+---
+
+## 5. Implemented foundations so far
+
+The sections below describe code that exists. They **do not imply top-level parity completion**.
+
+### Flutter application architecture / UI
+
+- Desktop-first Flutter shell with Prepare, Preview, Device, Project and Calibration areas.
+- Pass28-oriented Device workspace with Overview / Control / Files / Automation organization.
+- Unported actions are disabled instead of being fake clickable no-ops.
+
+**Status:** `port_started`; final UI must reproduce source layouts, dialogs, states, shortcuts and workflows 1:1 rather than remain merely Pass28-inspired.
+
+### Model I/O / package preservation
+
+- ASCII and binary STL import.
 - OBJ import.
-- AMF and ZIP.AMF import, including units and constellation transforms.
-- Package-aware 3MF import with external object resolution, component recursion, build transforms, unit conversion, project/model metadata retention, and preservation of unknown/vendor ZIP entries.
-- 3MF repacking that keeps unknown binary/vendor entries and supports explicit replacement.
-- Basic mesh transforms: translate, rotate, scale, center-on-bed.
-- Flutter software wireframe viewport.
+- AMF and ZIP.AMF import including units and constellation transforms.
+- Package-aware 3MF import with external model-part resolution, component recursion, build transforms and unit conversion.
+- 3MF package preservation of unknown/vendor ZIP entries and replacement/repacking support.
+- Basic mesh translate/rotate/scale/center-on-bed.
+- Software wireframe viewport.
 
-### Geometry and slicing foundation
+**Status:** mostly `port_started` / `implemented_unverified`. Full source project serialization, STEP/Assimp-enabled formats, warnings/repair semantics and complete QIDI/Bambu metadata remain open.
 
-- 2D/3D point and bounding-box primitives.
-- Polygon area, centroid, containment and boundary-distance operations.
-- Pure-Dart triangle/plane mesh slicing.
-- Segment deduplication and contour stitching.
-- Closed contours plus explicit open/non-manifold paths.
-- Line infill generator with rotated scanlines and even-odd clipping, including nested holes.
-- Basic toolpath planner converting valid slice contours to perimeter loops + alternating-angle infill while refusing layers with open paths.
-- Deterministic basic G-code writer using absolute XYZ + relative extrusion and conservative Klipper/Marlin-style commands.
+### Geometry / mesh slicing
 
-These last toolpath stages are foundations only. They are **not** parity with the native QIDI/PrusaSlicer toolpath engine yet.
+- 2D/3D point, polygon and bounding-box primitives.
+- triangle/plane mesh slicing;
+- segment deduplication/contour stitching;
+- closed contours plus explicit open/non-manifold paths;
+- `ExPolygon2` contour + holes model;
+- Clipper-compatible Dart geometry facade with union/difference/intersection/xor, offset, offset2, opening and closing;
+- source scale preserved: `SCALING_FACTOR = 0.00001`, i.e. 100000 integer geometry units/mm;
+- source default miter limit `3.0` preserved in compatibility calls.
 
-### G-code
+The current Clipper facade uses the pure-Dart `clipper2` package. The supplied source includes Clipper 6.x semantics plus substantial `ClipperUtils` behavior. Therefore this implementation is explicitly **`implemented_unverified`** until translated source regression fixtures pass. If semantic mismatches are found, fix the compatibility layer or port the required source Clipper implementation directly. Do not rationalize a difference as “close enough”.
 
-- G-code line parser with line numbers, parameters, checksums and comments.
-- Basic statistics for motion/extrusion/temperature.
-- Basic G-code emission from the new pure-Dart toolpath plan.
+### Translated Clipper reference fixtures
+
+Initial Dart tests have been translated from source Clipper tests, including:
+
+- constant positive/negative box offsets;
+- offsets with holes;
+- non-zero winding union behavior;
+- intersection preserving holes;
+- difference creating holes.
+
+These tests have been authored but **not executed in the current environment** because Flutter/Dart tooling is unavailable here.
+
+### Classic perimeter port — current exact boundary
+
+`ClassicPerimeterShellGenerator` has started a source-formula port of the onion-shell portion of `PerimeterGenerator::process_classic()`.
+
+Currently represented:
+
+- source `INSET_OVERLAP_TOLERANCE = 0.4`;
+- QIDI `SMALLER_EXT_INSET_OVERLAP_TOLERANCE = 0.22`;
+- narrow-loop length threshold `10`;
+- requested wall loop calculation (`wall_loops + extra_perimeters - 1`);
+- `alternate_extra_wall` increment on odd layers when not spiral vase;
+- first external centerline inset by half external width;
+- QIDI smaller-external-width probe/branch;
+- precise outer-wall external→internal spacing branch;
+- spiral-vase largest-island selection;
+- internal `offset2` formula including the literal one source-coordinate-unit safety adjustment, mapped to **0.00001 mm**.
+
+Not yet represented and therefore still pending:
+
+- source `detect_thin_wall` medial-axis/thick-polyline behavior;
+- gap-fill extraction;
+- all remaining classic-perimeter paths/ordering/overhang behavior;
+- Arachne;
+- later surface/toolpath stages.
+
+`detectThinWall=true` currently throws `UnsupportedError` intentionally. This is preferable to silently shipping a different algorithm.
+
+### Infill/toolpath/G-code foundations
+
+- rotated line infill with even-odd clipping and holes;
+- basic perimeter/infill toolpath plan;
+- layer-angle alternation;
+- rejection of open/non-manifold slice paths in the basic planner;
+- deterministic basic G-code writer with absolute XYZ/relative extrusion.
+
+**Status:** foundations only. They are not replacements for native fill/perimeter/path/G-code generation and must eventually be either replaced or integrated into exact source-equivalent implementations.
 
 ### Profiles/localization/assets
 
-- Original JSON profile tree preserved in the local migration workspace.
-- Generated profile catalog (~2.3k profiles) for startup performance.
-- Profile inheritance and `compatible_printers` filtering.
-- Original PO catalogs preserved and runtime PO reader implemented.
-- Original non-executable runtime resources copied to the migration workspace.
-- Previous integrity audit reported 3,657/3,657 copied runtime assets matching source SHA-256, 0 missing and 0 changed.
+- source JSON profile loading/inheritance;
+- `compatible_printers` filtering;
+- generated profile catalog for startup;
+- PO localization reader;
+- local copied resource tree and prior SHA-256 asset verification.
+
+**Status:** `port_started`; compatibility expressions, every preset behavior, user preset persistence/import/export and full UI binding still require source parity.
 
 ### Device integration
 
-- QIDI LAN SSDP discovery on `239.255.255.250:5863`.
-- Moonraker WebSocket JSON-RPC client and subscriptions.
-- Raw printer state retention plus typed temperatures/progress/layers/fans/speed/light/excluded-object fields.
-- Local commands for pause/resume/cancel, motion, temperatures, speed, fans, polar cooler and case light.
-- Exclude-object support.
-- QIDI Box load/unload/eject/RFID command support.
-- File browsing/deletion and timelapse root browsing.
-- Cloud task contract scaffolding for known dispatcher endpoints.
+- QIDI SSDP discovery on `239.255.255.250:5863`;
+- Moonraker WebSocket JSON-RPC client/subscriptions;
+- raw printer status retention plus typed common fields;
+- pause/resume/cancel, motion, temperatures, speed, fans, polar cooler, case light;
+- excluded-object operations;
+- QIDI Box load/unload/eject/RFID commands;
+- file deletion/listing and timelapse root listing;
+- known cloud task contract scaffolding.
 
-### Tests already present
+**Status:** `port_started`. Full account/auth/cloud/P2P, camera, HMS/diagnostics, firmware, all capability maps, reconnect/offline restoration and complete QIDI Box state behavior remain pending.
 
-Unit tests cover ASCII/binary STL, AMF units/transforms, 3MF unknown-entry preservation, G-code parsing/statistics, mesh slicing, QIDI command strings/cloud task contract, line-infill clipping with holes, and basic G-code writer output.
+---
 
-## 4. What is NOT complete
+## 6. Major areas still NOT complete
 
-Do not describe any of these as done until implementation + parity tests exist.
+Nothing in this section may be described as complete until its source implementation and reference tests are accounted for.
 
-### Slicer/toolpaths — highest priority
+### Slicer / geometry / toolpaths — highest dependency chain
 
-- robust polygon boolean/offset engine;
-- correct perimeter offsets and multiple wall loops;
-- Arachne variable-width walls and classic perimeter parity;
-- top/bottom solid layers and skin detection;
-- native infill patterns beyond basic lines;
-- bridge detection/flow/speed;
-- supports and interfaces;
-- overhang logic, seam placement;
-- retraction, wipe, travel avoidance and path ordering;
-- ironing, brim/skirt/raft;
-- prime/wipe tower and multi-material planning;
+- complete Clipper/ClipperUtils semantics and regression coverage;
+- medial-axis/thick-polyline geometry;
+- complete classic perimeter generation;
+- thin walls and gap fill;
+- Arachne variable-width walls;
+- surface classification and top/bottom skins;
+- every source-enabled infill family and its exact parameters;
+- bridges and bridge flow/direction/speed;
+- supports/interfaces/tree or other source-supported support logic;
+- overhang handling;
+- seams;
+- role-aware extrusion flow/spacing;
+- travel ordering/avoidance, retract, wipe;
+- ironing;
+- brim/skirt/raft;
+- multi-material/purge/prime/wipe structures;
 - adaptive layers;
-- flow-role calculations matching the native slicer;
-- cooling/fan scheduling;
-- acceleration/jerk/input-shaper related emission where profiles require it;
-- timelapse toolpath handling;
-- profile start/end/layer-change template expansion;
-- native-compatible print-time/material estimation;
-- post-processing hooks.
+- cooling and fan scheduling;
+- speed/acceleration/jerk/input-shaping-related emission where used;
+- timelapse toolpath modifications;
+- source template expansion and custom G-code;
+- post-processing;
+- native-compatible time/material estimation and preview classification.
 
 ### Scene/editor
 
-- robust selection and object/part hierarchy;
+- exact scene/object/part hierarchy and selection;
+- complete transform gizmos and source interaction rules;
 - undo/redo command system;
-- cut/split/merge/boolean operations and repair;
-- lay-on-face/auto-orient/arrange;
-- multi-plate behavior;
+- cut/split/merge/repair/boolean operations;
+- arrange/orient/lay-on-face;
 - modifiers/negative volumes;
+- multi-plate;
 - support/seam/color painting;
-- text/emboss, measurement and remaining gizmos/shortcuts.
+- text/emboss;
+- measurement and remaining gizmos;
+- all shortcuts/context actions/dialogs.
 
 ### Formats/project persistence
 
-- full native project save semantics and all QIDI/Bambu metadata;
-- STEP import;
-- formats previously delegated to Assimp as enabled in the source build;
-- exact import/export warnings and repair behavior;
-- user preset import/export.
+- complete project save and round-trip semantics;
+- all per-object/per-volume/per-plate settings;
+- all metadata/images/custom G-code/source package entries;
+- STEP;
+- every format enabled through source Assimp/build configuration;
+- identical warnings/repair behavior;
+- preset import/export.
 
 ### Device/cloud
 
-- full account/auth and cloud/P2P transport;
+- account/auth;
+- full cloud/P2P transport;
 - camera streaming;
-- HMS/diagnostics parity;
+- HMS/diagnostics;
 - firmware/update flows;
-- every printer capability map;
-- reconnect/offline restoration edge cases;
-- complete QIDI Box state/control parity.
+- every printer model capability matrix;
+- reconnect/offline/state restoration edge cases;
+- complete QIDI Box/AMS state machine and UI parity.
 
-### Calibration / OS / release
+### Calibration / OS / release / localization
 
-- all original calibration wizards/pattern-generation flows;
-- committed Flutter Windows/macOS/Linux runners;
-- file associations, drag/drop, single instance, updater/release packaging, thumbnails/shell integration;
-- CI release builds.
+- every original calibration wizard and generated artifact;
+- committed Windows/macOS/Linux Flutter runners;
+- file associations, drag/drop, single instance, thumbnails/shell integrations;
+- updater/packaging/release flow;
+- complete original localization/resource usage;
+- keyboard/accessibility parity;
+- CI/release builds.
 
-## 5. Immediate engineering priorities
+---
 
-Work in this order unless a failing parity test reveals a more fundamental dependency:
+## 7. Immediate engineering order
 
-1. **Establish build/CI truth.** Generate desktop runners with a pinned Flutter stable version, run `flutter analyze` and `flutter test`, fix all errors, then add GitHub Actions.
-2. **Geometry kernel.** Implement/test polygon boolean + offset operations robust enough for slicer use.
-3. **Perimeter planner.** Replace contour-as-wall placeholder with real offset wall loops; test polygons, holes, thin walls and degenerates.
-4. **Solid regions + infill.** Detect top/bottom surfaces, internal sparse regions and bridge candidates.
-5. **Extrusion/path planner.** Add role-aware flow, ordering, retraction/travel and speed/acceleration selection from source profiles.
-6. **Profile-driven G-code.** Expand machine start/end/layer templates and map source settings instead of hardcoded writer defaults.
-7. **Preview parity.** Render toolpaths by feature/tool/layer and expose estimates/statistics.
-8. **Project persistence/editor.** Expand 3MF serialization and scene model alongside undoable editing operations.
-9. **Device/cloud/calibration.** Continue feature matrices with tests and protocol fixtures.
+Do work in dependency order; do not jump to visually impressive UI if core source behavior beneath it is missing.
 
-## 6. Rules for every future development chat
+### Priority 0 — establish executable truth
 
-When starting another chat, tell it to:
+1. run a pinned compatible Flutter/Dart toolchain (current repo dependency set requires Dart >= 3.7 because of pure-Dart Clipper2);
+2. run `flutter pub get`;
+3. run `flutter analyze`;
+4. run all tests;
+5. fix compilation/API errors before assigning any new `parity_verified` status;
+6. add GitHub Actions so subsequent commits cannot silently break tests.
 
-1. read `docs/HANDOFF.md`, `migration/MIGRATION_STATUS.md`, `migration/MODULE_MAP.md`, and `migration/VALIDATION.md` first;
-2. inspect latest commits/PRs before editing;
-3. treat `main` as canonical unless a feature branch is explicitly active;
-4. implement real behavior, not UI-only placeholders;
-5. add/extend tests for every ported subsystem;
-6. update migration ledger/status when source behavior is replaced;
-7. update **this handoff file** in the same change set with implemented work, validation, remaining work, exact next task, and known risks;
-8. commit/push to `Bavk/QidiNewMorrax` (prefer a feature branch + PR for risky changes);
-9. never claim completion while any parity gate is open.
+### Priority 1 — source geometry semantics
 
-### Suggested prompt for another chat
+1. translate more of `test_clipper_offset.cpp`, `test_clipper_utils.cpp` and related source geometry tests;
+2. execute them against `ClipperGeometry`;
+3. fix all Clipper1/ClipperUtils semantic mismatches;
+4. port any missing source ClipperUtils operations called by slicer/editor;
+5. establish behavior fixtures for nested islands, touching paths, degenerates, very small source-unit values and winding rules.
 
-> Continue development of `https://github.com/Bavk/QidiNewMorrax`. This is a complete Flutter/Dart rewrite of Qidi Flow 2.07.02.60 Pass28; losing functionality is not allowed and using the old C++/wxWidgets/React implementation as a runtime backend does not count as a rewrite. First read `docs/HANDOFF.md` and all `migration/*.md` status documents, inspect the latest repository commits, then continue the highest-priority unfinished parity work. Add tests, push your changes to the repository, and update `docs/HANDOFF.md` plus migration status before finishing. Do not mark unimplemented behavior as complete and do not create fake clickable stubs.
+### Priority 2 — classic perimeter dependencies
 
-## 7. Development/validation commands
+1. port medial-axis/thick-polyline source logic used by `detect_thin_wall`;
+2. port gap-fill geometry;
+3. continue `PerimeterGenerator::process_classic()` line-by-line;
+4. translate corresponding perimeter tests/fixtures;
+5. only then replace the old basic “contour-as-wall” planner path.
 
-Once Flutter is installed and platform runners exist:
+### Priority 3 — Arachne / surfaces / fill / path planning
+
+Proceed source-module by source-module with the same traceability/test rule.
+
+### Parallel priorities after core truth
+
+- full project serialization/editor;
+- profile-expression/preset parity;
+- preview parity;
+- device/cloud/camera/HMS;
+- calibration;
+- OS/release/UI/localization detail parity.
+
+---
+
+## 8. Rules for EVERY future ChatGPT chat / developer
+
+At the start:
+
+1. open `migration/PARITY_CONTRACT.md` first;
+2. read this entire `docs/HANDOFF.md`;
+3. read all migration status/validation files;
+4. inspect latest GitHub commits/issues/PRs;
+5. locate the exact original source files/functions/tests for the next work item before implementing it.
+
+While coding:
+
+6. port source behavior, not an invented simplified substitute;
+7. preserve source constants/formulas/edge cases unless a tested equivalent is intentionally chosen;
+8. never call old C++/React at runtime to avoid rewriting it;
+9. do not create fake clickable stubs;
+10. explicitly fail/disable an unported branch rather than silently produce a different result;
+11. translate applicable source tests alongside implementation;
+12. add differential/golden fixtures when necessary.
+
+Before finishing a batch:
+
+13. run available analyze/tests/builds and record what actually ran;
+14. update source→Dart→test traceability/status;
+15. update `migration/MIGRATION_STATUS.md`;
+16. update **this file** with exact implemented source symbols/branches, verification performed, unresolved differences and exact next task;
+17. push all changes to `Bavk/QidiNewMorrax`;
+18. update master Issue #1 when top-level status changes;
+19. never claim project/module completion while required source behavior remains pending/unverified.
+
+### Ready-to-use prompt for a new chat
+
+> Continue development of `https://github.com/Bavk/QidiNewMorrax`. The requirement is a COMPLETE 1:1 Flutter/Dart rewrite of the supplied Qidi Flow 2.07.02.60 Pass28 application: the same application on another language/runtime, with no function, implementation behavior, file/profile/project data, protocol flow, UI workflow, slicer algorithm, calibration, resource or edge case silently lost. The old C++/wxWidgets/React code is reference only and must not be used as the runtime backend. First read `migration/PARITY_CONTRACT.md`, then the entire `docs/HANDOFF.md`, all `migration/*.md`, latest commits and Issue #1. Locate the exact original source functions/tests for the highest-priority unfinished dependency and port them to Dart/Flutter with translated/differential tests. Do not accept “close enough”, do not mark authored-but-unexecuted code as parity-verified, and do not create fake stubs. Push changes to GitHub and update HANDOFF/status/traceability before finishing.
+
+---
+
+## 9. Development / validation commands
+
+Once a Flutter environment is available:
 
 ```bash
 flutter --version
@@ -204,13 +398,17 @@ flutter test
 flutter run -d windows
 ```
 
-If runner folders are absent during bootstrap:
+If runners are absent during bootstrap:
 
 ```bash
 flutter create --platforms=windows,macos,linux .
 ```
 
-## 8. Git workflow
+Then validate platform builds on supported hosts.
+
+---
+
+## 10. Git workflow
 
 Canonical remote:
 
@@ -220,37 +418,56 @@ git remote add origin https://github.com/Bavk/QidiNewMorrax.git
 git remote set-url origin https://github.com/Bavk/QidiNewMorrax.git
 ```
 
-Recommended for substantial work:
+For substantial/risky work prefer a branch + PR; otherwise keep `main` coherent and never leave imported Dart files without their dependencies/tests.
 
-```bash
-git switch main
-git pull --ff-only
-git switch -c feature/<short-topic>
-# edit + test
-git add -A
-git commit -m "feat: <what changed>"
-git push -u origin feature/<short-topic>
-```
+---
 
-## 9. Asset publication note
+## 11. Binary asset publication gap
 
-The local migration workspace contains thousands of preserved runtime resources, many binary. The GitHub connector used during repository bootstrap can create Git objects but does not expose Git LFS. Source code/docs/tests should be pushed immediately; binary asset publication must preserve exact bytes and should use normal Git/Git LFS from a machine with authenticated git access if connector payload limits prevent direct publication. **Do not regenerate or recompress source assets and then call them identical**; verify against `migration/original_file_manifest.json` hashes.
+The local migration workspace contains thousands of original binary/runtime resources. The GitHub connector does not expose Git LFS. The previous local integrity audit verified 3,657/3,657 copied runtime assets by SHA-256, but **GitHub publication of all of those binary bytes is still a repository-bootstrap gap until verified in the remote repository**.
 
-Until binary publication is verified in GitHub, this is an explicit repository-bootstrap gap, not a completed gate.
+Do not regenerate/recompress source assets and then label them identical. Preserve exact bytes or explicitly document and test an intentional canonical transformation.
 
-## 10. Current known validation limitation
+---
 
-The environment that produced the initial Flutter rewrite did not have Flutter/Dart SDK installed, so it could not truthfully run `flutter analyze`, `flutter test`, or a desktop build. New source/tests in this batch also require CI or a Flutter-enabled machine before their status can be upgraded from code-reviewed to execution-validated.
+## 12. Current validation limitation
 
-## 11. Last handoff update
+The current execution environment has not provided a runnable Flutter/Dart SDK. Therefore newly authored Dart code/tests are not promoted to `parity_verified`. This is a hard status distinction, not a paperwork detail.
 
-Current batch:
+The repository now requires Dart >= 3.7 for the selected pure-Dart Clipper2 dependency. CI/toolchain selection must respect that requirement or the dependency choice must be revisited.
 
-- canonical GitHub repository selected: `Bavk/QidiNewMorrax`;
-- repository admin/push access verified;
-- handoff/continuation protocol established;
-- line infill engine implemented with even-odd clipping and hole support;
-- basic toolpath planner implemented;
-- basic G-code writer implemented;
-- unit tests added for infill and writer contracts;
-- next engineering task: **build/CI truth first, then robust polygon offset/boolean geometry and real perimeter generation**.
+---
+
+## 13. Last handoff update — current batch
+
+User requirement was re-confirmed and strengthened to: **FULL application 1:1, same implementation behavior on another language, no lost function or implementation.**
+
+Completed in this batch:
+
+- added `migration/PARITY_CONTRACT.md` as the strict acceptance authority;
+- changed project language from general “feature parity” to explicit 1:1 source behavior;
+- introduced mandatory `pending / port_started / implemented_unverified / parity_verified` semantics;
+- made applicable original tests part of the formal specification;
+- required symbol-level `source → Dart → test → status` traceability;
+- added `ExPolygon2`;
+- added a pure-Dart Clipper compatibility layer for boolean operations and offsets;
+- preserved source geometry scaling (`0.00001 mm` per integer unit) and default miter limit (`3.0`);
+- translated initial cases from source `test_clipper_offset.cpp` / `test_clipper_utils.cpp`;
+- started a line/formula-level port of `PerimeterGenerator::process_classic()` onion-shell generation;
+- preserved QIDI-specific external inset tolerance `0.22`, common inset tolerance `0.4`, narrow-loop threshold `10`, alternate-extra-wall behavior, precise external→internal spacing and one-source-unit offset safety term;
+- explicitly left the source thin-wall medial-axis branch unsupported instead of faking it;
+- updated `README.md` and `migration/MIGRATION_STATUS.md` to the stricter contract.
+
+Verification in this environment:
+
+- source code and source tests were inspected directly;
+- implementation/tests were authored and committed;
+- **Flutter analyze/test/build were not executed**, so geometry/perimeter work remains unverified.
+
+Exact next work:
+
+1. establish Dart/Flutter CI and execute the new source-derived fixtures;
+2. resolve every failing Clipper semantic difference;
+3. continue original Clipper/ClipperUtils test translation;
+4. port medial-axis/thick-polyline logic used by `detect_thin_wall` and gap fill;
+5. resume `PerimeterGenerator::process_classic()` from that dependency boundary.
