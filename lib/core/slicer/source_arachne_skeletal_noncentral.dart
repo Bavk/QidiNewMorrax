@@ -4,33 +4,29 @@ import '../geometry/source_geometry.dart';
 import 'source_arachne_beading_strategy.dart';
 import 'source_arachne_skeletal_central.dart';
 import 'source_arachne_skeletal_graph.dart';
+import 'source_arachne_wall_tool_paths.dart';
 
-const int _sourceShortEdge = 10000; // scaled<coord_t>(0.01)
-const int _sourceMaxNoncentralDistance = 400000; // scaled<coord_t>(0.4)
-
-/// Direct port of pinned `SkeletalTrapezoidation::filterNoncentralRegions()`.
+/// Direct port of pinned
+/// `SkeletalTrapezoidation::filterNoncentralRegions()`.
 extension SourceArachneSkeletalNoncentral2
     on SourceArachneSkeletalTrapezoidationGraph2 {
-  void filterNoncentralRegions(SourceArachneBeadingStrategy2 beadingStrategy) {
+  void filterNoncentralRegions(
+    SourceArachneBeadingStrategy2 beadingStrategy,
+  ) {
+    final maxDist =
+        SourceArachneWallToolPathsPreprocess2.scaleDouble(0.4);
     for (final edge in edges) {
       if (!isEndOfCentral(edge)) {
         continue;
       }
-
       final to = edge.to ??
-          (throw StateError('Noncentral filter end edge has no to node'));
-      if (to.data.beadCount < 0 && to.data.distanceToBoundary != 0) {
-        // Pinned source logs a warning and asserts immediately afterward.
-        throw StateError(
-          'Noncentral filter encountered an uninitialized boundary bead',
-        );
-      }
-
+          (throw StateError('filterNoncentralRegions end edge has no to node'));
+      assert(to.data.beadCount >= 0 || to.data.distanceToBoundary == 0);
       _filterNoncentralFrom(
         edge,
         to.data.beadCount,
         0,
-        _sourceMaxNoncentralDistance,
+        maxDist,
         beadingStrategy,
       );
     }
@@ -44,22 +40,24 @@ bool _filterNoncentralFrom(
   int maxDistance,
   SourceArachneBeadingStrategy2 beadingStrategy,
 ) {
-  final toNode = toEdge.to ??
-      (throw StateError('Noncentral recursive edge has no to node'));
-  final radius = toNode.data.distanceToBoundary;
+  final end = toEdge.to ??
+      (throw StateError('filterNoncentralRegions edge has no to node'));
+  final radius = end.data.distanceToBoundary;
+  final tinyEdgeLength =
+      SourceArachneWallToolPathsPreprocess2.scaleDouble(0.01);
 
   var nextEdge = toEdge.next;
   while (nextEdge != null && !identical(nextEdge, toEdge.twin)) {
     final nextFrom = nextEdge.from ??
-        (throw StateError('Noncentral candidate edge has no from node'));
+        (throw StateError('filterNoncentralRegions next edge has no from node'));
     final nextTo = nextEdge.to ??
-        (throw StateError('Noncentral candidate edge has no to node'));
+        (throw StateError('filterNoncentralRegions next edge has no to node'));
     if (nextTo.data.distanceToBoundary >= radius ||
-        _sourceShorterThen(nextTo.p - nextFrom.p, _sourceShortEdge)) {
+        _sourceShorterThen(nextTo.p - nextFrom.p, tinyEdgeLength)) {
       break;
     }
     final twin = nextEdge.twin ??
-        (throw StateError('Noncentral radial edge has no twin'));
+        (throw StateError('filterNoncentralRegions radial edge has no twin'));
     nextEdge = twin.next;
   }
 
@@ -68,9 +66,9 @@ bool _filterNoncentralFrom(
   }
 
   final nextFrom = nextEdge.from ??
-      (throw StateError('Selected noncentral edge has no from node'));
+      (throw StateError('filterNoncentralRegions next edge has no from node'));
   final nextTo = nextEdge.to ??
-      (throw StateError('Selected noncentral edge has no to node'));
+      (throw StateError('filterNoncentralRegions next edge has no to node'));
   final length = math.sqrt((nextTo.p - nextFrom.p).squaredLength).truncate();
 
   bool dissolve;
@@ -92,7 +90,7 @@ bool _filterNoncentralFrom(
   if (dissolve) {
     nextEdge.data.setIsCentral(true);
     final twin = nextEdge.twin ??
-        (throw StateError('Dissolved noncentral edge has no twin'));
+        (throw StateError('filterNoncentralRegions dissolved edge has no twin'));
     twin.data.setIsCentral(true);
     nextTo.data.beadCount = beadingStrategy.getOptimalBeadCount(
       nextTo.data.distanceToBoundary * 2,
@@ -102,8 +100,13 @@ bool _filterNoncentralFrom(
   return dissolve;
 }
 
+/// Literal source `shorter_then(Point, coord_t)` comparison.
 bool _sourceShorterThen(SourcePoint2 vector, int length) {
-  if (vector.x > length || vector.x < -length) return false;
-  if (vector.y > length || vector.y < -length) return false;
-  return vector.x * vector.x + vector.y * vector.y <= length * length;
+  if (vector.x > length ||
+      vector.x < -length ||
+      vector.y > length ||
+      vector.y < -length) {
+    return false;
+  }
+  return vector.squaredLength <= length * length;
 }
