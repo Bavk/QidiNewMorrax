@@ -3,6 +3,7 @@ import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import 'source_arachne_extrusion_line.dart';
 import 'source_arachne_process_planning.dart';
+import 'source_arachne_top_one_wall.dart';
 import 'source_arachne_wall_tool_paths.dart';
 import 'source_arachne_wall_tool_paths_facade.dart';
 import 'source_arachne_wall_tool_paths_generate.dart';
@@ -15,12 +16,22 @@ class SourceArachneSurfaceProcessSettings2 {
     required this.surfaceSimplifyResolutionSource,
     required this.perimeterSpacing,
     required this.layerHeightMm,
+    this.perimeterWidth,
+    this.topAreaThresholdPercent = 0,
+    this.lowerSlices,
   });
 
   final SourceArachneProcessPlanningSettings2 planning;
   final double surfaceSimplifyResolutionSource;
   final int perimeterSpacing;
   final double layerHeightMm;
+
+  /// Required only by the separated `Alltop` branch, where pinned
+  /// `should_enable_top_one_wall()` compares top area against internal wall
+  /// width rather than spacing.
+  final int? perimeterWidth;
+  final double topAreaThresholdPercent;
+  final List<SourcePolygon2>? lowerSlices;
 }
 
 class SourceArachneSurfaceProcessResult2 {
@@ -33,6 +44,9 @@ class SourceArachneSurfaceProcessResult2 {
     required this.totalPerimeters,
     required this.infillContour,
     this.wallToolPaths,
+    this.remainingWallToolPaths,
+    this.topOneWallEnabled = false,
+    this.topOneWallPolygons = const <SourcePolygon2>[],
   });
 
   final SourceArachneSurfaceWallPlan2 plan;
@@ -49,15 +63,14 @@ class SourceArachneSurfaceProcessResult2 {
   final List<List<SourceArachneExtrusionLine2>> totalPerimeters;
   final List<SourcePolygon2> infillContour;
   final SourceArachneWallToolPathsGenerated2? wallToolPaths;
+  final SourceArachneWallToolPathsGenerated2? remainingWallToolPaths;
+  final bool topOneWallEnabled;
+  final List<SourcePolygon2> topOneWallPolygons;
 }
 
-/// Second high-level slice of pinned `PerimeterGenerator::process_arachne()`:
-/// simplify/offset one surface, circle-compensation topology gate, then the
-/// non-separated one-wall/normal `WallToolPaths` branches.
-///
-/// The `Alltop` separated-wall branch is intentionally rejected here and is
-/// ported by the next source-order layer; silently treating it as a normal wall
-/// pass would alter both top geometry and inset indices.
+/// Source-order per-surface wall generation from pinned
+/// `PerimeterGenerator::process_arachne()` through the complete one-wall,
+/// normal-wall and separated `TopOneWallType::Alltop` branches.
 class SourceArachneProcessSurface2 {
   const SourceArachneProcessSurface2._();
 
@@ -111,25 +124,194 @@ class SourceArachneProcessSurface2 {
     }
 
     if (plan.separateWallGenerationCandidate) {
-      throw UnsupportedError(
-        'Pinned Alltop separated-wall geometry must be processed by the '
-        'dedicated source-order branch',
+      return _processSeparatedTop(
+        surface: surface,
+        settings: settings,
+        plan: plan,
+        last: last,
+        wallInput: wallInput,
+        applyCircleCompensation: applyCircleCompensation,
+        circlePolygonIndices: circlePolygonIndices,
       );
     }
 
-    final state = SourceArachneWallToolPathsState2(
+    return _processStandardWalls(
+      plan: plan,
+      last: last,
+      wallInput: wallInput,
+      settings: settings,
+      applyCircleCompensation: applyCircleCompensation,
+      circlePolygonIndices: circlePolygonIndices,
+      insetCount: plan.initialInsetCount!,
+    );
+  }
+
+  static SourceArachneSurfaceProcessResult2 _processSeparatedTop({
+    required Surface2 surface,
+    required SourceArachneSurfaceProcessSettings2 settings,
+    required SourceArachneSurfaceWallPlan2 plan,
+    required List<SourcePolygon2> last,
+    required List<SourcePolygon2> wallInput,
+    required bool applyCircleCompensation,
+    required List<int> circlePolygonIndices,
+  }) {
+    final perimeterWidth = settings.perimeterWidth;
+    if (perimeterWidth == null || perimeterWidth <= 0) {
+      throw ArgumentError.value(
+        perimeterWidth,
+        'perimeterWidth',
+        'must be provided and > 0 for pinned Alltop separated generation',
+      );
+    }
+
+    final firstFacade = _makeWallPaths(
       outline: wallInput,
       beadWidth0: settings.planning.extPerimeterSpacing,
       beadWidthX: settings.perimeterSpacing,
-      insetCount: plan.initialInsetCount!,
-      wall0Inset: plan.wall0Inset,
-      layerHeightMm: settings.layerHeightMm,
-      params: plan.params,
+      insetCount: 1,
+      plan: plan,
+      settings: settings,
+      applyCircleCompensation: applyCircleCompensation,
+      circlePolygonIndices: circlePolygonIndices,
     );
-    final facade = SourceArachneWallToolPathsFacade2(state);
-    if (applyCircleCompensation) {
-      facade.enableHoleCompensation(true, circlePolygonIndices);
+    final firstPerimeters = firstFacade.getToolPaths();
+    final infillContourByOneWall = SourceArachneTopOneWall2.union(
+      firstFacade.getInnerContour(),
+    );
+
+    if (infillContourByOneWall.isEmpty) {
+      // The pinned source immediately calls get_extents() here; represent that
+      // invalid state explicitly rather than fabricating a bounding box.
+      throw StateError(
+        'Pinned separated Alltop branch requires non-empty one-wall inner contour',
+      );
     }
+
+    final infillBounds = SourceArachneTopOneWall2.bounds(
+      infillContourByOneWall,
+    ).inflated(Slic3rUnits.scaledEpsilon);
+    final upperClipped = SourceArachneTopOneWall2.clipWithSubjectBounds(
+      settings.planning.upperSlices ?? const <SourcePolygon2>[],
+      infillBounds,
+    );
+    var top = SourceArachneTopOneWall2.difference(
+      infillContourByOneWall,
+      upperClipped,
+    );
+
+    final lowerClipped = SourceArachneTopOneWall2.clipWithSubjectBounds(
+      settings.lowerSlices ?? const <SourcePolygon2>[],
+      infillBounds,
+    );
+    final bottom = SourceArachneTopOneWall2.difference(top, lowerClipped);
+    top = SourceArachneTopOneWall2.difference(top, bottom);
+
+    final decision = SourceArachneTopOneWall2.shouldEnable(
+      originalPolygons: last,
+      top: top,
+      perimeterWidth: perimeterWidth,
+      extPerimeterSpacing: settings.planning.extPerimeterSpacing,
+      topAreaThresholdPercent: settings.topAreaThresholdPercent,
+    );
+
+    if (!decision.enabled) {
+      // Source discards the probe first wall and falls through to the normal
+      // `loop_number + 1` WallToolPaths branch.
+      return _processStandardWalls(
+        plan: plan,
+        last: last,
+        wallInput: wallInput,
+        settings: settings,
+        applyCircleCompensation: applyCircleCompensation,
+        circlePolygonIndices: circlePolygonIndices,
+        insetCount: plan.loopNumber + 1,
+      );
+    }
+
+    final totalPerimeters = <List<SourceArachneExtrusionLine2>>[
+      for (final inset in firstPerimeters)
+        [for (final line in inset) line.copy()],
+    ];
+    var infillContour = SourceArachneTopOneWall2.union(
+      infillContourByOneWall,
+    );
+    SourceArachneWallToolPathsGenerated2? remainingGenerated;
+
+    if (plan.loopNumber > 0) {
+      final remainingLast = SourceArachneTopOneWall2.difference(
+        infillContourByOneWall,
+        decision.top,
+      );
+      final remainingFacade = _makeWallPaths(
+        outline: remainingLast,
+        beadWidth0: settings.perimeterSpacing,
+        beadWidthX: settings.perimeterSpacing,
+        insetCount: plan.loopNumber,
+        plan: plan,
+        settings: settings,
+        // Source explicitly disables contour compensation for remaining walls.
+        applyCircleCompensation: false,
+        circlePolygonIndices: const <int>[],
+      );
+      final remainingPerimeters = remainingFacade.getToolPaths();
+      for (final inset in remainingPerimeters) {
+        if (inset.isEmpty) continue;
+        final shifted = <SourceArachneExtrusionLine2>[];
+        for (final sourceLine in inset) {
+          final line = sourceLine.copy();
+          line.insetIndex += 1;
+          shifted.add(line);
+        }
+        totalPerimeters.add(shifted);
+      }
+
+      final remainingInner = SourceArachneTopOneWall2.union(
+        remainingFacade.getInnerContour(),
+      );
+      infillContour = SourceArachneTopOneWall2.intersection(
+        SourceArachneTopOneWall2.union([
+          ...remainingInner,
+          ...decision.top,
+        ]),
+        infillContourByOneWall,
+      );
+      remainingGenerated = remainingFacade.latest;
+    }
+
+    return SourceArachneSurfaceProcessResult2(
+      plan: plan,
+      lastPolygons: List.unmodifiable(last),
+      wallInputPolygons: List.unmodifiable(wallInput),
+      applyCircleCompensation: applyCircleCompensation,
+      circlePolygonIndices: List.unmodifiable(circlePolygonIndices),
+      totalPerimeters: List.unmodifiable(totalPerimeters),
+      infillContour: List.unmodifiable(infillContour),
+      wallToolPaths: firstFacade.latest,
+      remainingWallToolPaths: remainingGenerated,
+      topOneWallEnabled: true,
+      topOneWallPolygons: List.unmodifiable(decision.top),
+    );
+  }
+
+  static SourceArachneSurfaceProcessResult2 _processStandardWalls({
+    required SourceArachneSurfaceWallPlan2 plan,
+    required List<SourcePolygon2> last,
+    required List<SourcePolygon2> wallInput,
+    required SourceArachneSurfaceProcessSettings2 settings,
+    required bool applyCircleCompensation,
+    required List<int> circlePolygonIndices,
+    required int insetCount,
+  }) {
+    final facade = _makeWallPaths(
+      outline: wallInput,
+      beadWidth0: settings.planning.extPerimeterSpacing,
+      beadWidthX: settings.perimeterSpacing,
+      insetCount: insetCount,
+      plan: plan,
+      settings: settings,
+      applyCircleCompensation: applyCircleCompensation,
+      circlePolygonIndices: circlePolygonIndices,
+    );
 
     final totalPerimeters = facade.getToolPaths();
     final infillContour = SourceArachneWallToolPathsPrepare2.unionNonZero(
@@ -146,6 +328,33 @@ class SourceArachneProcessSurface2 {
       infillContour: List.unmodifiable(infillContour),
       wallToolPaths: facade.latest,
     );
+  }
+
+  static SourceArachneWallToolPathsFacade2 _makeWallPaths({
+    required List<SourcePolygon2> outline,
+    required int beadWidth0,
+    required int beadWidthX,
+    required int insetCount,
+    required SourceArachneSurfaceWallPlan2 plan,
+    required SourceArachneSurfaceProcessSettings2 settings,
+    required bool applyCircleCompensation,
+    required Iterable<int> circlePolygonIndices,
+  }) {
+    final facade = SourceArachneWallToolPathsFacade2(
+      SourceArachneWallToolPathsState2(
+        outline: outline,
+        beadWidth0: beadWidth0,
+        beadWidthX: beadWidthX,
+        insetCount: insetCount,
+        wall0Inset: plan.wall0Inset,
+        layerHeightMm: settings.layerHeightMm,
+        params: plan.params,
+      ),
+    );
+    if (applyCircleCompensation) {
+      facade.enableHoleCompensation(true, circlePolygonIndices);
+    }
+    return facade;
   }
 
   static List<SourcePolygon2> _simplifyExPolygon(
@@ -223,8 +432,6 @@ class SourceArachneProcessSurface2 {
         }
       }
       if (matchIndex < 0) {
-        // Topology count matched, so this is a Clipper ordering/geometry seam;
-        // fall back to source/Clipper output order rather than inventing a hole.
         orderedHoles.addAll(remaining);
         remaining.clear();
         break;
