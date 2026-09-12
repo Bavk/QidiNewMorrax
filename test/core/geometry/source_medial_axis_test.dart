@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_medial_axis.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_voronoi_diagram.dart';
 import 'package:qidi_flow_flutter/core/geometry/voronoi_topology.dart';
 
 void main() {
