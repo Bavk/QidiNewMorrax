@@ -61,7 +61,9 @@ class SourceArachneExtrusionLine2 {
     Iterable<SourceArachneExtrusionJunction2> junctions = const [],
   }) : junctions = [for (final junction in junctions) junction.copy()];
 
-  final int insetIndex;
+  /// Mutable in pinned source: `process_arachne()` increments this for the
+  /// second WallToolPaths pass of the separated Alltop branch.
+  int insetIndex;
   final bool isOdd;
   bool isClosed;
   final List<SourceArachneExtrusionJunction2> junctions;
