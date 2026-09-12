@@ -12,17 +12,19 @@ This repository is a **strict 1:1 reimplementation** of Qidi Flow 2.07.02.60 Pas
 
 Do not infer completion from visual similarity, compilation, or common-case tests. Source quirks are part of the contract.
 
-## Validation checkpoint — 2026-09-12
+## Current validated checkpoint — 2026-09-12
 
-Last confirmed green checkpoint remains:
+Corrected fuzzy code checkpoint:
 
-- code commit `b6809d50912e5135a3d4851177093934a715adf9`;
-- `.github/workflows/flutter-parity.yml` run `34682700807` (#203);
-- Flutter `3.47.2`, Dart `3.13.2`;
-- analyzer clean;
-- **248/248 tests passed**.
+- code commit `ffc005e678d0cf1e6d4000e6c9a842620700ddbe` (`fix: align fuzzy skin rng with pinned source`);
+- `.github/workflows/flutter-parity.yml` run `34688064516` (#230);
+- Flutter `3.47.2`;
+- Dart `3.13.2`;
+- `flutter analyze` → **No issues found!**;
+- `flutter test --reporter expanded` → **288/288 passed**;
+- job conclusion → **success**.
 
-The later fuzzy batch reached run #229 (`34683822158`) but failed three newly introduced `*Exact2` tests. Source inspection proved those tests encoded the wrong RNG topology. Corrective code commit `ffc005e678d0cf1e6d4000e6c9a842620700ddbe` triggered run #230 (`34688064516`), which was still running when this handoff was written. Do not promote the new fuzzy scope to validated until that run (or a later run containing the same code) is green.
+Run #229 had failed three newly introduced `*Exact2` tests. Literal inspection of pinned `FuzzySkin.cpp` proved those tests encoded a false independent-RNG model. The corrective commit removed that duplicate branch and restored source semantics; #230 is the validating replacement checkpoint.
 
 ## Critical fuzzy correction
 
@@ -33,44 +35,47 @@ Literal `FuzzySkin.cpp` facts:
 - `random_value()` owns one function-local thread-local `std::mt19937` plus one `uniform_real_distribution<double>(0,1)`;
 - `NoiseType::Classic` is `UniformNoise`, whose `GetValue()` calls that **same** `random_value()` and maps it to `[-1,1)`;
 - spacing and Classic displacement therefore share one random stream in call order;
-- Classic displacement is `double` in this pinned file; there is no separate float32 displacement boundary;
-- pinned `fuzzy_polygon()` calls closed `fuzzy_polyline()` directly; there is no extra same-neighbor cleanup in `FuzzySkin.cpp`.
+- Classic displacement remains `double` in this pinned file; there is no separate float32 displacement boundary;
+- pinned `fuzzy_polygon()` calls closed `fuzzy_polyline()` directly; there is no extra same-neighbor cleanup in this file.
 
-The recent separate spacing/displacement `*Exact2` branch was therefore false parity and has been removed. `SourceFuzzyMt19937Random2` now ports MT19937 plus the libstdc++ double distribution composition, with C++ seeded oracle values in tests. Production fuzzy Classic uses a per-isolate nondeterministically seeded stream.
+The separate spacing/displacement `*Exact2` implementation was false parity and has been removed. `SourceFuzzyMt19937Random2` now ports MT19937 plus libstdc++ double-distribution composition, with seeded C++ oracle values in the green test suite. Production Classic fuzzy uses a per-isolate nondeterministically seeded stream.
 
-The correction also removes the artificial coupling of fuzzy layer identity to overhang state: `SourceClassicFuzzyPerimeterTraversal2` now receives explicit `layerId`, so first-layer suppression is correct even when overhang detection is off.
+The correction also removes the artificial coupling of fuzzy layer identity to overhang state: `SourceClassicFuzzyPerimeterTraversal2` receives explicit `layerId`, so first-layer suppression is correct even when overhang detection is off.
 
-## Current represented classic fuzzy scope
+## Current represented classic fuzzy scope — scoped parity verified
 
-Implemented, pending latest CI promotion:
+Run #230 verifies the represented no-painted-region Classic branch:
 
-- exact `FuzzySkinType` order: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy`;
-- exact `NoiseType` order: `Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi`;
+- `FuzzySkinType`: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy`;
+- `NoiseType`: `Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi` ordering;
 - `should_fuzzify()` including first-layer gating;
 - `fuzzy_skin_allows_overhang_slowdown()` distinction between `None` and `Disabled_fuzzy`;
-- Classic no-painted-region `fuzzy_polyline()` / `fuzzy_polygon()` sampling and displacement path;
+- Classic `fuzzy_polyline()` / `fuzzy_polygon()` sampling and perpendicular displacement;
 - source fallback quirk for fewer than three generated points;
-- source RNG call order and MT19937 seeded oracle;
-- recursive classic perimeter traversal ordering with fuzzy application;
-- represented fuzzy/overhang slowdown composition in the no-region classic pipeline.
+- one-stream RNG call order;
+- direct MT19937 + libstdc++ seeded oracle;
+- recursive classic perimeter traversal order with explicit layer identity;
+- represented Classic fuzzy/overhang slowdown composition in the no-region classic pipeline.
+
+This is a scoped parity claim only. Non-Classic noise, painted regions and Arachne fuzzy modes remain open.
 
 ## First unfinished priority
 
-Continue fuzzy skin with the first still-missing source branch, in this order:
+Continue fuzzy skin with the first missing source branch, in this order:
 
 1. port `get_noise_module()` dependencies for **Perlin**, **Billow**, **RidgedMulti**, and **Voronoi**, preserving source frequency/scale, octave, persistence, displacement, coordinate and `slice_z` semantics;
-2. add deterministic source/C++ oracle fixtures for those noise modules before integrating them into `SourceFuzzySkinGeometry2`;
+2. add deterministic C++/source oracle fixtures for those noise modules before integrating them into `SourceFuzzySkinGeometry2`;
 3. port painted/per-region `LineSegmentation` and per-segment config selection used by `apply_fuzzy_skin()`; never fuzzify the whole loop as a substitute;
 4. then port Arachne `fuzzy_extrusion_line()` including `Displacement`, `Extrusion`, and `Combined` width/position rules.
 
-Only after those branches and CI are green should the fuzzy subsystem receive a broader parity claim.
+Only after those branches and corresponding CI evidence should fuzzy skin receive a broader parity claim.
 
 ## Numeric/source invariants
 
 - slicer coordinates use `SCALING_FACTOR = 0.00001` mm (100000 source units/mm);
 - preserve source integer geometry until the source converts units;
 - keep Boost.Polygon 1.83 operand/bit semantics, including `BigInt` boundaries already required by the Dart port;
-- keep QIDI/Clipper compatibility quirks already frozen by regression tests;
+- keep QIDI/Clipper compatibility quirks frozen by existing regression tests;
 - never replace a source oddity with a cleaner algorithm without an independent source oracle.
 
 ## Other major open areas
