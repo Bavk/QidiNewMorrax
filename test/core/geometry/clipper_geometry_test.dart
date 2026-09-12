@@ -166,14 +166,23 @@ void main() {
         [clip],
       );
 
-      // Temporary one-run diagnostic. Remove once exact seam paths are frozen.
-      // ignore: avoid_print
-      print('CLIPPER_OPEN_INSIDE=${inside.map((p) => p.points).toList()}');
-      // ignore: avoid_print
-      print('CLIPPER_OPEN_OUTSIDE=${outside.map((p) => p.points).toList()}');
-
       expect(inside, hasLength(1));
-      expect(outside, hasLength(1));
+      expect(inside.single.points, const [
+        SourcePoint2(50, 0),
+        SourcePoint2(100, 0),
+        SourcePoint2(100, 100),
+        SourcePoint2(50, 100),
+      ]);
+      expect(outside, hasLength(2));
+      expect(outside[0].points, const [
+        SourcePoint2(50, 100),
+        SourcePoint2(0, 100),
+        SourcePoint2(0, 0),
+      ]);
+      expect(outside[1].points, const [
+        SourcePoint2(0, 0),
+        SourcePoint2(50, 0),
+      ]);
     });
   });
 }
