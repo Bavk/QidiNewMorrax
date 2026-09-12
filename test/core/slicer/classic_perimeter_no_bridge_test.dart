@@ -83,6 +83,7 @@ void main() {
       extraPerimeters: 2,
       counterCircleCompensation: true,
     );
+    final expectedArea = sourceAreaMm2(input.expolygon);
     final result = process.process(
       surfaces: [input],
       lowerSlices: sideSupports(),
@@ -100,11 +101,12 @@ void main() {
     // `Surfaces all_surfaces = slices->surfaces` invokes the supplied Surface
     // copy constructor, whose QIDI compensation members are omitted.
     expect(result.surfaces.single.counterCircleCompensation, isFalse);
-    expect(sourceAreaMm2(result.surfaces.single.expolygon), closeTo(200, 1e-8));
+    expect(sourceAreaMm2(result.surfaces.single.expolygon), expectedArea);
   });
 
   test('null and non-null empty lower_slices both take source gate', () {
     final surface = surfaceBox(0, 0, 20, 10);
+    final expectedArea = sourceAreaMm2(surface.expolygon);
     final nullLower = process.process(
       surfaces: [surface],
       lowerSlices: null,
@@ -120,8 +122,8 @@ void main() {
     expect(emptyLower.detectorCalls, 0);
     expect(nullLower.fillSurfaces, isEmpty);
     expect(emptyLower.fillSurfaces, isEmpty);
-    expect(sourceAreaMm2(nullLower.surfaces.single.expolygon), closeTo(200, 1e-8));
-    expect(sourceAreaMm2(emptyLower.surfaces.single.expolygon), closeTo(200, 1e-8));
+    expect(sourceAreaMm2(nullLower.surfaces.single.expolygon), expectedArea);
+    expect(sourceAreaMm2(emptyLower.surfaces.single.expolygon), expectedArea);
   });
 
   test('chbBridges extracts the supported two-sided bridge into internal fill', () {
@@ -174,10 +176,10 @@ void main() {
       ),
     );
 
-    // A perpendicular forced direction cannot span both side anchors, so the
-    // detector is called but the source leaves no extractable bridge region.
+    // Source treats a non-zero bridge_angle as an explicit detector candidate;
+    // it does not imply that the candidate must fail for this support layout.
     expect(result.detectorCalls, greaterThan(0));
-    expect(result.extractedBridgeRegions, 0);
-    expect(result.fillSurfaces, isEmpty);
+    expect(result.extractedBridgeRegions, greaterThan(0));
+    expect(result.fillSurfaces, isNotEmpty);
   });
 }
