@@ -12,25 +12,23 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). The target is 
 
 A scoped `parity_verified` row never implies its top-level subsystem is complete.
 
-## Executable checkpoint — 2026-09-12
-
-Last confirmed green checkpoint:
+## Current executable checkpoint — 2026-09-12
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- code `b6809d50912e5135a3d4851177093934a715adf9`;
-- workflow `34682700807` (#203), conclusion **success**;
-- analyzer clean;
-- **248/248 tests passed**.
+- validated code `ffc005e678d0cf1e6d4000e6c9a842620700ddbe`;
+- workflow `34688064516` (#230), conclusion **success**;
+- `flutter analyze` — **No issues found!**;
+- `flutter test --reporter expanded` — **288/288 passing**.
 
-Fuzzy commits after that checkpoint expanded the suite. Run #229 (`34683822158`) failed three newly introduced `*Exact2` tests. Pinned-source inspection showed their independent-RNG model was wrong. Corrective commit `ffc005e678d0cf1e6d4000e6c9a842620700ddbe` removed that duplicate branch, restored the literal single `random_value()` topology, added a direct MT19937/libstdc++ oracle, and triggered run #230 (`34688064516`). At documentation time #230 was still running, so the corrected fuzzy scope remains `implemented_unverified` until a green workflow contains it.
+Run #229 had failed three newly introduced `*Exact2` fuzzy tests. Pinned-source inspection showed their independent-RNG model was wrong. Commit `ffc005e` removed that false branch, restored one shared `random_value()` stream, added a direct MT19937/libstdc++ oracle, and is the green replacement checkpoint.
 
 ## Top-level gates
 
 All remain **OPEN**: formats/project persistence; scene/editor; slicer/toolpath; Preview; profiles/presets; Device/cloud; calibration; desktop/release integration; UI/localization/accessibility; complete reference/differential coverage.
 
-## Verified foundations retained from the last green checkpoint
+## Verified foundations retained
 
-The represented subsets already validated before the fuzzy correction remain scoped `parity_verified`: source integer Point/Line/Polygon geometry; Polyline/ArcFitter/Circle; ThickPolyline; Boost.Polygon 1.83 robust predicates/Fortune/Voronoi represented fixtures; MedialAxis; translated Clipper/ClipperUtils behavior used by current consumers; Flow; Extruder/QIDI config subset; Surface; ExtrusionEntity/variable-width/covered-width subset; source-style G-code formatter/path emitter subset; and represented classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall-sequence/lower-support/no-speed/speed-graded overhang pipeline.
+The represented subsets covered by the green suite remain scoped `parity_verified`: source integer Point/Line/Polygon geometry; Polyline/ArcFitter/Circle; ThickPolyline; Boost.Polygon 1.83 robust predicates/Fortune/Voronoi represented fixtures; MedialAxis; translated Clipper/ClipperUtils behavior used by current consumers; Flow; Extruder/QIDI config subset; Surface; ExtrusionEntity/variable-width/covered-width subset; source-style G-code formatter/path emitter subset; and represented classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall-sequence/lower-support/no-speed/speed-graded overhang pipeline.
 
 The broader containing modules remain `port_started`.
 
@@ -38,24 +36,24 @@ The broader containing modules remain `port_started`.
 
 Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
 
-### Policy — `implemented_unverified` in latest corrected batch
+### Policy — scoped `parity_verified`
 
-Represented behavior:
+Run #230 covers:
 
 - `FuzzySkinType`: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy`;
 - first-layer suppression through `fuzzy_skin_first_layer`;
 - contour/hole and perimeter-index decisions in `should_fuzzify()`;
 - exact slowdown quirk: `Disabled_fuzzy` always allows overhang slowdown; `None` only when `perimeter_regions` is empty; actual fuzzy modes do not.
 
-### Classic no-region geometry/RNG — `implemented_unverified`
+### Classic no-region geometry/RNG — scoped `parity_verified`
 
-Corrected represented behavior:
+Run #230 covers:
 
 - `NoiseType` order: `Classic`, `Perlin`, `Billow`, `RidgedMulti`, `Voronoi`;
-- one function-local/thread-local-equivalent random stream for initial spacing, Classic displacement, and following spacing draws;
+- one shared source random stream for initial spacing, Classic displacement, and following spacing draws;
 - `SourceFuzzyMt19937Random2` direct MT19937 port with libstdc++ `[0,1)` double composition and seeded C++ oracle values;
 - production per-isolate nondeterministically seeded source-shaped stream;
-- `min_dist = 0.75 * point_distance`, random range `0.5 * point_distance`, carried leftover distance, perpendicular displacement and source integer casts;
+- `min_dist = 0.75 * point_distance`, random range `0.5 * point_distance`, carried leftover distance, perpendicular displacement and represented source integer casts;
 - literal fallback that repeats the penultimate point;
 - pinned `fuzzy_polygon()` closed-polyline behavior without an invented cleanup pass;
 - explicit layer identity in recursive classic fuzzy traversal even when overhang detection is disabled;
@@ -69,7 +67,7 @@ The removed `*Exact2` files are not parity evidence; they encoded a false indepe
 - painted/per-region `LineSegmentation`, region transitions, and per-segment config selection;
 - Arachne `fuzzy_extrusion_line()` and `FuzzySkinMode::{Displacement,Extrusion,Combined}`;
 - broader C++/source oracle cases for contours, holes and transitions;
-- exact platform-level reproduction of the nondeterministic `random_device` / thread-id seed selection (specific production runs are intentionally nondeterministic).
+- exact platform-level reproduction of nondeterministic `random_device` / thread-id seed selection (specific production runs are intentionally nondeterministic).
 
 ## Other major open areas
 
@@ -89,10 +87,10 @@ The removed `*Exact2` files are not parity evidence; they encoded a false indepe
 ## Immediate next dependency order
 
 1. Finish fuzzy `get_noise_module()` behavior: port **Perlin**, **Billow**, **RidgedMulti**, **Voronoi** plus scale/frequency/octave/persistence/displacement inputs and deterministic source oracles.
-2. Integrate those modules into `fuzzy_polyline()` while preserving the already-correct single spacing RNG call order and coordinate/`slice_z` inputs.
+2. Integrate those modules into `fuzzy_polyline()` while preserving the verified single spacing/Classic RNG call order and coordinate/`slice_z` inputs.
 3. Port painted/per-region `LineSegmentation` and per-segment fuzzy configs; never substitute whole-loop fuzzing.
 4. Port Arachne `fuzzy_extrusion_line()` modes.
-5. After complete fuzzy CI evidence, continue classic fill-surface/fill-no-overlap and later perimeter stages.
+5. Continue classic fill-surface/fill-no-overlap and later perimeter stages after the fuzzy branch boundary is closed.
 6. Expand Clipper/Boost/source regression coverage only as new source consumers demand it.
 7. Continue Arachne/fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order.
 8. Publish and SHA-verify real runtime assets before any release-complete claim.
