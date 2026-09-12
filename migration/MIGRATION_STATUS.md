@@ -15,22 +15,20 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-12
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `10f642e0d3952b61eefe4c8bdda2fcd909a4eba2`;
-- workflow `34714922159` (#317), conclusion **success**;
+- validated code `0d52a4272197bbbaa5a6c799023eed4c59dc0362`;
+- workflow `34718196236` (#346), conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **551/551 passing**.
+- `flutter test --reporter expanded` — **618/618 passing**.
 
 Milestones in the current source path:
 
 - #276 / `2a33afd...`: ordered classic islands → traversal/fuzzy/overhang/wall sequence + QIDI loop-node metadata, 387/387;
 - #278 / `6978000...`: first Arachne `WallToolPaths` numeric/simplifier dependency slice, 395/395;
-- #308 / `f211b19...`: `generateSegments()` foundation, 521/521;
-- #311 / `34eaac7...`: source beading propagation and shared-object mutation semantics;
-- #313 / `9b61d75...`: Arachne junction generation with exact `scaled(0.005) == 499` boundary;
-- #314 / `3d8bf3c...`: junction connection and variable-width path stitching;
-- #315 / `09c6249...`: local-max single-bead circles;
-- #316 / `0ede85b...`: all seven `generateSegments()` stages composed;
-- #317 / `10f642e...`: post-construction `SkeletalTrapezoidation::generateToolpaths()` runtime composed, 551/551.
+- #317 / `10f642e...`: post-construction `SkeletalTrapezoidation::generateToolpaths()` runtime composed, 551/551;
+- #330 / `5c77305...`: polygon → Boost Voronoi → skeletal graph → variable-width Arachne toolpaths composed, 584/584;
+- #340 / `f23293e...`: represented `WallToolPaths::generate()` source-order runtime composed, 604/604;
+- `4832008...` + `9ac38dc...`: pinned `computePointCellRange()` secondary-edge assertion restored to `!is_secondary()` behavior with regression coverage;
+- #346 / `41c8ffe...` + `0d52a42...`: first `PerimeterGenerator::process_arachne()` orchestration slice, 618/618.
 
 ## Top-level gates
 
@@ -38,7 +36,7 @@ All remain **OPEN**: formats/project persistence; scene/editor; slicer/toolpath;
 
 ## Verified foundations retained
 
-The current green suite retains scoped `parity_verified` coverage for represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter preprocessing/shell/traversal/metadata pipeline, fuzzy/Arachne subsets, Arachne beading strategies, and the represented post-construction skeletal runtime.
+The current green suite retains scoped `parity_verified` coverage for represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter preprocessing/shell/traversal/metadata pipeline, fuzzy/Arachne subsets, Arachne beading strategies, real-polygon Voronoi-to-skeletal construction fixtures, the represented skeletal runtime, and the represented `WallToolPaths::generate()` composition.
 
 The broader containing modules remain `port_started`.
 
@@ -65,34 +63,54 @@ The represented `WallToolPaths` / skeletal dependency chain now includes:
 - scalar pre-beading inputs and exact source casts;
 - `Distributed`, `Redistribute`, `Widening`, `OuterWallInset`, `Limited` strategy behavior and `BeadingStrategyFactory` composition;
 - source-shaped skeletal graph and mutation helpers, pointy-end separation and `collapseSmallEdges()`;
+- source polygon/source-index mapping into direct Boost/Voronoi topology;
+- `computePointCellRange()`, straight/secondary + point-line + point-point discretization, `makeNode()` / `transferEdge()` identity maps, twin reconstruction and source metadata transfer;
+- `constructFromPolygons()` composition through pointy-end separation, collapse and incident-edge normalization on real square polygon fixtures;
 - central classification/filtering, bead-count propagation, noncentral dissolution, transition generation/filtering/application, nonlinear extra ribs;
 - full represented `generateSegments()` runtime after graph construction: upward ordering, local beadings/interpolation, upward/downward propagation, extrusion-junction generation, junction connection and local-maximum single beads;
-- top-level post-construction `generateToolpaths()` source-order composition.
+- top-level `generateToolpaths()` source-order composition;
+- represented `WallToolPaths::generate()` composition through outline preparation, beading strategy, skeletal generation, polyline stitch, small-line removal, inner-contour separation, simplification and empty-path removal.
 
-The exact `generateToolpaths()` runtime on an already constructed graph is now scoped `parity_verified` by #317. Important source numeric seams remain explicit: `scaled(0.1)==10000`, `scaled(0.02)==2000`, `scaled(0.010)==999`, `scaled(0.005)==499`, float32 transition/interpolation ratios, integer cast/truncation behavior, and shared `BeadingPropagation` identity mutation.
+The latest correction restores the pinned `computePointCellRange()` invariant for a non-source-starting edge: it must be primary (`!edge.secondary`), not secondary. The regression suite explicitly rejects the inverted topology.
 
-Full Arachne wall generation remains `port_started`: the missing constructor seam is `SkeletalTrapezoidation::constructFromPolygons()` from real polygon segments through the Boost Voronoi diagram into the half-edge graph. `WallToolPaths::generate()` / `PerimeterGenerator::process_arachne()` have not yet been validated end-to-end from input polygons to generated wall paths.
+These construction and `WallToolPaths` slices are scoped `parity_verified` for their represented fixtures. They do **not** imply complete Arachne process parity across arbitrary production geometry.
+
+## `PerimeterGenerator::process_arachne()` — `port_started`
+
+The first orchestration slice is now represented by `SourceArachneProcessPlanner2` and is green under #346. It preserves:
+
+- `only_one_wall_first_layer && layer_id == 0`;
+- top-most one-wall behavior when `top_one_wall_type != None && upper_slices == nullptr`;
+- `Alltop && upper_slices != nullptr` selection of the separate-wall branch;
+- `loop_number == 0` one-wall behavior;
+- exact precise-outer-wall `wall_0_inset = -(ext_perimeter_width / 2 - ext_perimeter_spacing / 2)` in source integer division order;
+- normal `loop_number + 1` inset count and one-wall inset count `1`;
+- negative loop-number no-generation seam;
+- normal and one-wall handoff into the represented `WallToolPaths::generate()` runtime.
+
+The `Alltop` separate-wall branch is deliberately **not** approximated. The open seam still includes `should_enable_top_one_wall()` geometry, upper/lower clipping and offsets, first-wall/top-fill/remainder split, second wall generation, recombination, source extrusion ordering/traversal, and final Arachne infill-contour boundaries.
+
+Therefore full Arachne wall generation remains `port_started`.
 
 ## Fuzzy skin / Arachne retained
 
-The 551-test suite re-executes the scoped fuzzy evidence: exact fuzzy policy and slowdown gates; one Classic RNG stream plus MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline fuzzy and painted-region LineSegmentation; source ZAttributes / Dart Clipper2 compatibility; source-shaped Arachne extrusion-line subset; all three fuzzy modes with seeded C++ goldens; and Arachne painted-region composition.
+The 618-test suite re-executes the scoped fuzzy evidence: exact fuzzy policy and slowdown gates; one Classic RNG stream plus MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline fuzzy and painted-region LineSegmentation; source ZAttributes / Dart Clipper2 compatibility; source-shaped Arachne extrusion-line subset; all three fuzzy modes with seeded C++ goldens; and Arachne painted-region composition.
 
 ## Immediate next dependency order
 
-Continue pinned `SkeletalTrapezoidation::constructFromPolygons()`:
+Continue pinned `PerimeterGenerator::process_arachne()` from the exposed separate-wall seam:
 
-1. connect the existing direct Boost/Voronoi Dart representation to source Arachne polygon-segment/source-index semantics;
-2. port `computePointCellRange()` exactly;
-3. port `discretize()` in the source branch order (straight/secondary, point-line parabola, point-point marking/step logic);
-4. port `makeNode()` / `transferEdge()` with identity maps for VD vertices/edges and exact twin-first versus first-side behavior;
-5. compose polygon → Voronoi → half-edge graph → pointy-end separation → `collapseSmallEdges()` → incident-edge normalization and validate simple real polygons against source/C++ topology/toolpath oracles;
-6. then compose actual `WallToolPaths::generate()` and `process_arachne()` output;
-7. continue later fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order;
-8. publish and SHA-verify real runtime assets before any release-complete claim.
+1. port `should_enable_top_one_wall()` and its exact `Alltop` upper-slice bbox/offset/clipping behavior;
+2. compose separate first-wall generation, `top_fills` and remainder geometry, second `WallToolPaths` generation and source recombination;
+3. port/compose Arachne wall conversion and ordering (`getRegionOrder`, blocked-order nearest-candidate logic, `InnerOuterInner` adjustment and `traverse_extrusions`);
+4. compose `add_infill_contour_for_arachne()` and final `fill_surfaces` / `fill_no_overlap` behavior;
+5. add independent C++/source goldens for complete per-surface polygon → wall paths → ordered extrusions/fill boundaries, including holes, Alltop/topmost/first-layer one-wall and compensation cases;
+6. continue later fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order;
+7. publish and SHA-verify real runtime assets before any release-complete claim.
 
 ## Other major open areas
 
-- Voronoi-to-Arachne graph construction and full `WallToolPaths::generate()` / `process_arachne()` integration;
+- complete `process_arachne()` separate-wall / ordering / infill-contour integration and independent end-to-end goldens;
 - later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
 - full native G-code state/templates/travel/retraction/cooling/speed/acceleration/multimaterial/postprocessing;
 - complete project/profile persistence, STEP and source-enabled import formats;
