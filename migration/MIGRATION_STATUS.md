@@ -15,10 +15,10 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-13
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `87c20a7203fba8fa397e25c3f57a3fb48812b202`;
-- workflow `34722822577` (#377), conclusion **success**;
+- validated code `7eb43f3a056e827bf38a13756a729c5cbb2d7203`;
+- workflow `34723701027` (#390), conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **672/672 passing**.
+- `flutter test --reporter expanded` — **681/681 passing**.
 
 Milestones in the current source path:
 
@@ -27,14 +27,13 @@ Milestones in the current source path:
 - #317 / `10f642e...`: post-construction `SkeletalTrapezoidation::generateToolpaths()` runtime composed, 551/551;
 - #330 / `5c77305...`: polygon → Boost Voronoi → skeletal graph → variable-width Arachne toolpaths composed, 584/584;
 - #340 / `f23293e...`: represented `WallToolPaths::generate()` source-order runtime composed, 604/604;
-- `4832008...` + `9ac38dc...`: pinned `computePointCellRange()` secondary-edge assertion restored to `!is_secondary()` behavior with regression coverage;
-- #346 / `41c8ffe...` + `0d52a42...`: first `PerimeterGenerator::process_arachne()` orchestration slice, 618/618;
-- #353 / `3fcb49d...` + `90eec08...`: non-separated per-surface Arachne wall generation composes simplify/offset, circle-compensation topology mapping, real `WallToolPaths`, and inner-contour output, 638/638;
-- `7319a3e...` + `6d71b50...`: `should_enable_top_one_wall()` and source bbox/boolean helpers represented;
-- `a5281ce...` + `a8c2327...`: `Alltop` separate first-wall/remainder generation and recombination represented;
-- `aff8220...` + `de200a2...` and `62fe187...` + `06187f8...`: Arachne region constraints and source ordering represented;
-- #371 / `f8c7774...` + `8664d98...` + `7c801dc...` + `b069eb1...`: non-overhang `traverse_extrusions()` composition, 669/669;
-- #377 / `2a99046...` + `628fdf3...` + `aa104bd...` + `87c20a7...`: non-speed active-overhang traversal with width-preserving Clipper-Z support/unsupported split, bridge flow/degree and source re-chaining, 672/672.
+- #346 / `41c8ffe...` + `0d52a42...`: first `process_arachne()` orchestration slice, 618/618;
+- #353 / `3fcb49d...` + `90eec08...`: non-separated per-surface Arachne wall generation, 638/638;
+- #371 / `8664d98...` + `7c801dc...` + `b069eb1...`: non-overhang Arachne traversal, 669/669;
+- #377 / `2a99046...` + `628fdf3...` + `aa104bd...` + `87c20a7...`: non-speed width-preserving active-overhang traversal, 672/672;
+- #383 / `4854a5c...` + `945ced6...` + `8beb613...` + `86db415...`: speed-graded Arachne overhang traversal, 675/675;
+- #386 / `5f4d8d3...` + `5cceb9e...` + `0d2131d...`: Arachne QIDI raw external `LoopNode` producer and range semantics, 677/677;
+- #390 / `324ee86...` + `b3ea9db...` + `aecf3ca...` + `7eb43f3...`: final represented per-surface Arachne process composition into loops and fill boundaries, 681/681.
 
 ## Top-level gates
 
@@ -42,9 +41,9 @@ All remain **OPEN**: formats/project persistence; scene/editor; slicer/toolpath;
 
 ## Verified foundations retained
 
-The current green suite retains scoped `parity_verified` coverage for represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter preprocessing/shell/traversal/metadata pipeline, fuzzy/Arachne subsets, Arachne beading strategies, real-polygon Voronoi-to-skeletal construction fixtures, the represented skeletal runtime, `WallToolPaths::generate()`, Alltop per-surface wall generation, Arachne extrusion ordering, non-overhang traversal and the non-speed width-preserving Arachne overhang branch.
+The current green suite retains scoped `parity_verified` coverage for represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter preprocessing/shell/traversal/metadata pipeline, fuzzy/Arachne subsets, Arachne beading strategies, real-polygon Voronoi-to-skeletal construction fixtures, the represented skeletal runtime, `WallToolPaths::generate()`, Alltop wall generation, Arachne extrusion ordering, both Arachne overhang branches and QIDI LoopNode generation.
 
-The broader containing modules remain `port_started`.
+The broader containing product modules remain incomplete.
 
 ## Classic `process_classic()` represented path — scoped `parity_verified`
 
@@ -56,58 +55,58 @@ Important source quirk: the supplied `Surface` copy constructor omits QIDI `coun
 
 ### QIDI outwall / loop-node metadata
 
-`SourceNodeContour2`, `SourceLoopNode2`, `SourceLoopNodeBounds2` and the ordered pipeline remain scoped `parity_verified` for the represented classic producer: thin/smaller/normal outer-wall capture order, closed contour/hole form, literal `Point::is_in_lines`, exact bbox/range/global-ID behavior, one-outwall shortcut and multi-outwall post-wall-sequence matching.
-
-Downstream inter-layer relationship/speed-control consumers remain open. The Arachne-specific direct loop-node producer inside `traverse_extrusions()` is also still open.
+Classic and Arachne producer paths are represented separately. The Arachne producer captures raw external Arachne junction points/widths before fuzzy/overhang conversion, uses the current output-entity count as `loop_id`, global source node IDs/ranges, and preserves the direct `outer_wall_line_width / 2` bbox narrowing behavior without inventing a scale conversion. Downstream inter-layer relationship/speed-control consumers remain open.
 
 ## Arachne wall-generation dependency chain — scoped status
 
-The represented Arachne dependency chain includes:
+The represented Arachne chain includes:
 
-- source float-backed `WallToolPathsParams`, prepared-outline repair/cleanup and exact scalar casts;
-- represented `BeadingStrategy` implementations and factory composition;
-- source-shaped skeletal graph, mutations, source-index transfer and direct Boost/Voronoi topology;
-- `constructFromPolygons()` through pointy-end separation, collapse and incident-edge normalization;
-- central classification/filtering, bead-count propagation, transitions, nonlinear ribs and represented `generateSegments()` stages;
-- top-level `generateToolpaths()` and `WallToolPaths::generate()` source-order composition;
-- one-wall planning and per-surface simplify/offset/circle-compensation mapping;
-- `should_enable_top_one_wall()`, upper/lower bbox clipping, `Alltop` first-wall/top/remainder split, second `WallToolPaths` generation, inset-index shift and recombination;
-- `getRegionOrder()`, blocked nearest-candidate ordering, open-before-closed behavior and `InnerOuterInner` reorder;
-- non-overhang `traverse_extrusions()` fuzzy transform, source `to_thick_polyline()` width pairs, variable-width conversion, loop/open packaging, winding restoration and circle-compensation flags;
-- represented non-speed overhang traversal: lower-support bbox pruning, source `clip_extrusion()` Z-width interpolation/repair, supported intersection, unsupported difference, bridge-wall 5/6 degree selection, overhang bridge flow and open-path supported-start re-chaining;
-- standalone `add_infill_contour_for_arachne()` fill-boundary helper.
+- source float-backed `WallToolPathsParams`, prepared-outline repair/cleanup, exact scalar casts and beading strategies;
+- source-shaped skeletal graph, source-index transfer and direct Boost/Voronoi topology through `constructFromPolygons()`;
+- central classification/filtering, bead-count propagation, transitions, nonlinear ribs, `generateSegments()`, `generateToolpaths()` and top-level `WallToolPaths::generate()`;
+- one-wall planning plus `should_enable_top_one_wall()`, upper/lower clipping and full `Alltop` first-wall/top/remainder/second-wall recombination;
+- `getRegionOrder()`, blocked nearest-candidate ordering, open-before-closed behavior and `InnerOuterInner` adjustment;
+- non-overhang traversal through fuzzy transform, source variable-width conversion, loop/open packaging, winding restoration and circle compensation;
+- non-speed overhang through bbox-pruned support, source Clipper-Z width interpolation/repair, supported/unsupported split, bridge-wall role/flow and supported-start re-chaining;
+- speed-graded overhang through source 2mm sampling, signed-distance calculation, width-aware non-uniform degree mapping, 0.25 split terraces, variable-width path emission and `smooth_overhang_level()` integer-degree behavior;
+- Arachne QIDI external `LoopNode` creation and global `loop_node_range` accounting;
+- standalone `add_infill_contour_for_arachne()` plus final represented per-surface composition into global loops, `fill_surfaces` and `fill_no_overlap`.
 
-These slices are scoped `parity_verified` for their represented fixtures. They do **not** imply complete Arachne process parity across arbitrary production geometry.
+These lower slices retain scoped parity evidence for their represented fixtures. They do **not** by themselves prove the complete per-surface output matches pinned C++ for production geometry.
 
-## `PerimeterGenerator::process_arachne()` — `port_started`
+## `PerimeterGenerator::process_arachne()` represented surface boundary — `implemented_unverified`
 
-The old `Alltop`, ordering and binary overhang blockers are no longer the first open seams. The represented path reaches ordered Arachne extrusions and both non-overhang and non-speed active-overhang `ExtrusionEntityCollection` output.
+The previously open functional seams are now composed in source order for the represented per-surface scope:
 
-Still open inside the exact process boundary:
+- wall planning and real `WallToolPaths` generation, including topmost/first-layer and `Alltop` behavior;
+- source extrusion ordering;
+- non-overhang, binary-overhang and speed-graded traversal;
+- Arachne QIDI external LoopNode/range output;
+- nonempty collection append into global `loops`;
+- source one-wall `ext_perimeter_spacing2` versus regular perimeter-spacing selection;
+- final `add_infill_contour_for_arachne(..., false)` integration into `fill_surfaces` / `fill_no_overlap`;
+- exact overlap truncation fixtures including the 7999/7599 source results.
 
-- the `is_enable_overhang_speed()` Arachne branch: width-preserving supported intersection, source 2 mm sampling, signed-distance degree calculation, non-uniform degree mapping/splitting and `smooth_overhang_level()`;
-- Arachne-specific `z_direction_outwall_speed_continuous` external `LoopNode` creation and `loop_node_range` accounting;
-- high-level source-order composition of per-surface wall generation → ordering → traversal → `add_infill_contour_for_arachne()` → global `loops`, `fill_surfaces` and `fill_no_overlap`;
-- independent C++/source end-to-end goldens covering full per-surface output.
+This boundary is now **implemented_unverified**, not `parity_verified`, because no independent pinned C++ end-to-end golden currently validates the complete polygon → walls → ordered extrusion/LoopNode → fill-boundary result. The pinned upstream test trees do not provide a ready-made `process_arachne()` output golden, and a Dart-generated snapshot is not accepted as a substitute.
 
-Therefore full Arachne wall generation remains `port_started`.
+The broader slicer/toolpath subsystem remains `port_started`.
 
 ## Fuzzy skin / Arachne retained
 
-The 672-test suite re-executes the scoped fuzzy evidence: exact fuzzy policy and slowdown gates; one Classic RNG stream plus MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline fuzzy and painted-region LineSegmentation; source ZAttributes / Dart Clipper2 compatibility; source-shaped Arachne extrusion-line subset; all three fuzzy modes with seeded C++ goldens; Arachne painted-region composition; non-overhang fuzzy-to-variable-width traversal; and non-speed width-preserving overhang traversal.
+The 681-test suite re-executes the scoped fuzzy/Arachne evidence: exact fuzzy policy and slowdown gates; shared Classic RNG and MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline/Arachne LineSegmentation and ZAttributes behavior; seeded C++ fuzzy modes; direct Boost/Voronoi and skeletal fixtures; both Arachne overhang paths; QIDI LoopNode generation; and the composed final per-surface process boundary.
 
 ## Immediate next dependency order
 
-1. Port the speed-graded Arachne overhang path in `traverse_extrusions()` exactly: `detect_overhang_degree()` width-carrying sampling/splitting plus `smooth_overhang_level()`.
-2. Compose the Arachne-specific QIDI external `LoopNode` producer and range semantics.
-3. Compose the final per-surface Arachne process boundary into `loops`, `fill_surfaces` and `fill_no_overlap` using the already represented infill-contour helper.
-4. Add independent source/C++ end-to-end goldens for normal, topmost/first-layer one-wall, Alltop, holes/circle compensation and both overhang paths.
-5. Continue later fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order.
+1. Produce independent pinned C++/source end-to-end goldens for the represented `process_arachne()` surface boundary.
+2. Cover normal multi-wall, no-wall, topmost/first-layer one-wall, `Alltop`, holes/circle compensation, non-speed overhang and speed-graded overhang, including QIDI LoopNode and fill-boundary outputs.
+3. Resolve every differential mismatch while preserving literal source numeric/ordering quirks; only then promote this represented scope to `parity_verified`.
+4. Continue later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths in dependency order.
+5. Continue full native G-code, project/profile, scene/Preview, Device/cloud, calibration, desktop and UI parity.
 6. Publish and SHA-verify real runtime assets before any release-complete claim.
 
 ## Other major open areas
 
-- complete Arachne speed-overhang/QIDI loop-node/final process integration and independent end-to-end goldens;
+- independent complete Arachne process goldens and production-geometry differential coverage;
 - later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
 - full native G-code state/templates/travel/retraction/cooling/speed/acceleration/multimaterial/postprocessing;
 - complete project/profile persistence, STEP and source-enabled import formats;
