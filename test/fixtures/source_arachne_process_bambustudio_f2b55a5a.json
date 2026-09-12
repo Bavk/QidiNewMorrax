@@ -6,7 +6,7 @@
     "workflow_run": 34298498452,
     "artifact_id": 10085378329,
     "artifact_name": "BambuStudio_ubuntu-24.04_V02.08.03.66",
-    "artifact_zip_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+    "artifact_zip_sha256": "912517d86774f470470fb3a8841af82890d8893",
     "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
     "cli_version": "02.08.03.66"
   },
@@ -81,6 +81,33 @@
         "bbox_height_mm": 19.6,
         "line_width_mm": 0.39999,
         "gcode_absolute_bbox_mm": [90.2, 109.8, 88.2, 107.8]
+      }
+    },
+    "non_speed_overhang": {
+      "model": "three-layer stepped solid: lower footprint x=0..20,y=0..20,z=0..0.2; upper body x=5..25,y=0..20,z=0.2..0.6",
+      "layer_index": 1,
+      "z_height_mm": 0.4,
+      "top_one_wall_type": "all top",
+      "only_one_wall_first_layer": false,
+      "feature_sequence": ["Inner wall", "Overhang wall", "Inner wall", "Outer wall", "Overhang wall", "Outer wall"],
+      "grown_lower_support_edge_model_x_mm": 20.2,
+      "inner_wall": {
+        "bbox_width_mm": 18.886,
+        "bbox_height_mm": 18.886,
+        "line_width_mm": 0.39999,
+        "gcode_absolute_bbox_mm": [93.057, 111.943, 88.557, 107.443],
+        "gcode_support_split_x_mm": 107.7,
+        "supported_start_to_split_mm": 14.643,
+        "overhang_region_width_mm": 4.243
+      },
+      "outer_wall": {
+        "bbox_width_mm": 19.6,
+        "bbox_height_mm": 19.6,
+        "line_width_mm": 0.39999,
+        "gcode_absolute_bbox_mm": [92.7, 112.3, 88.2, 107.8],
+        "gcode_support_split_x_mm": 107.7,
+        "supported_start_to_split_mm": 15.0,
+        "overhang_region_width_mm": 4.6
       }
     }
   }
