@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../geometry/source_geometry.dart';
 import 'source_arachne_beading_strategy.dart';
 import 'source_arachne_generate_segments_foundation.dart';
 import 'source_arachne_skeletal_graph.dart';
