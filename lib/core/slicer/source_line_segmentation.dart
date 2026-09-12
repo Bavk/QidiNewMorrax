@@ -219,6 +219,25 @@ class SourceLineSegmentation2 {
       return _SourceLinePosition2(exactIndexes.single, 0);
     }
     if (exactIndexes.length > 1) {
+      // Polygon segmentation represents a closed polygon as an open polyline
+      // whose first point is repeated at the end. In source Clipper-Z those
+      // equal XY points retain distinct subject indexes. Reconstruct that
+      // distinction from the adjacent intersection point before falling back
+      // to geometric projection, otherwise a fully covered polygon collapses
+      // to the zero-length [0,0] range.
+      final lastIndex = subject.points.length - 1;
+      if (subject.points.first == subject.points.last &&
+          exactIndexes.first == 0 &&
+          exactIndexes.last == lastIndex &&
+          lastIndex >= 2) {
+        if (neighbor == subject.points[1]) {
+          return const _SourceLinePosition2(0, 0);
+        }
+        if (neighbor == subject.points[lastIndex - 1]) {
+          return _SourceLinePosition2(lastIndex, 0);
+        }
+      }
+
       final neighborLine = _findClosestLineToPoint(subject, neighbor);
       if (neighborLine != null) {
         for (final index in exactIndexes) {
