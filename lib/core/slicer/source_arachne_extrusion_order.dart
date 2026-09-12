@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 import 'classic_wall_sequence.dart';
 import 'source_arachne_extrusion_line.dart';
@@ -106,6 +107,9 @@ class SourceArachneExtrusionOrder2 {
           availableOpen.add(candidate);
         }
       }
+      // Source std::sort comparator only distinguishes open vs closed. Equal
+      // members have no semantic ordering requirement; preserving input order
+      // inside each class is a deterministic representative of that relation.
       final available = <int>[...availableOpen, ...availableClosed];
       if (available.isEmpty) {
         throw StateError('Pinned Arachne region constraints formed a cycle');
@@ -193,19 +197,23 @@ class SourceArachneExtrusionOrder2 {
         switch (ordered[scanIndex].extrusion.insetIndex) {
           case 0:
             if (outer == -1) outer = scanIndex;
+            break;
           case 1:
             if (firstInternal == -1 &&
                 scanIndex > outer &&
                 outer != -1) {
               firstInternal = scanIndex;
             }
+            break;
           case 2:
-            if (ordered[scanIndex].extrusion.insetIndex == 2 &&
-                secondInternal == -1 &&
+            if (secondInternal == -1 &&
                 scanIndex > firstInternal &&
                 outer != -1) {
               secondInternal = scanIndex;
             }
+            break;
+          default:
+            break;
         }
         if (outer > -1 && firstInternal > -1 && secondInternal > -1) {
           break;
@@ -228,8 +236,8 @@ class SourceArachneExtrusionOrder2 {
 class _SourceOrderPoint {
   const _SourceOrderPoint(this.x, this.y);
 
-  factory _SourceOrderPoint.fromSource(dynamic point) =>
-      _SourceOrderPoint(point.x as int, point.y as int);
+  factory _SourceOrderPoint.fromSource(SourcePoint2 point) =>
+      _SourceOrderPoint(point.x, point.y);
 
   final int x;
   final int y;
