@@ -1,6 +1,8 @@
 import '../geometry/source_geometry.dart';
+import '../geometry/source_polygon.dart';
 import '../geometry/source_polyline.dart';
 import '../geometry/thick_polyline.dart';
+import 'classic_overhang_splitter.dart';
 import 'classic_perimeter_loop_tree.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
@@ -21,11 +23,38 @@ class SourceClassicPerimeterTraversalSettings2 {
   final double layerHeight;
 }
 
-/// Source `traverse_loops()` subset before fuzzy-skin / overhang splitting.
+/// Additional source state needed by the classic `detect_overhang_wall` branch
+/// when overhang-speed grading is disabled.
 ///
-/// This class intentionally models only the exact no-overhang branch. It still
-/// preserves source loop roles, flow selection, thin-wall insertion into the
-/// same nearest-neighbor chain, recursive contour/hole ordering and winding.
+/// Each lower-polygon series is already generated for the matching wall width,
+/// exactly like `PerimeterGenerator::generate_lower_polygons_series()`. This
+/// class deliberately does not claim the separate fuzzy-skin or degree-grading
+/// branches.
+class SourceClassicPerimeterOverhangSettings2 {
+  const SourceClassicPerimeterOverhangSettings2({
+    required this.overhangFlow,
+    required this.externalLowerPolygonsSeries,
+    required this.smallerExternalLowerPolygonsSeries,
+    required this.perimeterLowerPolygonsSeries,
+    required this.layerId,
+    this.raftLayers = 0,
+  });
+
+  final Flow overhangFlow;
+  final List<List<SourcePolygon2>> externalLowerPolygonsSeries;
+  final List<List<SourcePolygon2>> smallerExternalLowerPolygonsSeries;
+  final List<List<SourcePolygon2>> perimeterLowerPolygonsSeries;
+  final int layerId;
+  final int raftLayers;
+}
+
+/// Source classic `traverse_loops()` representation.
+///
+/// [traverseNoOverhang] preserves the already-verified branch where overhang
+/// detection is not active. [traverseWithoutSpeedGrading] additionally ports
+/// the exact `detect_overhang_wall` split for configurations where QIDI's
+/// overhang-speed grading is disabled. Fuzzy-skin and degree grading remain
+/// outside this class's parity scope.
 class SourceClassicPerimeterTraversal2 {
   const SourceClassicPerimeterTraversal2._();
 
@@ -33,8 +62,34 @@ class SourceClassicPerimeterTraversal2 {
     required List<SourcePerimeterLoop2> loops,
     required List<ThickPolyline2> thinWalls,
     required SourceClassicPerimeterTraversalSettings2 settings,
+  }) =>
+      _traverse(
+        loops: loops,
+        thinWalls: thinWalls,
+        settings: settings,
+      );
+
+  static List<ExtrusionEntity2> traverseWithoutSpeedGrading({
+    required List<SourcePerimeterLoop2> loops,
+    required List<ThickPolyline2> thinWalls,
+    required SourceClassicPerimeterTraversalSettings2 settings,
+    required SourceClassicPerimeterOverhangSettings2 overhangSettings,
+  }) =>
+      _traverse(
+        loops: loops,
+        thinWalls: thinWalls,
+        settings: settings,
+        overhangSettings: overhangSettings,
+      );
+
+  static List<ExtrusionEntity2> _traverse({
+    required List<SourcePerimeterLoop2> loops,
+    required List<ThickPolyline2> thinWalls,
+    required SourceClassicPerimeterTraversalSettings2 settings,
+    SourceClassicPerimeterOverhangSettings2? overhangSettings,
   }) {
     final coll = <ExtrusionEntity2>[];
+    final structuralLoops = <SourcePerimeterLoop2>[];
 
     for (final loop in loops) {
       final isExternal = loop.isExternal;
@@ -65,24 +120,26 @@ class SourceClassicPerimeterTraversal2 {
       if (polygonPoints.length < 3) {
         throw StateError('PerimeterGeneratorLoop polygon must have >= 3 points');
       }
-      final path = ExtrusionPath2(
-        polyline: SourcePolyline2([
-          ...polygonPoints,
-          polygonPoints.first,
-        ]),
-        overhangDegree: 0,
-        curveDegree: 0,
-        mm3PerMm: flow.mm3PerMm,
-        width: flow.width,
-        height: settings.layerHeight,
+
+      final paths = _pathsForLoop(
+        loop: loop,
         role: role,
-        customizeFlag: flag,
+        flow: flow,
+        flag: flag,
+        settings: settings,
+        overhangSettings: overhangSettings,
       );
+      if (paths.isEmpty) {
+        // Literal source branch: `if (paths.empty()) continue;`.
+        continue;
+      }
+
       coll.add(ExtrusionLoop2(
-        paths: [path],
+        paths: paths,
         loopRole: loopRole,
         customizeFlag: flag,
       ));
+      structuralLoops.add(loop);
     }
 
     // Source initializes an undefined BoundingBox with min=max=(0,0), merges
@@ -113,6 +170,7 @@ class SourceClassicPerimeterTraversal2 {
       thinWalls.clear();
     }
 
+    final structuralCount = structuralLoops.length;
     final chain = SourceShortestPath2.chainExtrusionEntities(
       coll,
       startNear: zeroPoint,
@@ -121,17 +179,18 @@ class SourceClassicPerimeterTraversal2 {
 
     for (final entry in chain) {
       final entity = coll[entry.index];
-      if (entry.index >= loops.length) {
+      if (entry.index >= structuralCount) {
         if (entry.reversed) entity.reverse();
         output.add(entity);
         continue;
       }
 
-      final loop = loops[entry.index];
-      final children = traverseNoOverhang(
+      final loop = structuralLoops[entry.index];
+      final children = _traverse(
         loops: loop.children,
         thinWalls: thinWalls,
         settings: settings,
+        overhangSettings: overhangSettings,
       );
       final extrusionLoop = entity as ExtrusionLoop2;
       if (loop.isContour) {
@@ -148,6 +207,54 @@ class SourceClassicPerimeterTraversal2 {
     }
 
     return output;
+  }
+
+  static List<ExtrusionPath2> _pathsForLoop({
+    required SourcePerimeterLoop2 loop,
+    required ExtrusionRole role,
+    required Flow flow,
+    required CustomizeFlag flag,
+    required SourceClassicPerimeterTraversalSettings2 settings,
+    required SourceClassicPerimeterOverhangSettings2? overhangSettings,
+  }) {
+    if (overhangSettings != null &&
+        overhangSettings.layerId > overhangSettings.raftLayers) {
+      final lowerSeries = loop.isExternal
+          ? (loop.isSmallerWidthPerimeter
+              ? overhangSettings.smallerExternalLowerPolygonsSeries
+              : overhangSettings.externalLowerPolygonsSeries)
+          : overhangSettings.perimeterLowerPolygonsSeries;
+      final paths = const SourceClassicOverhangSplitter2()
+          .splitWithoutSpeedGrading(
+        polygon: loop.polygon,
+        lowerPolygonsSeries: lowerSeries,
+        supportedRole: role,
+        supportedFlow: flow,
+        overhangFlow: overhangSettings.overhangFlow,
+        layerHeight: settings.layerHeight,
+      );
+      for (final path in paths) {
+        path.customizeFlag = flag;
+      }
+      return paths;
+    }
+
+    final polygonPoints = loop.polygon.points;
+    return [
+      ExtrusionPath2(
+        polyline: SourcePolyline2([
+          ...polygonPoints,
+          polygonPoints.first,
+        ]),
+        overhangDegree: 0,
+        curveDegree: 0,
+        mm3PerMm: flow.mm3PerMm,
+        width: flow.width,
+        height: settings.layerHeight,
+        role: role,
+        customizeFlag: flag,
+      ),
+    ];
   }
 
   static double _squaredDistance(SourcePoint2 a, SourcePoint2 b) {
