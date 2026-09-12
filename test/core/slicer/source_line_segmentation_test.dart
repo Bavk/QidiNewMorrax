@@ -111,7 +111,11 @@ void main() {
       ],
     );
 
-    expect(result, hasLength(2));
+    final snapshot = [
+      for (final segment in result)
+        '${segment.clipIndex}:${segment.polyline.points}',
+    ];
+    expect(result, hasLength(2), reason: snapshot.join(' | '));
     expect(result[0].clipIndex, 0);
     expect(result[0].polyline.points.last, const SourcePoint2(50010, 0));
     expect(result[1].clipIndex, 1);
