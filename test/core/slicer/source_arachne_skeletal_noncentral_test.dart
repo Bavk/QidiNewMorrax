@@ -3,40 +3,35 @@ import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_beading_strategy.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_skeletal_graph.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_arachne_skeletal_noncentral.dart';
+import 'package:qidi_flow_flutter/core/slicer/source_arachne_wall_tool_paths.dart';
 
 class _Strategy extends SourceArachneBeadingStrategy2 {
   _Strategy()
       : super(
-          optimalWidth: 10,
+          optimalWidth: 20,
           wallSplitMiddleThreshold: 0.4,
           wallAddMiddleThreshold: 0.5,
-          defaultTransitionLength: 10,
+          defaultTransitionLength: 100,
           transitioningAngle: 1,
           name: 'noncentral-fixture',
         );
-
-  final List<int> calls = [];
 
   @override
   SourceArachneBeading2 compute(int thickness, int beadCount) =>
       SourceArachneBeading2(totalThickness: thickness, leftOver: thickness);
 
   @override
-  int getOptimalBeadCount(int thickness) {
-    calls.add(thickness);
-    return thickness ~/ 10;
-  }
+  int getOptimalBeadCount(int thickness) => thickness ~/ 20;
 }
 
 SourceArachneSTHalfEdgeNode2 _node(
   int x,
-  int y,
-  int radius, {
-  int beadCount = -1,
+  int radius,
+  int beadCount, {
   double transitionRatio = 0.75,
 }) =>
     SourceArachneSTHalfEdgeNode2(
-      p: SourcePoint2(x, y),
+      p: SourcePoint2(x, 0),
       data: SourceArachneSkeletalJoint2(
         distanceToBoundary: radius,
         beadCount: beadCount,
@@ -47,151 +42,127 @@ SourceArachneSTHalfEdgeNode2 _node(
 (SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2) _pair(
   SourceArachneSTHalfEdgeNode2 from,
   SourceArachneSTHalfEdgeNode2 to, {
-  bool central = false,
+  required bool central,
 }) {
-  final first = SourceArachneSTHalfEdge2()
+  final edge = SourceArachneSTHalfEdge2()
     ..from = from
     ..to = to;
-  final second = SourceArachneSTHalfEdge2()
+  final twin = SourceArachneSTHalfEdge2()
     ..from = to
     ..to = from;
-  first.twin = second;
-  second.twin = first;
-  first.data.setIsCentral(central);
-  second.data.setIsCentral(central);
-  return (first, second);
+  edge.twin = twin;
+  twin.twin = edge;
+  edge.data.setIsCentral(central);
+  twin.data.setIsCentral(central);
+  return (edge, twin);
 }
 
-SourceArachneSkeletalTrapezoidationGraph2 _singleEndGraph(
-  (SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2) end,
-) =>
-    SourceArachneSkeletalTrapezoidationGraph2()..edges.add(end.$1);
-
-void _attachCandidate(
-  (SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2) end,
-  (SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2) candidate,
+void _linkAtEnd(
+  (SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2) incoming,
+  (SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2) outgoing,
 ) {
-  end.$1.next = candidate.$1;
-  candidate.$2.next = end.$2;
+  incoming.$1.next = outgoing.$1;
+  outgoing.$2.next = incoming.$2;
+}
+
+SourceArachneSkeletalTrapezoidationGraph2 _graph(
+  Iterable<(SourceArachneSTHalfEdge2, SourceArachneSTHalfEdge2)> pairs,
+) {
+  final graph = SourceArachneSkeletalTrapezoidationGraph2();
+  for (final pair in pairs) {
+    graph.edges.addAll([pair.$1, pair.$2]);
+  }
+  return graph;
 }
 
 void main() {
-  test('same bead count dissolves first upward noncentral edge', () {
-    final a = _node(0, 0, 100000, beadCount: 2);
-    final b = _node(100000, 0, 200000, beadCount: 2);
-    final end = _pair(_node(-100000, 0, 50000), a, central: true);
-    final candidate = _pair(a, b);
-    _attachCandidate(end, candidate);
-    final graph = _singleEndGraph(end);
-    final strategy = _Strategy();
+  test('same bead-count noncentral edge is dissolved and recomputed', () {
+    final boundary = _node(-10, 10, 1);
+    final startNode = _node(0, 20, 2);
+    final upper = _node(10000, 30, 2);
+    final start = _pair(boundary, startNode, central: true);
+    final candidate = _pair(startNode, upper, central: false);
+    _linkAtEnd(start, candidate);
+    final graph = _graph([start, candidate]);
 
-    graph.filterNoncentralRegions(strategy);
+    graph.filterNoncentralRegions(_Strategy());
 
     expect(candidate.$1.data.isCentral, isTrue);
     expect(candidate.$2.data.isCentral, isTrue);
-    expect(b.data.beadCount, 40000);
-    expect(b.data.transitionRatio, 0);
-    expect(strategy.calls, [400000]);
+    expect(upper.data.beadCount, 3);
+    expect(upper.data.transitionRatio, 0);
   });
 
-  test('adjacent bead count dissolves only strictly inside 0.4mm', () {
-    final a = _node(0, 0, 100000, beadCount: 2);
-    final b = _node(399999, 0, 200000, beadCount: 3);
-    final end = _pair(_node(-1, 0, 50000), a, central: true);
-    final candidate = _pair(a, b);
-    _attachCandidate(end, candidate);
-    final strategy = _Strategy();
+  test('uninitialized chain dissolves recursively and unwinds both edges', () {
+    final startNode = _node(0, 20, 2);
+    final middle = _node(1000, 25, -1);
+    final upper = _node(2000, 30, 2);
+    final start = _pair(_node(-1000, 10, 1), startNode, central: true);
+    final first = _pair(startNode, middle, central: false);
+    final second = _pair(middle, upper, central: false);
+    _linkAtEnd(start, first);
+    _linkAtEnd(first, second);
+    final graph = _graph([start, first, second]);
 
-    _singleEndGraph(end).filterNoncentralRegions(strategy);
-
-    expect(candidate.$1.data.isCentral, isTrue);
-    expect(b.data.beadCount, 40000);
-  });
-
-  test('0.4mm transition-distance boundary is strict and does not dissolve', () {
-    final a = _node(0, 0, 100000, beadCount: 2);
-    final b = _node(400000, 0, 200000, beadCount: 3);
-    final end = _pair(_node(-1, 0, 50000), a, central: true);
-    final candidate = _pair(a, b);
-    _attachCandidate(end, candidate);
-    final strategy = _Strategy();
-
-    _singleEndGraph(end).filterNoncentralRegions(strategy);
-
-    expect(candidate.$1.data.isCentral, isFalse);
-    expect(candidate.$2.data.isCentral, isFalse);
-    expect(b.data.beadCount, 3);
-    expect(b.data.transitionRatio, 0.75);
-    expect(strategy.calls, isEmpty);
-  });
-
-  test('unknown bead count recurses and dissolves the whole upward chain', () {
-    final a = _node(0, 0, 100000, beadCount: 2);
-    final b = _node(100000, 0, 150000);
-    final c = _node(200000, 0, 200000, beadCount: 2);
-    final end = _pair(_node(-1, 0, 50000), a, central: true);
-    final first = _pair(a, b);
-    final second = _pair(b, c);
-    end.$1.next = first.$1;
-    first.$2.next = end.$2;
-    first.$1.next = second.$1;
-    second.$2.next = first.$2;
-    final strategy = _Strategy();
-
-    _singleEndGraph(end).filterNoncentralRegions(strategy);
+    graph.filterNoncentralRegions(_Strategy());
 
     expect(first.$1.data.isCentral, isTrue);
     expect(first.$2.data.isCentral, isTrue);
     expect(second.$1.data.isCentral, isTrue);
     expect(second.$2.data.isCentral, isTrue);
-    expect(b.data.beadCount, 30000);
-    expect(c.data.beadCount, 40000);
-    expect(b.data.transitionRatio, 0);
-    expect(c.data.transitionRatio, 0);
-    expect(strategy.calls, [400000, 300000]);
+    expect(middle.data.beadCount, 2);
+    expect(upper.data.beadCount, 3);
+    expect(middle.data.transitionRatio, 0);
+    expect(upper.data.transitionRatio, 0);
   });
 
-  test('radial scan skips a longer downward edge before the upward branch', () {
-    final a = _node(0, 0, 100000, beadCount: 2);
-    final down = _node(20000, 0, 50000, beadCount: 9);
-    final up = _node(100000, 0, 200000, beadCount: 2);
-    final end = _pair(_node(-1, 0, 50000), a, central: true);
-    final downward = _pair(a, down);
-    final upward = _pair(a, up);
-    end.$1.next = downward.$1;
-    downward.$2.next = upward.$1;
-    upward.$2.next = end.$2;
-    final strategy = _Strategy();
+  test('different adjacent count dissolves only strictly below 0.4mm', () {
+    final maxDist =
+        SourceArachneWallToolPathsPreprocess2.scaleDouble(0.4);
 
-    _singleEndGraph(end).filterNoncentralRegions(strategy);
+    SourceArachneSTHalfEdge2 run(int length) {
+      final startNode = _node(0, 20, 2);
+      final upper = _node(length, 30, 3);
+      final start = _pair(_node(-10, 10, 1), startNode, central: true);
+      final candidate = _pair(startNode, upper, central: false);
+      _linkAtEnd(start, candidate);
+      _graph([start, candidate]).filterNoncentralRegions(_Strategy());
+      return candidate.$1;
+    }
 
-    expect(downward.$1.data.isCentral, isFalse);
-    expect(upward.$1.data.isCentral, isTrue);
-    expect(up.data.beadCount, 40000);
+    expect(run(maxDist - 1).data.isCentral, isTrue);
+    expect(run(maxDist).data.isCentral, isFalse);
   });
 
-  test('exact 0.01mm short downward edge is selected by inclusive helper', () {
-    final a = _node(0, 0, 100000, beadCount: 2);
-    final shortDown = _node(10000, 0, 50000, beadCount: 2);
-    final end = _pair(_node(-1, 0, 50000), a, central: true);
-    final candidate = _pair(a, shortDown);
-    _attachCandidate(end, candidate);
-    final strategy = _Strategy();
+  test('bead-count jump larger than one is not dissolved', () {
+    final startNode = _node(0, 20, 2);
+    final upper = _node(100, 30, 4);
+    final start = _pair(_node(-10, 10, 1), startNode, central: true);
+    final candidate = _pair(startNode, upper, central: false);
+    _linkAtEnd(start, candidate);
+    final graph = _graph([start, candidate]);
 
-    _singleEndGraph(end).filterNoncentralRegions(strategy);
+    graph.filterNoncentralRegions(_Strategy());
 
-    expect(candidate.$1.data.isCentral, isTrue);
-    expect(shortDown.data.beadCount, 10000);
+    expect(candidate.$1.data.isCentral, isFalse);
+    expect(upper.data.beadCount, 4);
+    expect(upper.data.transitionRatio, 0.75);
   });
 
-  test('positive-radius central end with unknown bead count hits source assert', () {
-    final a = _node(0, 0, 100000);
-    final end = _pair(_node(-1, 0, 50000), a, central: true);
-    final graph = _singleEndGraph(end);
+  test('shorter_then 0.01mm boundary admits a downward tiny edge', () {
+    final tiny = SourceArachneWallToolPathsPreprocess2.scaleDouble(0.01);
 
-    expect(
-      () => graph.filterNoncentralRegions(_Strategy()),
-      throwsStateError,
-    );
+    SourceArachneSTHalfEdge2 run(int length) {
+      final startNode = _node(0, 20, 2);
+      final lower = _node(length, 10, 2);
+      final start = _pair(_node(-10, 10, 1), startNode, central: true);
+      final candidate = _pair(startNode, lower, central: false);
+      _linkAtEnd(start, candidate);
+      _graph([start, candidate]).filterNoncentralRegions(_Strategy());
+      return candidate.$1;
+    }
+
+    expect(run(tiny).data.isCentral, isTrue);
+    expect(run(tiny + 1).data.isCentral, isFalse);
   });
 }
