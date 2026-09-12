@@ -30,9 +30,7 @@ class BoostSiteEvent2 {
       : point0 = point,
         point1 = point;
 
-  BoostSiteEvent2.segment(SourcePoint2 point0, SourcePoint2 point1)
-      : point0 = point0,
-        point1 = point1;
+  BoostSiteEvent2.segment(this.point0, this.point1);
 
   SourcePoint2 point0;
   SourcePoint2 point1;

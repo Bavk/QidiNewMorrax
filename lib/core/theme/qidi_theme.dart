@@ -20,13 +20,13 @@ abstract final class QidiTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
       dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant.withOpacity(.65),
+        color: scheme.outlineVariant.withValues(alpha: .65),
         thickness: 1,
         space: 1,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withOpacity(.42),
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: .42),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: scheme.outlineVariant),
@@ -42,13 +42,15 @@ abstract final class QidiTheme {
         color: scheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: scheme.outlineVariant.withOpacity(.8)),
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: .8),
+          ),
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(
         minWidth: 76,
         minExtendedWidth: 184,
-        indicatorColor: accent.withOpacity(.14),
+        indicatorColor: accent.withValues(alpha: .14),
       ),
     );
   }

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'source_geometry.dart';
 import 'voronoi_topology.dart';
 
 class SourceSegmentCellRange2 {

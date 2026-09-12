@@ -110,7 +110,9 @@ class SourceGCodeFormatter2 {
 
   static int _pow10(int digits) {
     var out = 1;
-    for (var i = 0; i < digits; i++) out *= 10;
+    for (var i = 0; i < digits; i++) {
+      out *= 10;
+    }
     return out;
   }
 }

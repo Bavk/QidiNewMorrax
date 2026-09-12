@@ -21,8 +21,8 @@ class LocalDeviceDiscovery {
       if (event != RawSocketEvent.read) return;
       Datagram? datagram;
       while ((datagram = socket.receive()) != null) {
-        final raw = utf8.decode(datagram!.data, allowMalformed: true);
-        final parsed = _parseSsdp(raw, datagram!.address.address);
+        final raw = utf8.decode(datagram.data, allowMalformed: true);
+        final parsed = _parseSsdp(raw, datagram.address.address);
         if (parsed != null) found[parsed.ip] = parsed;
       }
     });

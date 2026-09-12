@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'source_boost_topology_adapter.dart';
-import 'source_geometry.dart';
 import 'source_voronoi_utils.dart';
 import 'voronoi_topology.dart';
 
