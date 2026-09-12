@@ -25,6 +25,71 @@ const config = ExtruderConfigSnapshot(
 );
 
 void main() {
+  group('QIDI variant resolver source behavior', () {
+    test('variant string uses exact source names', () {
+      expect(
+        QidiConfigVariantResolver.extruderVariantString(
+          ExtruderType.directDrive,
+          NozzleVolumeType.highFlow,
+        ),
+        'Direct Drive High Flow',
+      );
+      expect(
+        QidiConfigVariantResolver.extruderVariantString(
+          ExtruderType.bowden,
+          NozzleVolumeType.tpuHighFlow,
+        ),
+        'Bowden TPU High Flow',
+      );
+    });
+
+    test('get_config_index_base returns matching index or source fallback zero', () {
+      const variants = [
+        'Direct Drive Standard',
+        'Direct Drive High Flow',
+        'Bowden Standard',
+      ];
+      const ids = [1, 1, 2];
+      expect(
+        QidiConfigVariantResolver.configIndexBase(
+          volumeType: NozzleVolumeType.highFlow,
+          extruderType: ExtruderType.directDrive,
+          variantId1Based: 1,
+          variantList: variants,
+          variantIds1Based: ids,
+        ),
+        1,
+      );
+      expect(
+        QidiConfigVariantResolver.configIndexBase(
+          volumeType: NozzleVolumeType.hybrid,
+          extruderType: ExtruderType.bowden,
+          variantId1Based: 9,
+          variantList: variants,
+          variantIds1Based: ids,
+        ),
+        0,
+      );
+    });
+
+    test('get_filament_config_idx combines filament map, volume and self id', () {
+      expect(
+        QidiConfigVariantResolver.filamentConfigIndex(
+          filamentId: 1,
+          filamentMap: const [1, 2],
+          filamentVolumeMap: const [0, 1],
+          extruderTypes: const [0, 1],
+          filamentExtruderVariants: const [
+            'Direct Drive Standard',
+            'Bowden High Flow',
+          ],
+          filamentSelfIndexes: const [1, 2],
+        ),
+        1,
+      );
+    });
+  });
+
   test('e_per_mm3 matches source filament flow ratio / cross section', () {
     final extruder = ExtruderState(id: 0, config: config, shareExtruder: false);
     expect(
