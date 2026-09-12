@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'source_boost_circle_formation_pps.dart';
 import 'source_boost_extended_numeric.dart';
 import 'source_boost_robust_fpt.dart';
 import 'source_boost_voronoi_predicates.dart';
@@ -8,10 +9,10 @@ import 'source_boost_voronoi_structures.dart';
 /// Incremental port of Boost.Polygon 1.83
 /// `circle_formation_predicate` + `lazy/mp_circle_formation_functor`.
 ///
-/// PPP (point-point-point) is fully represented here including Boost's lazy
-/// robust error tracking and selective BigInt exact recomputation. Segment
-/// combinations are still explicit unsupported branches until their source
-/// formulas are ported; Fortune construction must not approximate them.
+/// PPP and PPS are represented with their lazy robust formulas and selective
+/// multiprecision fallback. PSS/SSS remain explicit unsupported branches until
+/// their exact source formulas are ported; Fortune construction must not
+/// approximate them.
 class BoostCircleFormation2 {
   const BoostCircleFormation2();
 
@@ -21,18 +22,112 @@ class BoostCircleFormation2 {
     BoostSiteEvent2 site3,
     BoostCircleEvent2 circle,
   ) {
-    if (!site1.isSegment && !site2.isSegment && !site3.isSegment) {
-      if (!BoostVoronoiPredicates2.circleExistsPpp(site1, site2, site3)) {
-        return false;
+    if (!site1.isSegment) {
+      if (!site2.isSegment) {
+        if (!site3.isSegment) {
+          if (!BoostVoronoiPredicates2.circleExistsPpp(site1, site2, site3)) {
+            return false;
+          }
+          _lazyPpp(site1, site2, site3, circle);
+        } else {
+          if (!BoostVoronoiPredicates2.circleExistsPps(
+            site1,
+            site2,
+            site3,
+            3,
+          )) {
+            return false;
+          }
+          const BoostPpsCircleFormation2().form(
+            site1,
+            site2,
+            site3,
+            3,
+            circle,
+          );
+        }
+      } else if (!site3.isSegment) {
+        if (!BoostVoronoiPredicates2.circleExistsPps(
+          site1,
+          site3,
+          site2,
+          2,
+        )) {
+          return false;
+        }
+        const BoostPpsCircleFormation2().form(
+          site1,
+          site3,
+          site2,
+          2,
+          circle,
+        );
+      } else {
+        throw UnsupportedError(
+          'Boost PSS circle formation is still being ported.',
+        );
       }
-      _lazyPpp(site1, site2, site3, circle);
-      return true;
+    } else if (!site2.isSegment) {
+      if (!site3.isSegment) {
+        if (!BoostVoronoiPredicates2.circleExistsPps(
+          site2,
+          site3,
+          site1,
+          1,
+        )) {
+          return false;
+        }
+        const BoostPpsCircleFormation2().form(
+          site2,
+          site3,
+          site1,
+          1,
+          circle,
+        );
+      } else {
+        throw UnsupportedError(
+          'Boost PSS circle formation is still being ported.',
+        );
+      }
+    } else if (!site3.isSegment) {
+      throw UnsupportedError(
+        'Boost PSS circle formation is still being ported.',
+      );
+    } else {
+      throw UnsupportedError(
+        'Boost SSS circle formation is still being ported.',
+      );
     }
 
-    throw UnsupportedError(
-      'Boost circle formation for PPS/PSS/SSS sites is still being ported; '
-      'segment Voronoi construction must not substitute a different formula.',
-    );
+    if (_liesOutsideVerticalSegment(circle, site1) ||
+        _liesOutsideVerticalSegment(circle, site2) ||
+        _liesOutsideVerticalSegment(circle, site3)) {
+      return false;
+    }
+    return true;
+  }
+
+  bool _liesOutsideVerticalSegment(
+    BoostCircleEvent2 circle,
+    BoostSiteEvent2 site,
+  ) {
+    if (!site.isSegment || !BoostVoronoiPredicates2.isVertical(site)) {
+      return false;
+    }
+    final y0 = (site.isInverse ? site.y1 : site.y0).toDouble();
+    final y1 = (site.isInverse ? site.y0 : site.y1).toDouble();
+    return BoostVoronoiPredicates2.ulpCompare(
+              circle.y,
+              y0,
+              BoostVoronoiPredicates2.ulps,
+            ) ==
+            BoostUlpResult2.less ||
+        BoostVoronoiPredicates2.ulpCompare(
+              circle.y,
+              y1,
+              BoostVoronoiPredicates2.ulps,
+            ) ==
+            BoostUlpResult2.more;
   }
 
   void _lazyPpp(
