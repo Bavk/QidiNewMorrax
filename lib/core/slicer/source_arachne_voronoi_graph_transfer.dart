@@ -1,4 +1,3 @@
-import '../geometry/source_geometry.dart';
 import '../geometry/voronoi_topology.dart';
 import 'source_arachne_polygon_indices.dart';
 import 'source_arachne_skeletal_graph.dart';
