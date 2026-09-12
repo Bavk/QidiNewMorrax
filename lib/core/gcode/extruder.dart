@@ -1,13 +1,76 @@
 import 'dart:math' as math;
 
-enum NozzleVolumeType { standard }
-enum ExtruderType { directDrive }
+enum NozzleVolumeType { standard, highFlow, hybrid, tpuHighFlow }
+enum ExtruderType { directDrive, bowden }
+
+class QidiConfigVariantResolver {
+  const QidiConfigVariantResolver._();
+
+  static const List<String> _extruderTypeNames = ['Direct Drive', 'Bowden'];
+  static const List<String> _nozzleVolumeTypeNames = [
+    'Standard',
+    'High Flow',
+    'Hybrid',
+    'TPU High Flow',
+  ];
+
+  static String extruderVariantString(
+    ExtruderType extruderType,
+    NozzleVolumeType volumeType,
+  ) =>
+      '${_extruderTypeNames[extruderType.index]} ${_nozzleVolumeTypeNames[volumeType.index]}';
+
+  /// Exact port of `get_config_index_base()` from PrintConfig.cpp.
+  static int configIndexBase({
+    required NozzleVolumeType volumeType,
+    required ExtruderType extruderType,
+    required int variantId1Based,
+    required List<String> variantList,
+    required List<int> variantIds1Based,
+  }) {
+    if (variantList.length != variantIds1Based.length) {
+      throw ArgumentError('variantList and variantIds1Based must have equal length');
+    }
+    final target = extruderVariantString(extruderType, volumeType);
+    for (var index = 0; index < variantList.length; index++) {
+      if (target == variantList[index] &&
+          variantIds1Based[index] == variantId1Based) {
+        return index;
+      }
+    }
+    return 0;
+  }
+
+  /// Port of `get_extruder_index()` + `get_filament_config_idx()`.
+  static int filamentConfigIndex({
+    required int filamentId,
+    required List<int> filamentMap,
+    required List<int> filamentVolumeMap,
+    required List<int> extruderTypes,
+    required List<String> filamentExtruderVariants,
+    required List<int> filamentSelfIndexes,
+  }) {
+    final extruderIndex = filamentId < filamentMap.length
+        ? filamentMap[filamentId] - 1
+        : 0;
+    final volumeType = NozzleVolumeType.values[filamentVolumeMap[filamentId]];
+    final extruderType = ExtruderType.values[extruderTypes[extruderIndex]];
+    return configIndexBase(
+      volumeType: volumeType,
+      extruderType: extruderType,
+      variantId1Based: filamentId + 1,
+      variantList: filamentExtruderVariants,
+      variantIds1Based: filamentSelfIndexes,
+    );
+  }
+}
 
 /// Resolved subset of source `GCodeConfig` consumed by `Extruder.cpp`.
 ///
-/// `filamentConfigIndexes` is an adapter boundary for the still-pending
-/// `get_filament_config_idx()` / variant-selection port. Once PrintConfig is
-/// fully ported, this snapshot should be produced by that exact resolver.
+/// The exact QIDI `get_config_index_base()` / `get_filament_config_idx()`
+/// helpers are ported above; this snapshot currently stores the already
+/// resolved index used by each filament. Full PrintConfig construction remains
+/// a separate migration unit.
 class ExtruderConfigSnapshot {
   const ExtruderConfigSnapshot({
     required this.useRelativeEDistances,
@@ -95,16 +158,22 @@ class ExtruderState {
       : 0;
 
   NozzleVolumeType get volumeType {
-    if (id < config.nozzleVolumeTypes.length && config.nozzleVolumeTypes[id] == 0) {
-      return NozzleVolumeType.standard;
+    if (id < config.nozzleVolumeTypes.length) {
+      final value = config.nozzleVolumeTypes[id];
+      if (value >= 0 && value < NozzleVolumeType.values.length) {
+        return NozzleVolumeType.values[value];
+      }
     }
     return NozzleVolumeType.standard;
   }
 
   ExtruderType get extruderType {
     final mappedId = extruderId;
-    if (mappedId < config.extruderTypes.length && config.extruderTypes[mappedId] == 0) {
-      return ExtruderType.directDrive;
+    if (mappedId < config.extruderTypes.length) {
+      final value = config.extruderTypes[mappedId];
+      if (value >= 0 && value < ExtruderType.values.length) {
+        return ExtruderType.values[value];
+      }
     }
     return ExtruderType.directDrive;
   }
