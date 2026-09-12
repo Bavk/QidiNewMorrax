@@ -9,8 +9,8 @@ import 'classic_wall_sequence.dart';
 import 'extrusion_entity.dart';
 import 'flow.dart';
 
-/// Bridges the already-ported classic shell geometry to the source loop tree
-/// and no-overhang `traverse_loops()` representation.
+/// Bridges the already-ported classic shell geometry to the source loop tree,
+/// `traverse_loops()` representation and source wall-sequence adjustment.
 class SourceClassicPerimeterPipeline2 {
   const SourceClassicPerimeterPipeline2._();
 
@@ -68,27 +68,80 @@ class SourceClassicPerimeterPipeline2 {
     bool brimOuterOnly = false,
     double brimWidth = 0,
   }) {
-    final thinWalls = <ThickPolyline2>[
-      for (final value in result.thinWalls)
-        ThickPolyline2(
-          points: value.points,
-          width: value.width,
-          startIsEndpoint: value.startIsEndpoint,
-          endIsEndpoint: value.endIsEndpoint,
-        ),
-    ];
-
+    final traversalSettings = SourceClassicPerimeterTraversalSettings2(
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: layerHeight,
+    );
     final traversed = SourceClassicPerimeterTraversal2.traverseNoOverhang(
       loops: buildLoopTree(result),
-      thinWalls: thinWalls,
-      settings: SourceClassicPerimeterTraversalSettings2(
-        externalPerimeterFlow: externalPerimeterFlow,
-        smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
-        perimeterFlow: perimeterFlow,
-        layerHeight: layerHeight,
-      ),
+      thinWalls: _cloneThinWalls(result),
+      settings: traversalSettings,
     );
+    return _applyWallSequence(
+      traversed,
+      wallSequence: wallSequence,
+      layerId: layerId,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+  }
 
+  /// End-to-end classic shell -> nesting -> overhang split -> recursive
+  /// traversal -> wall-sequence pipeline for the source branch where overhang
+  /// speed grading is disabled.
+  static List<ExtrusionEntity2> buildExtrusionsWithoutSpeedGrading({
+    required ClassicPerimeterResult result,
+    required Flow externalPerimeterFlow,
+    required Flow smallerExternalPerimeterFlow,
+    required Flow perimeterFlow,
+    required double layerHeight,
+    required SourceClassicPerimeterOverhangSettings2 overhangSettings,
+    SourceWallSequence2 wallSequence = SourceWallSequence2.innerOuter,
+    bool brimOuterOnly = false,
+    double brimWidth = 0,
+  }) {
+    final traversalSettings = SourceClassicPerimeterTraversalSettings2(
+      externalPerimeterFlow: externalPerimeterFlow,
+      smallerExternalPerimeterFlow: smallerExternalPerimeterFlow,
+      perimeterFlow: perimeterFlow,
+      layerHeight: layerHeight,
+    );
+    final traversed =
+        SourceClassicPerimeterTraversal2.traverseWithoutSpeedGrading(
+      loops: buildLoopTree(result),
+      thinWalls: _cloneThinWalls(result),
+      settings: traversalSettings,
+      overhangSettings: overhangSettings,
+    );
+    return _applyWallSequence(
+      traversed,
+      wallSequence: wallSequence,
+      layerId: overhangSettings.layerId,
+      brimOuterOnly: brimOuterOnly,
+      brimWidth: brimWidth,
+    );
+  }
+
+  static List<ThickPolyline2> _cloneThinWalls(ClassicPerimeterResult result) =>
+      <ThickPolyline2>[
+        for (final value in result.thinWalls)
+          ThickPolyline2(
+            points: value.points,
+            width: value.width,
+            startIsEndpoint: value.startIsEndpoint,
+            endIsEndpoint: value.endIsEndpoint,
+          ),
+      ];
+
+  static List<ExtrusionEntity2> _applyWallSequence(
+    List<ExtrusionEntity2> traversed, {
+    required SourceWallSequence2 wallSequence,
+    required int layerId,
+    required bool brimOuterOnly,
+    required double brimWidth,
+  }) {
     // Keep the same owned entity instances produced by traversal. Constructing
     // ExtrusionEntityCollection2 from [traversed] would clone them, while the
     // C++ classic path reorders the existing pointer collection in place.
