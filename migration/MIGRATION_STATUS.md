@@ -1,208 +1,213 @@
 # Migration status — STRICT 1:1 Flutter/Dart rewrite
 
-The authoritative acceptance contract is [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md).
-
-The target is not “similar functionality”, “feature parity in common cases”, or “a Flutter replacement client”. The target is the **same supplied Qidi Flow 2.07.02.60 Pass28 application, completely reimplemented in Flutter + Dart, with no relevant source function, behavior, data contract, algorithmic edge case, UI workflow, protocol operation, calibration flow or runtime asset silently lost**.
-
-The old C++/wxWidgets/React application is specification/reference material only. It must not remain the runtime backend through FFI, old binaries/libraries, subprocesses, services or embedded legacy WebViews.
+The acceptance authority is [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). The target is the supplied Qidi Flow 2.07.02.60 Pass28 application completely reimplemented in Flutter + Dart. The original C++/wxWidgets/React code is reference material only and must not remain a runtime backend through FFI, subprocesses, native libraries, hidden services, or embedded legacy WebViews.
 
 ## Status vocabulary
 
 - `pending` — no real Dart replacement yet.
 - `port_started` — only part of the source behavior exists.
-- `implemented_unverified` — intended replacement exists, but required source/reference tests have not actually executed and passed.
-- `parity_verified` — required source behavior/edge cases are covered by passing translated/differential tests.
-- `runtime_asset_verified` — data is preserved byte-for-byte or through an explicitly documented canonical transformation.
+- `implemented_unverified` — intended replacement exists, but required reference tests have not executed successfully yet.
+- `parity_verified` — the explicitly scoped source behavior is covered by passing translated/differential/oracle tests.
+- `runtime_asset_verified` — preserved data is byte-for-byte verified or uses a documented canonical transform.
 
-A similarly named Dart file or visually similar Flutter screen never closes a source item by itself.
+A `parity_verified` row never implies that its containing top-level subsystem is complete.
+
+## Current executable checkpoint
+
+As of 2026-09-12:
+
+- pinned Flutter: **3.47.2**;
+- Dart: **3.13.2**;
+- `flutter analyze`: **No issues found**;
+- `flutter test --reporter expanded`: **174/174 passing**;
+- `git diff --check`: passing;
+- validated code commit: `015dcdd4cbfb9b292a89642c0d736f2471483691`;
+- temporary analyzer-cleanup workflow removed in `2f2c8486e09640dd4d6d03ebc85cee843146d8b2`.
+
+See [`VALIDATION.md`](VALIDATION.md) for the executed evidence and exact scope.
 
 ## Top-level completion gates
 
-All gates remain OPEN:
+All top-level gates remain **OPEN**:
 
-1. **Formats/project persistence 1:1** — every source-enabled format, project/package metadata, validation/repair/warning path and lossless round trip.
-2. **Scene/editor 1:1** — hierarchy, selection, gizmos, transforms, cut/split/repair/boolean, arrange/orient, modifiers, painting, text/emboss, multi-plate, undo/redo, shortcuts/interactions.
-3. **Slicer/toolpath 1:1** — numeric geometry semantics, classic/Arachne walls, thin walls/gap fill, surfaces, infills, bridges, supports, seams/overhangs, travel/retraction/wipe, flow/speed/cooling, multi-material/purge structures, adaptive layers, ironing, brim/skirt/raft, templates/postprocessing, estimates.
-4. **Preview 1:1** — complete source feature/tool/layer classifications, statistics, estimates and interactions.
-5. **Profiles/presets 1:1** — schema, inheritance, expressions, defaults, compatibility, validation, user presets/import/export.
-6. **Device/cloud 1:1** — LAN, Moonraker, account/cloud/P2P, printer capability/state machines, QIDI Box/AMS, files/timelapses, camera, HMS, firmware/update, reconnect/offline restoration.
-7. **Calibration 1:1** — every wizard, validation, generated model/toolpath and result flow.
-8. **Desktop integration/release 1:1** — runners, file associations, drag/drop, single-instance, updater, packaging, shell/thumbnail integrations used by source.
-9. **UI/localization/accessibility 1:1** — every screen/dialog/menu/control/state, visibility/enabled logic, keyboard/mouse workflow, shipped strings/resources.
-10. **Reference tests 1:1** — applicable original tests translated plus differential/golden fixtures for observable behavior not covered by source tests.
+1. formats/project persistence 1:1;
+2. scene/editor 1:1;
+3. slicer/toolpath 1:1;
+4. Preview 1:1;
+5. profiles/presets 1:1;
+6. Device/cloud 1:1;
+7. calibration 1:1;
+8. desktop integration/release 1:1;
+9. UI/localization/accessibility 1:1;
+10. complete reference/differential-test coverage.
 
-## Important numeric architecture correction
+## Numeric architecture
 
-A strict-source audit established that libslic3r’s 2D slicer geometry is fundamentally an integer `coord_t` domain, not millimeter `double` geometry:
+libslic3r’s 2D slicer geometry is an integer `coord_t` domain:
 
 - `SCALING_FACTOR = 0.00001` mm;
 - 100000 source units/mm;
 - `EPSILON = 1e-4`;
 - `SCALED_EPSILON = 10` source units.
 
-This affects rotations, intersections, tolerances, Voronoi conversion, thin walls and regression fixtures. A dedicated exact-source domain now exists:
+Exact-source algorithms therefore use `SourcePoint2`, `SourceLine2`, `SourcePolygon2`, `SourceExPolygon2`, `SourcePolyline2`, and `ThickPolyline2`. Millimeter doubles remain boundary/UI representations unless equivalence is proven.
 
-- `SourcePoint2` / `SourceLine2`;
-- `SourcePolygon2` / `SourceExPolygon2`;
-- `SourcePolyline2`;
-- `ThickPolyline2`.
+## Geometry / Boost / MedialAxis
 
-Millimeter-double helpers may still be useful at import/UI boundaries, but they cannot by themselves establish 1:1 slicer geometry semantics.
+### Verified represented subsets
 
-## Current geometry status
+The following represented behaviors are now `parity_verified` by the passing suite:
 
-### Point / Line / Polyline
+- SourcePoint/SourceLine rounding, orientation, distance, parallel/perpendicular, finite/infinite intersection subset;
+- QIDI Polyline append/join dedup, clip/extend, reverse, ArcFitter, `PathFittingData`, fitting-aware split/reverse/clip quirks;
+- Circle/ArcSegment construction, clipping, direction and arc helpers;
+- `ThickPolyline` invariants, `thicklines`, reverse, `rebase_at`, `get_width_at`;
+- Boost.Polygon 1.83 robust floating/error helpers and extended integer/sqrt expressions used by the port;
+- Boost site-event ordering/categories, ULP comparisons, PPP/PPS/PSS/SSS circle formation and selected extreme-int32/regression oracles;
+- direct Dart Fortune construction for the tested point/segment cases and full square segment half-edge golden;
+- QIDI Voronoi issue detection, repair-angle sequence, endpoint remapping, inside/outside/on-contour annotation, and direct-builder wrapper behavior;
+- MedialAxis edge validation, PI/8 rule, width filtering, half-edge traversal and `ExPolygon::medial_axis()` post-processing.
 
-- integer source units and scaling constants: **implemented_unverified**;
-- source Point rotation rounding and Line orientation/distance/parallel/perpendicular/intersection subset: **implemented_unverified**;
-- translated `test_geometry.cpp` parallel/perpendicular regression cases: authored, not executed;
-- linear Polyline constructor/append/reverse/clip/extend behavior: **implemented_unverified**;
-- QIDI ArcFitter / `PathFittingData` / fitting-aware split/clip/reverse: **pending** and intentionally not approximated.
+Two critical implementation details must be preserved in future edits:
 
-### Clipper / ClipperUtils
+- Boost `uint64_t` arithmetic/bit-pattern comparisons are emulated with `BigInt` where native Dart signed `int` would cross bit 63;
+- the PPP robust-cross-product operand order is kept **literal to Boost 1.83**, even where a mathematically cleaner ordering looks tempting.
 
-- Dart union/difference/intersection/xor/offset facade: **implemented_unverified**;
-- source scale and default miter-limit handling represented;
-- initial `test_clipper_offset.cpp` / `test_clipper_utils.cpp` cases translated;
-- current backend is pure-Dart Clipper2 while supplied source uses Clipper 6.x plus custom `ClipperUtils` semantics;
-- **full source regression suite and semantic discrepancies remain open**. If Clipper2 cannot reproduce them, required source behavior must be directly ported.
+### Still open
 
-### Medial axis / thin-wall dependency chain
+- broader Boost/Voronoi source cases not represented by current oracle fixtures;
+- remaining Polygon/ExPolygon APIs and downstream consumers;
+- curved/primary-edge uses outside the tested MedialAxis path where additional source behavior may still be required.
 
-Implemented but unverified:
+## Clipper / ClipperUtils
 
-- exact `ThickPolyline` source representation/invariants;
-- source-shaped Voronoi vertex/cell/half-edge topology model;
-- application-owned `MedialAxis::validate_edge()` branch logic;
-- PI/8 facing-segment rule, scaled epsilon and min/max-width checks;
-- `process_edge_neighbors()`-style active half-edge traversal;
-- source Voronoi double → `Point(coord_t)` nearest-even `lrint` behavior;
-- `ExPolygon::medial_axis()` post-pass: endpoint extension, short-branch pruning and reconnect logic in source units.
+The current pure-Dart Clipper2 adapter is `parity_verified` **for the translated fixtures currently in the suite**:
 
-Still **pending and blocking real thin-wall parity**:
+- union/difference/intersection fixture behavior;
+- contour/hole reconstruction in those fixtures;
+- positive/negative constant offsets;
+- `offset2`, opening/closing building blocks used by current slicer code;
+- Clipper1 miter-limit compatibility: source values below 2 behave as effective limit 2;
+- positive `ExPolygon` hole-offset orientation compatibility where Clipper2 preserves orientation differently from Clipper1.
 
-- Boost.Polygon-compatible segment Voronoi construction in Dart;
-- source `construct_voronoi` wrapper behavior;
-- `repair_voronoi`;
-- inside/outside/contour vertex annotation/categories;
-- curved/primary edge handling/discretization required by source.
+The broader Clipper/ClipperUtils module remains `port_started`: the source uses Clipper 6.x plus custom Slic3r/QIDI wrappers, so more original regression coverage is still required before calling the whole subsystem equivalent.
 
-Therefore `detect_thin_wall` in classic perimeter remains deliberately unsupported. No generic skeletonizer is accepted as a hidden substitute.
+## Flow / Extruder / Surface / ExtrusionEntity
 
-## Flow / extrusion numeric foundation
+The represented source subsets are now `parity_verified`:
 
 ### Flow
 
-`Flow.hpp/.cpp` mathematical/config-width subset is **implemented_unverified**:
-
 - role auto widths;
-- rounded-rectangle spacing / cross section;
-- bridge spacing `+0.05`;
+- rounded-rectangle spacing/cross section;
+- bridge formulas;
 - `mm3_per_mm`;
-- `with_width`, `with_height`, `with_spacing`, `with_cross_section`, flow ratio;
-- source config-width fallback / percentage behavior, including initial-layer fallback quirks.
+- width/height/spacing/cross-section mutations;
+- config fallback and percentage resolution, including initial-layer quirks.
 
-Source-derived `test_flow.cpp` math fixtures are authored but not executed.
+### Extruder / QIDI config subset
 
-### Extruder / QIDI config variant subset
-
-`Extruder.cpp` state/math subset is **implemented_unverified**:
-
-- E/mm3 = filament-flow-ratio / filament cross section;
-- absolute/relative E tracking;
+- E/mm3;
+- absolute/relative E state;
 - retract/unretract/restart-extra behavior;
-- used-filament semantics;
-- speed fallback;
-- QIDI two-channel shared-extruder shape;
-- QIDI `get_config_index_base` / filament variant resolution subset and exact variant labels.
+- used-filament and speed-fallback semantics;
+- shared-extruder two-channel shape;
+- QIDI variant-name/index resolution subset.
 
-The basic Dart G-code foundation now consumes source Flow + Extruder volume math, but the full native GCode state machine/templates/retraction/travel/cooling/acceleration path is still **pending/port_started**.
+### Surface
 
-## Surface semantic model
+- represented SurfaceType ordering/classification/defaults/colors;
+- merge predicate;
+- QIDI compensation fields;
+- source copy-constructor and assignment omission quirks.
 
-`Surface.hpp/.cpp` is **implemented_unverified** for the current represented subset:
+### ExtrusionEntity
 
-- exact SurfaceType ordering/classification;
-- defaults, thickness/layers/bridge angle/extra perimeters;
-- conversion helpers and type colors;
-- `surfaces_could_merge()` comparison set;
-- supplied QIDI `counter_circle_compensation` / `holes_circle_compensation` fields;
-- source copy-constructor quirk where those QIDI compensation members reset because they are omitted;
-- source assignment quirk where destination compensation state is left untouched.
+- represented ExtrusionRole ordering/strings/classifiers;
+- path state, volume, overhang/curve clamps and `can_merge()` comparison set;
+- sloped clone-slicing quirk and oriented-path dynamic type;
+- MultiPath continuity/reverse/copy behavior;
+- Loop basic behavior;
+- Collection role/reverse/flatten/copy behavior;
+- supportTransition filtering quirk.
 
-This model is now available to replace simplified `List<ExPolygon>` assumptions in later slicer stages, but full downstream surface generation/classification remains pending.
+The containing slicer/G-code modules remain `port_started` because many downstream source methods are still absent.
 
-## ExtrusionEntity semantic model
+## G-code
 
-`ExtrusionEntity.hpp/.cpp` and collection behavior are now **port_started / implemented_unverified**:
+`SourceGCodeFormatter2` / `SourceExtrusionPathEmitter2` are `parity_verified` for the tested source branch:
 
-- exact `ExtrusionRole` ordering and source display strings;
-- perimeter/infill/solid/bridge/support role classifiers;
-- `CustomizeFlag` and loop-role bit flags;
-- `ExtrusionPath` geometry/state fields including `overhang_degree`, `curve_degree`, `mm3_per_mm`, width, height, smooth speed, reverse and force-no-extrusion flags;
-- source `set_overhang_degree` / `set_curve_degree` clamp/role behavior;
-- exact `can_merge()` comparison set, including fields it intentionally ignores;
-- `total_volume()` using floating source path length × `SCALING_FACTOR` without coordinate rounding;
-- sloped/oriented path source clone behavior, including the source slicing quirk for sloped paths and type-preserving oriented clone;
-- `ExtrusionMultiPath`, `ExtrusionLoop`, `ExtrusionEntityCollection` core ordering/reverse/volume/role behavior;
-- source copy-constructor quirks where MultiPath/Collection base customize/cooling fields reset;
-- collection flatten behavior translated from `test_extrusion_entity.cpp`, including `preserve_ordering && no_sort` nested-collection retention;
-- source supportTransition inclusion when filtering for supportMaterial.
+- source XYZ/E rounding/trimming;
+- G1 fallback;
+- G2/G3 use of ArcFitter metadata;
+- spiral-mode arc disable;
+- `force_no_extrusion` behavior;
+- origin/extruder/plate coordinate transforms;
+- full-comment formatting.
 
-Still pending in this area:
+Sloped XYZ extrusion deliberately still refuses an XY-only approximation. Full native G-code state/templates/travel/retraction/cooling/speed/acceleration/multi-material/postprocessing remain `pending` or `port_started`.
 
-- ArcFitter-aware Polyline split/simplify metadata;
-- full loop split/clip/seam behavior;
-- `polygons_covered_by_width/spacing()` on exact source-coordinate boolean/offset geometry;
-- further QIDI loop/overhang utility methods and downstream G-code/preview consumption.
+## Classic perimeter / thin wall
 
-## Classic perimeter
-
-A source-formula subset of `PerimeterGenerator::process_classic()` remains **port_started**:
+The currently represented `PerimeterGenerator::process_classic()` shell/thin-wall subset is `parity_verified` by source-formula and end-to-end tests for:
 
 - common inset overlap tolerance `0.4`;
-- QIDI smaller external inset overlap tolerance `0.22`;
+- QIDI smaller-external tolerance `0.22`;
 - narrow-loop threshold `10`;
-- first external centerline inset;
-- external→internal spacing branch;
-- alternate-extra-wall behavior;
-- spiral-vase island selection;
-- source one-coordinate-unit safety adjustment.
+- requested/alternate extra wall count behavior;
+- first external and external→internal inset formulas in source integer coordinates;
+- one-coordinate-unit safety terms;
+- spiral-vase largest-island subset;
+- QIDI smaller-width external loop selection;
+- exact source quirk `last = offsets`: smaller-width outer loops are output only and do **not** seed inner loops;
+- `detect_thin_wall` geometry path: Clipper difference/opening → `SourceExPolygonMedialAxis2` → source-domain `ThickPolyline2`;
+- explicit requirement for the source external-nozzle diameter used by the thin-wall branch.
 
-Remaining classic perimeter work depends on exact MedialAxis/Voronoi, gap fill and verified Clipper semantics.
+This does **not** complete `process_classic()`. Still pending include:
 
-## Existing broader Flutter foundations
+- conversion of returned ThickPolyline data through the source variable-width extrusion path;
+- gap-fill generation and its MedialAxis/width rules;
+- remaining overhang/path-order/loop/extrusion-role behavior;
+- exact covered-area helpers and later perimeter stages;
+- Arachne variable-width wall generation.
 
-Still `port_started`, not top-level complete:
+## Model/project I/O
 
-- STL/OBJ/AMF/ZIP.AMF and package-aware 3MF preservation;
-- profile loading/inheritance/`compatible_printers`;
-- runtime PO localization;
-- QIDI SSDP + Moonraker + local command/device foundations;
-- QIDI Box commands/files/timelapse foundations;
-- triangle-plane slicing;
-- basic line infill/toolpath/basic G-code;
-- Prepare/Preview/Device Flutter shell areas.
+Still `port_started`:
 
-## Validation blocker
+- STL ASCII/binary;
+- OBJ;
+- AMF / ZIP.AMF;
+- package-aware 3MF parsing/repack foundations including external components/build transforms and unknown-entry retention.
 
-The local environment has no Flutter/Dart SDK. GitHub Actions workflow exists, but checked jobs currently fail **before runner allocation** (`steps=[]`, `runner_id=0`), including after replacing the third-party Flutter setup action with direct cloning of the official Flutter tag. Therefore:
+Still open include complete project metadata/settings/repair warnings, STEP, source-enabled Assimp formats, and all preset/project round-trip semantics.
 
-- analyzer has not run;
-- Dart/Flutter tests have not run;
-- no new executable source module is `parity_verified`.
+## Device / profiles / localization / UI
 
-See `VALIDATION.md`.
+Port-started foundations include:
 
-## Immediate next source dependency order
+- source-shaped QIDI SSDP discovery;
+- Moonraker JSON-RPC/subscriptions and local command foundations;
+- QIDI Box command/file/timelapse foundations;
+- profile loading/inheritance/compatibility foundations;
+- PO localization reader;
+- Prepare/Preview/Device/Project/Calibration Flutter shell areas.
 
-1. Resolve GitHub Actions runner/account/repository infrastructure so authored tests actually execute.
-2. Continue translating source Point/Line/Polyline and Clipper/ClipperUtils regression fixtures; fix every discrepancy.
-3. Port QIDI ArcFitter / `PathFittingData` semantics used by Polyline and ExtrusionEntity.
-4. Port Boost-compatible segment Voronoi construction + source repair/annotation in Dart.
-5. Integrate full medial axis into `ExPolygon::medial_axis`; then enable `detect_thin_wall` and gap fill only after passing references.
-6. Resume `PerimeterGenerator::process_classic()` line-by-line; then Arachne/surfaces/fill.
-7. Expand `ExtrusionEntity` into the native G-code/Preview pipeline instead of the current simplified feature model.
-8. Continue scene/editor/project/device/cloud/calibration/OS/UI parity in parallel after core dependency truth is established.
+These are not full parity. Cloud/P2P/account, camera/HMS/firmware, full capability/reconnect machines, every calibration flow, complete source UI state/workflow behavior, and desktop integration remain open.
 
-No part of this ordering permits declaring a module complete because it “looks equivalent”.
+## Runtime assets
+
+The earlier local audit verified 3,657/3,657 copied runtime entries against source SHA-256. **That is not remote publication verification.** Some declared asset directories currently contain technical `.gitkeep` markers so CI can resolve `pubspec.yaml`; those markers do not satisfy the asset gate. Do not remove source asset declarations merely to make CI quiet, and do not mark them `runtime_asset_verified` until the real bytes are present and verified in the repository/release input.
+
+## Immediate next dependency order
+
+1. Port the source variable-width conversion that consumes classic thin-wall `ThickPolyline` output and add source/differential fixtures.
+2. Port classic gap fill using the now-working MedialAxis chain.
+3. Continue `PerimeterGenerator::process_classic()` line-by-line through remaining path/role/order/overhang branches.
+4. Expand Clipper/ClipperUtils translated regression coverage and fix every discrepancy rather than relaxing fixtures.
+5. Continue Arachne/surfaces/fill/bridge/support/seam toolpath modules.
+6. Expand the native G-code state machine and integrate the exact ExtrusionEntity model into Preview/G-code consumers.
+7. Continue project/profile/editor/device/cloud/calibration/desktop/UI parity in parallel.
+8. Publish and SHA-verify the real runtime assets before any release-complete claim.
+
+No item may be called complete because it merely looks equivalent or passes only common-case smoke tests.

@@ -1,6 +1,6 @@
 # Validation record — strict 1:1 rewrite
 
-This file records **what has actually been executed and proven**, separately from code/tests that merely exist in the repository.
+This file records only work that has actually executed. The acceptance authority remains [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md); a passing subset does not close a top-level application gate.
 
 ## Input identity / loss-prevention baseline
 
@@ -8,73 +8,73 @@ This file records **what has actually been executed and proven**, separately fro
 - Archive SHA-256 from the initial audit: `821ed379d65916df32f5d031bd583bc724ce72f4d229447adc61280701e4d57d`.
 - Extracted source files inventoried: **8,632**.
 - Previous local runtime-asset integrity pass: **3,657/3,657** entries marked as copied runtime assets matched source SHA-256; 0 missing, 0 mismatches.
-- Full publication of those binary assets into the GitHub repository is still an explicit repository-bootstrap gap. Local integrity does not equal remote publication verification.
+- Full publication of those binary assets into GitHub is still open. The `.gitkeep` files used to keep declared asset directories present in CI are not asset-parity evidence.
 
-## Local execution limitation
+## Executed Flutter/Dart checkpoint — 2026-09-12
 
-The current development environment does **not** provide a runnable Flutter/Dart SDK. Therefore it has not executed:
+Pinned toolchain:
 
-- `flutter analyze`;
-- `flutter test`;
-- Flutter desktop builds;
-- Dart formatter/analyzer/compiler checks.
+- Flutter `3.47.2`;
+- Dart `3.13.2`;
+- Ubuntu 24.04 hosted runner.
 
-No authored Dart implementation is promoted to `parity_verified` on the basis of code inspection alone.
+### Cleanup validation run
 
-## GitHub Actions status
+GitHub Actions run `34668728368` executed the final analyzer-cleanup candidate before committing it. Observed results:
 
-A repository workflow exists at `.github/workflows/flutter-parity.yml`. It pins Flutter `3.47.2`, obtains it directly from the official `flutter/flutter` repository, then intends to run:
+- `dart format` on the five cleanup files — completed;
+- `flutter pub get` — completed;
+- `flutter analyze` — **`No issues found!`**;
+- `flutter test --reporter expanded` — **`+174: All tests passed!`**;
+- `git diff --check` — completed with no errors.
 
-1. toolchain identity;
-2. `flutter pub get`;
-3. `flutter analyze`;
-4. `flutter test --reporter expanded`.
+Only after those checks passed did the workflow create commit `015dcdd4cbfb9b292a89642c0d736f2471483691` (`chore: finish analyzer cleanup`).
 
-The first workflow revision used a third-party Flutter setup action. Because jobs failed before executing any step, the workflow was changed to remove that action and clone the official Flutter tag directly.
+### Independent ordinary parity run
 
-**The infrastructure failure remained.** The latest checked run at the time of this update was run `34662392194` for commit `a984d08adc1699d8f5c4801a56f0471cf874ff06`. GitHub reported:
+The temporary write-enabled cleanup workflow was removed in commit `2f2c8486e09640dd4d6d03ebc85cee843146d8b2`. The normal read-only `.github/workflows/flutter-parity.yml` then ran independently as run `34668800262` (#139) against that commit and completed successfully:
 
-- workflow conclusion: `failure`;
-- job: `analyze-and-test`;
-- `steps: []`;
-- `runner_id: 0`;
-- empty runner name/group;
-- job created/started/completed in ~3 seconds.
+- toolchain identity: Flutter `3.47.2`, Dart `3.13.2`;
+- Analyze step: **success**, log line `No issues found!`;
+- Unit and parity tests: **success**, final line `+174: All tests passed!`;
+- job conclusion: **success**.
 
-This means no checkout, Flutter installation, dependency resolution, analyzer or test command ran. Treat this as a **GitHub Actions runner/account/repository infrastructure blocker**, not as a Dart test failure and not as a passing validation.
+This second run confirms the green state without the temporary cleanup workflow or write permissions.
 
-Before any module is upgraded to `parity_verified`, CI or another Flutter-enabled machine must actually allocate a runner and execute the reference suite.
+## What the 174-test suite currently proves
 
-## Authored source-derived tests currently awaiting execution
+The passing suite contains source-derived, source-formula, or Boost/Clipper oracle coverage for the represented subsets of:
 
-The repository now contains source-derived or source-formula tests for, among other existing tests:
+- integer `coord_t` Point/Line geometry and rounding-sensitive Line behavior;
+- QIDI `Polyline` append/clip/extend plus ArcFitter / fitting metadata reverse/split/clip behavior;
+- Circle/ArcSegment and arc math;
+- `ThickPolyline` width cardinality, reverse, `rebase_at`, and width indexing quirks;
+- Boost.Polygon 1.83 robust numeric helpers, site/circle predicates, PPP/PPS/PSS/SSS circle formation, Fortune construction, topology adaptation, and known regression inputs;
+- QIDI Voronoi issue detection, repair angles/remapping, annotation and default direct builder behavior;
+- MedialAxis edge validation/traversal plus `ExPolygon::medial_axis()` post-processing;
+- Clipper/ClipperUtils translated boolean and offset fixtures, including Clipper1 miter-limit and positive-hole orientation compatibility at the Dart Clipper2 adapter boundary;
+- Flow formulas/config fallback behavior;
+- Extruder state/math and QIDI variant resolution;
+- Surface classification/copy/assignment quirks;
+- ExtrusionEntity/Path/MultiPath/Loop/Collection represented semantics;
+- source-style G-code formatter and linear/arc extrusion-path emission subset;
+- classic perimeter onion-shell formulas, QIDI smaller-width outer-loop behavior, and the `detect_thin_wall` MedialAxis branch;
+- existing linear-infill and basic writer fixtures.
 
-- integer `coord_t` Line parallel/perpendicular/intersection semantics;
-- source Polyline append/clip/extend linear behavior;
-- ThickPolyline width-vector/reverse/rebase/index semantics;
-- initial Clipper/ClipperUtils offset/boolean fixtures;
-- MedialAxis edge validation, half-edge traversal and endpoint post-processing fixtures;
-- Flow math/config-width fallbacks;
-- Extruder E/mm3, retract/unretract and QIDI variant-resolution semantics;
-- Surface flags, merge predicate and QIDI copy/assignment quirks;
-- classic perimeter source-formula subset;
-- ExtrusionEntity role strings/classifiers, copy/clone quirks, volume scaling, multipath and collection flattening.
+## What is not proven by this checkpoint
 
-These are **authored, not executed** in the current environment.
+This checkpoint does **not** establish full application parity. In particular it does not prove:
 
-## Important numeric-parity finding
-
-The source slicer geometry is fundamentally based on integer `coord_t` coordinates with:
-
-- `SCALING_FACTOR = 0.00001` mm;
-- 100000 integer units per mm;
-- `EPSILON = 1e-4`;
-- `SCALED_EPSILON = 10` source coordinate units.
-
-This affects rounding-sensitive tests and algorithms. Exact-source geometry now has a dedicated integer domain (`SourcePoint2`, `SourceLine2`, `SourcePolygon2`, `SourcePolyline2`, `ThickPolyline2`). Existing older millimeter-double helpers are not by themselves sufficient evidence of 1:1 slicer parity.
+- the full source Clipper/ClipperUtils regression space beyond translated fixtures;
+- complete `PerimeterGenerator::process_classic()` downstream variable-width conversion, gap fill, overhang/path ordering, or Arachne;
+- complete native G-code state/templates/travel/retraction/cooling/acceleration/multi-material behavior;
+- all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
+- complete project/profile persistence, STEP/Assimp-enabled formats, or every repair/warning path;
+- complete scene/editor, Preview, Device/cloud/P2P, calibration, desktop integration, or UI workflow parity;
+- hardware-in-the-loop printer behavior;
+- remote publication and SHA verification of every runtime asset;
+- release builds/installers on every supported desktop platform.
 
 ## Completion truth
 
-There are currently **zero top-level parity gates closed** and no executable subsystem should be described as fully `parity_verified` yet.
-
-The strict acceptance authority remains `PARITY_CONTRACT.md`; symbol-level status is tracked in `TRACEABILITY.md`.
+**Zero top-level parity gates are closed.** Individual, explicitly scoped source behaviors may be marked `parity_verified` where the translated/oracle tests above cover that exact row. Broader modules that contain unported branches remain `port_started`.
