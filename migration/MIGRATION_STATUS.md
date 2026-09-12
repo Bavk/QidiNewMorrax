@@ -15,12 +15,12 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-12
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `7c1c5d1f56a287cb812df3b511484851277d460f`;
-- workflow `34690713768` (#249), conclusion **success**;
+- validated code `5a4d8b65e177ce6fe196594c4263d3f962a90422`;
+- workflow `34693713324` (#254), conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **325/325 passing**.
+- `flutter test --reporter expanded` — **340/340 passing**.
 
-Run #249 is the first green checkpoint containing the represented Arachne fuzzy modes plus direct Clipper-Z LineSegmentation. Runs #246–#248 isolated a Dart Clipper2 open-path orientation difference; the final compatibility fix retained the old expectations and all Arachne C++ goldens.
+Run #254 is the first green checkpoint containing both the final represented classic fill-boundary block and the `TopOneWallType::Alltop` producer. Run #252 (`9ba4f919...`) had already validated the boundary block at **333/333**. Run #253 was compile-only red because of an accidental `const` on the non-const `SourcePolygon2` constructor; commit `5a4d8b6` removed only that typo, and all seven new producer/composition tests passed unchanged in #254.
 
 ## Top-level gates
 
@@ -28,61 +28,64 @@ All remain **OPEN**: formats/project persistence; scene/editor; slicer/toolpath;
 
 ## Verified foundations retained
 
-The represented subsets covered by the green suite remain scoped `parity_verified`: source integer Point/Line/Polygon geometry; Polyline/ArcFitter/Circle; ThickPolyline; Boost.Polygon 1.83 robust predicates/Fortune/Voronoi represented fixtures; MedialAxis; translated Clipper/ClipperUtils behavior used by current consumers; Flow; Extruder/QIDI config subset; Surface; ExtrusionEntity/variable-width/covered-width subset; source-style G-code formatter/path emitter subset; and represented classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall-sequence/lower-support/no-speed/speed-graded overhang pipeline.
+The current green suite retains scoped `parity_verified` coverage for the previously represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall-sequence/lower-support/no-speed/speed-graded overhang pipeline, and the represented fuzzy/Arachne subset.
 
 The broader containing modules remain `port_started`.
 
-## Fuzzy skin
+## Classic `process_classic()` fill path
 
 Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
-Pinned structured-noise dependency: `bambulab/libnoise@v1.0.0`.
 
-### Policy / RNG / structured noise — scoped `parity_verified`
+### Final fill boundary — scoped `parity_verified`
 
-The green suite covers:
+Runs #252/#254 cover `SourceClassicFillBoundary2` for the represented post-gap-fill block:
 
-- `FuzzySkinType`: `None`, `External`, `All`, `AllWalls`, `Disabled_fuzzy`;
-- first-layer, contour/hole and perimeter-index decisions plus region-aware slowdown policy;
-- one source random stream for initial spacing, Classic displacement and following spacing draws;
-- direct MT19937 and libstdc++ `[0,1)` oracle fixtures;
-- all pinned noise modes: Classic, Perlin, Billow, RidgedMulti, Voronoi;
-- required libnoise v1.0.0 arithmetic/vector table, scale/frequency, octave, persistence, Voronoi displacement and `slice_z` behavior.
+- zero/one/two-or-more wall inset selection;
+- absolute and percentage `infill_wall_overlap`;
+- exact source floating-point/truncation behavior, including the C++ oracle where the represented 20% overlap becomes **7999** source units rather than 8000;
+- `simplify_p → union_ex` boundary preparation;
+- `min_perimeter_infill_spacing` coord truncation;
+- `offset2_ex` internal fill collapse;
+- `stInternal` fill-surface output representation;
+- both `fill_no_overlap` branches;
+- top-fill consumer intersection/growth/union semantics.
 
-### Polygon/Polyline fuzzy and painted regions — scoped `parity_verified`
+### `TopOneWallType::Alltop` producer — scoped `parity_verified`
 
-Runs #239/#244/#249 cover the represented Polygon/Polyline path:
+Run #254 covers `SourceClassicTopFillAllTop2` for the represented producer inside the first shell iteration:
 
-- 0.75 point-distance minimum, 0.5 random range, carried leftover distance, perpendicular displacement, source integer casts and repeated-penultimate fallback;
-- deterministic modes consume RNG only for spacing while Classic shares spacing/displacement draws;
-- direct 32-bit source `ZAttributes` through `Point64.z` / `Clipper64.zCallback` for LineSegmentation;
-- range ordering, default gaps, source point interpolation and closed-polygon source-index identity;
-- single/full/multiple painted-region config selection and classic traversal composition.
+- source scalar arithmetic for `offset_top_surface` and `top_area_threshold`;
+- separation of configured `wall_loops` from current `loop_number`;
+- literal bbox-pruning helper with `SCALED_EPSILON` bounds;
+- implicit source `float` offset-delta boundaries;
+- represented `ApplySafetyOffset::Yes` 10-unit clip growth;
+- all-top split, `temp_gap`, `inner_polygons`, optional lower-slice bridge checker/merge;
+- `top_fills`, final `fill_clip`, mutation of `last`, and gap-fill re-union;
+- composition into `SourceClassicFillBoundary2`.
 
-Dart Clipper2 differs from pinned `ClipperLib_Z` on represented open terminal Z retention/orientation. `SourceLineSegmentation2` contains narrow, regression-tested compatibility normalization without changing the source range contract; closed wrap behavior is retained only where the subject geometrically wraps.
+### Classic fill integration still `port_started`
 
-### Arachne fuzzy extrusion line — scoped `parity_verified`
+The verified helpers are not yet claimed as full `process_classic()` integration. Pinned source changes `loop_number` before the shell and executes the `Alltop` producer immediately after the first `last = std::move(offsets)`. Its mutated `last` must feed later shell iterations, which may themselves collapse and reduce effective wall count. A post-hoc call would be wrong and is intentionally not used as a completion claim.
 
-Run #249 covers the represented source subset:
+## Fuzzy skin / Arachne retained
 
-- source-shaped `ExtrusionJunction` fields `p`, `w`, `perimeter_index`, compensation flag and `ExtrusionLine` metadata;
-- `FuzzySkinMode` order: `Displacement`, `Extrusion`, `Combined`;
-- exact seeded C++ position/width goldens for all three modes;
-- `scaled(0.01)` minimum extrusion width;
-- Combined position shift by half of `(new_width - old_width)` along the perpendicular;
-- Classic shared RNG and structured-noise spacing-only RNG consumption;
-- repeated-penultimate fallback;
-- closure synchronization triggered by endpoint XY equality and affecting front position/width;
-- Arachne LineSegmentation width interpolation, split-line openness, perimeter-index checks, per-region fuzzy application and XY-only seam duplicate removal.
+The current suite re-executes the scoped fuzzy evidence from run #249 and later checkpoints:
 
-### Fuzzy scope still not proven
+- exact `FuzzySkinType` policy and slowdown gates;
+- one source Classic RNG stream plus MT19937/libstdc++ `[0,1)` oracles;
+- pinned libnoise Perlin/Billow/RidgedMulti/Voronoi;
+- Polygon/Polyline fuzzy geometry and painted-region LineSegmentation;
+- source ZAttributes / Dart Clipper2 compatibility shims;
+- source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine` subset;
+- `Displacement`, `Extrusion`, `Combined` seeded C++ goldens;
+- Arachne painted-region segmentation and fuzzy composition.
 
-- exhaustive overlap/hole/degenerate LineSegmentation inputs;
-- full Arachne wall generation/integration around the verified helper;
-- exact platform-level `random_device` / thread-id seed selection (specific runs are intentionally nondeterministic).
+The fuzzy scope still does not prove full Arachne wall generation or every pathological clipping topology.
 
 ## Other major open areas
 
-- remaining classic `fill_surfaces` / `fill_no_overlap` and later perimeter stages;
+- source-order integration of classic top-one-wall + final fill boundaries into the shell/process result;
+- remaining classic process behavior around those verified helpers;
 - full Arachne wall generation;
 - fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
 - full native G-code state/templates/travel/retraction/cooling/speed/acceleration/multimaterial/postprocessing;
@@ -97,11 +100,11 @@ Run #249 covers the represented source subset:
 
 ## Immediate next dependency order
 
-1. Port the next missing `PerimeterGenerator::process_classic()` post-perimeter output: `fill_surfaces`, starting from `not_filled_exp`, inset/collapse offsets and `stInternal` append behavior.
-2. Port the paired `fill_no_overlap` construction with exact `min_perimeter_infill_spacing`, overlap and top-fill branches.
-3. Add simple-contour, top-fill and no-overlap source/translated fixtures, then integrate with later classic fill stages.
-4. Continue broader Arachne wall generation using the now-verified fuzzy helper.
-5. Expand Clipper/Boost/source regression coverage only as new source consumers demand it.
+1. Integrate the source pre-shell one-wall gate: after extra/alternate wall resolution, force `loop_number = 0` under the exact top-one-wall/no-upper-slices or first-layer condition.
+2. Invoke `SourceClassicTopFillAllTop2` at the exact first-iteration position after `last = offsets`, not after shell completion, and let its mutated `last` drive subsequent offsets/effective loop collapse.
+3. Carry `top_fills` / `fill_clip` through the classic result and feed them after gap-fill mutation to `SourceClassicFillBoundary2`.
+4. Add end-to-end fixtures covering topmost/no-upper-slices, first-layer one-wall, partial upper coverage, lower bridge merge, gap-fill re-union and final fill/no-overlap output.
+5. Continue remaining classic process integration, then broader Arachne wall generation.
 6. Continue fill/support/seam/G-code/project/profile/device/cloud/calibration/desktop/UI parity in dependency order.
 7. Publish and SHA-verify real runtime assets before any release-complete claim.
 

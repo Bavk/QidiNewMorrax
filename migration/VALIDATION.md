@@ -17,73 +17,80 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34690713768` (#249) executed code commit `7c1c5d1f56a287cb812df3b511484851277d460f` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34693713324` (#254) executed code commit `5a4d8b65e177ce6fe196594c4263d3f962a90422` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+325: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+340: All tests passed!`**;
 - job conclusion — **success**.
 
-## Arachne fuzzy evidence executed in #249
+## Classic final fill-boundary evidence
 
-The green suite includes source-shaped Arachne models and exact `FuzzySkin.cpp::fuzzy_extrusion_line()` evidence for:
+Run #252 (`34691194040`) first validated `SourceClassicFillBoundary2` at **333/333** tests, and #254 re-executed the same fixtures. The represented evidence covers:
 
-- `FuzzySkinMode` source order: `Displacement`, `Extrusion`, `Combined`;
-- seeded `std::mt19937(5489)` / libstdc++ Classic-oracle position values for `Displacement`;
-- seeded width oracle for `Extrusion`;
-- seeded position + width oracle for `Combined`;
-- `scaled(0.01)` minimum extrusion width;
-- Combined perpendicular shift by half the width delta;
-- structured-noise mode consuming `random_value()` only for spacing;
-- repeated-penultimate fallback behavior;
-- closure synchronization based on endpoint XY equality and affecting output front position/width;
-- source-shaped `ExtrusionLine` metadata retention.
+- no-perimeter, one-perimeter and two-or-more-perimeter inset choices;
+- absolute `infill_wall_overlap`;
+- percentage `infill_wall_overlap` using the pinned `FloatOrPercent::get_abs_value()` arithmetic;
+- the C++ floating-point/truncation oracle where the represented 20% case produces **7999** source units rather than an idealized 8000;
+- `min_perimeter_infill_spacing = coord_t(solid_infill_spacing * (1 - INSET_OVERLAP_TOLERANCE))`;
+- source `offset2_ex()` collapse for `infill_exp`;
+- represented `stInternal` fill-surface output;
+- both `fill_no_overlap` source branches;
+- top-fill growth/intersection/union consumer behavior;
+- odd source-unit spacing truncation.
 
-## Arachne / LineSegmentation evidence executed in #249
+Run #251 initially failed only the percent-overlap expectation. The implementation had produced 7999; a standalone C++ oracle of the literal pinned formula confirmed 7999, so the test was corrected to the source result rather than changing the implementation.
 
-The same run covers the represented `Algorithm/LineSegmentation` ExtrusionLine overload:
+## Classic `TopOneWallType::Alltop` producer evidence
 
-- source 32-bit `ZAttributes` encoding through `Point64.z` / `Clipper64.zCallback`;
-- default/painted/default open-path segmentation;
-- Point interpolation with QIDI per-product coord truncation;
-- extrusion-width interpolation with final scalar truncation;
-- perimeter-index consistency at interpolated boundaries;
-- split Arachne segments using open-line constructor semantics;
-- full-cover fast path retaining whole-line metadata;
-- region-value mapping;
-- painted-region fuzzy application and XY-only seam duplicate removal.
+Run #254 is the first green run containing `SourceClassicTopFillAllTop2`. Its seven new fixtures cover:
 
-### Why #246–#248 failed before #249
+- source gate behavior for `loop_number == 0`;
+- pinned scalar order for configured `wall_loops=2`: `offset_top_surface = 94500`, `min_width_top_surface = 4500`, and represented final fill-clip delta `0` under the test flows;
+- non-null empty upper slices treating the represented island as entirely top surface;
+- `temp_gap` re-union when gap fill is enabled;
+- non-null empty lower slices exercising the bridge-checker path and source `1.5 * max(ext_perimeter_spacing, perimeter_width)` growth;
+- literal `clip_clipper_polygons_with_subject_bbox()` pruning of a far-away upper polygon;
+- composition of produced `top_fills` / `fill_clip` into `SourceClassicFillBoundary2`.
 
-Run #246 (`34690222711`) first executed the Arachne batch. All three C++ fuzzy-mode goldens and the Arachne composition fixtures passed. Only two LineSegmentation cases failed: an existing Polyline endpoint-interpolation case and its new Arachne width-interpolation analogue.
+The implementation preserves source numeric boundaries relevant to this batch:
 
-Run #247 added a narrow compatibility repair for surviving open terminal points whose Dart Clipper2 Z value no longer matched the point's unique exact source XY. The two failures remained.
+- `SCALING_FACTOR = 0.00001` and `SCALED_EPSILON = 10`;
+- configured `wall_loops` is distinct from current `loop_number`;
+- scale → unscale → multiply → scale/truncate order for `offset_top_surface`;
+- implicit `float` delta conversion at `offset()` / `offset_ex()` call boundaries;
+- represented `ApplySafetyOffset::Yes` clip growth by `ClipperSafetyOffset == 10` source units;
+- sparse-infill half-width remains a macro-style double expression before the final float offset call.
 
-Run #248 added diagnostics without weakening the assertion. It showed the painted intersection arriving in the opposite open-path direction: terminal source point → intersection, which activated the source first/last index seam exception on an actually open two-point subject and created a false trailing default range.
+### Why #253 failed before #254
 
-Pinned `ClipperLib_Z` supplies the represented open result in source direction; Dart Clipper2 may return it reversed. Commit `7c1c5d1` therefore restricts the first/last wrap exception to a subject whose first and last XY actually coincide. Open Dart paths normalize back to source order; closed Polygon/Arachne paths retain the source wrap behavior. Run #249 then passed all **325/325** tests. No expected geometry/width value was loosened.
+Run #253 (`34693536191`) did not expose a source-semantic or geometry mismatch. Analyzer found one compile error in the newly added helper: `SourcePolygon2` has a non-const constructor, but the short-polygon return used `const SourcePolygon2([])`. That prevented the new test file from loading while the previous 333 tests still ran. Commit `5a4d8b65e177ce6fe196594c4263d3f962a90422` changed only that expression to `SourcePolygon2(const [])`. Run #254 then passed all **340/340** tests with the original new geometry/scalar expectations unchanged.
 
-## Earlier fuzzy evidence retained
+## Earlier Arachne / fuzzy evidence retained
 
-Run #249 also re-executed the earlier green evidence:
+Run #254 re-executed all previously green Arachne/fuzzy evidence from run #249 and later checkpoints:
 
 - one shared Classic `random_value()` stream and direct MT19937/libstdc++ double fixtures;
 - direct libnoise v1.0.0 value/gradient/vector-table/Perlin/Billow/RidgedMulti/Voronoi behavior;
 - scale clamp, octave/persistence, Voronoi displacement and `slice_z` inputs;
 - Polygon/Polyline fuzzy sampling/casts/fallback;
-- painted Polyline/Polygon region composition;
+- direct source ZAttributes LineSegmentation plus Dart Clipper2 compatibility normalization;
+- painted Polygon/Polyline region composition;
+- source-shaped Arachne `ExtrusionJunction` / `ExtrusionLine` subset;
+- seeded C++ `Displacement`, `Extrusion`, `Combined` position/width goldens;
+- Arachne width interpolation, full-cover path, painted-region fuzzy application and seam behavior;
 - recursive classic fuzzy traversal and region-aware overhang slowdown policy.
 
-It also re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
+The same run also re-executed the previously green represented subsets of source geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi, MedialAxis, Clipper compatibility, Flow, Extruder, Surface, ExtrusionEntity, variable-width/covered-width geometry, source-style G-code path formatting/emission, classic perimeter shell/thin-wall/gap-fill/nesting/chaining/wall sequence, lower-support generation, and no-speed/speed-graded overhang traversal/pipeline behavior.
 
 ## Not proven by this checkpoint
 
-Run #249 does **not** prove:
+Run #254 does **not** prove:
 
+- exact source-order integration of the pre-shell one-wall gate, the verified `Alltop` producer, subsequent shell-loop collapse, gap-fill mutation and final fill-boundary block as one `process_classic()` execution;
 - full Arachne wall generation around the represented fuzzy helper;
-- every pathological overlap/hole/degenerate LineSegmentation case;
+- every pathological overlap/hole/degenerate LineSegmentation or top-fill clipping case;
 - exact platform-level `random_device` / thread-id nondeterministic seed selection;
-- remaining classic `fill_surfaces` / `fill_no_overlap` and later perimeter/fill stages;
 - complete Clipper/Boost regression spaces beyond represented fixtures;
 - complete G-code state/templates/travel/retraction/cooling/acceleration/multimaterial behavior;
 - all fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft algorithms;
