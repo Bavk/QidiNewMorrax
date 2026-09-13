@@ -127,6 +127,12 @@ void _expectLine(
       _sortedExpected(expected['junctions'] as List<dynamic>);
   expect(actualJunctions, hasLength(expectedJunctions.length));
 
+  final diagnosticActual = [
+    for (final junction in actualJunctions)
+      [junction.p.x, junction.p.y, junction.w, junction.perimeterIndex],
+  ];
+  final diagnostic =
+      'actual=$diagnosticActual expected=$expectedJunctions';
   final tolerance = Slic3rUnits.scaledEpsilon.toDouble();
   for (var index = 0; index < expectedJunctions.length; index++) {
     final actualJunction = actualJunctions[index];
@@ -134,22 +140,22 @@ void _expectLine(
     expect(
       actualJunction.p.x,
       closeTo(expectedJunction[0], tolerance),
-      reason: 'junction $index x',
+      reason: 'junction $index x; $diagnostic',
     );
     expect(
       actualJunction.p.y,
       closeTo(expectedJunction[1], tolerance),
-      reason: 'junction $index y',
+      reason: 'junction $index y; $diagnostic',
     );
     expect(
       actualJunction.w,
       closeTo(expectedJunction[2], tolerance),
-      reason: 'junction $index width',
+      reason: 'junction $index width; $diagnostic',
     );
     expect(
       actualJunction.perimeterIndex,
       expectedJunction[3],
-      reason: 'junction $index perimeter index',
+      reason: 'junction $index perimeter index; $diagnostic',
     );
     expect(actualJunction.holeCompensationFlag, isFalse);
   }
