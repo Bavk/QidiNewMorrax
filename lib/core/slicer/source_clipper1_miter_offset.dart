@@ -257,10 +257,12 @@ class SourceClipper1MiterOffset2 {
   /// Literal closed-polygon point preparation from the pinned modified
   /// `ClipperOffset::AddPath()`.
   ///
-  /// `ShortestEdgeLength` is assigned from `abs(offset * 0.005f)`. For a closed
-  /// path source first removes trailing points strictly nearer than that value
-  /// to the first point, then walks forward and compares each candidate against
-  /// the last point actually retained. Equality is deliberately kept.
+  /// `ShortestEdgeLength` is assigned from `abs(float(offset) * 0.005)`. The
+  /// source factor is a double constant, so only `offset` is rounded to float;
+  /// the multiplication itself remains double. For a closed path source first
+  /// removes trailing points strictly nearer than that value to the first point,
+  /// then walks forward and compares each candidate against the last point
+  /// actually retained. Equality is deliberately kept.
   static List<SourcePoint2> _prepareClosedPath(
     List<SourcePoint2> input,
     double delta,
@@ -268,7 +270,7 @@ class SourceClipper1MiterOffset2 {
     if (input.isEmpty) return const <SourcePoint2>[];
 
     final sourceDelta = _f32(delta);
-    final shortest = _f32(sourceDelta * _f32(shortestEdgeFactor)).abs();
+    final shortest = (sourceDelta * shortestEdgeFactor).abs();
     final hasShortest = shortest > 0.0;
     final shortestSquared = shortest * shortest;
 
