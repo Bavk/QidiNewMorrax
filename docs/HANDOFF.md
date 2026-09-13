@@ -16,12 +16,12 @@ Do not infer completion from visual similarity, compilation, or common-case test
 
 Latest validated code checkpoint:
 
-- code commit `4a33e8d2592de1790ce0d63f01c0724a499ff356` (`test: compare Arachne hole walls with pinned CLI oracle`);
-- `.github/workflows/flutter-parity.yml` run `34726060018` (#402);
+- code commit `70ba8a1086f06a123990543ca52c4d341d445e60` (`test: use source epsilon for Arachne debugger geometry`);
+- `.github/workflows/flutter-parity.yml` run `34742895341` (#412);
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **687/687 passed**;
+- `flutter test --reporter expanded` → **688/688 passed**;
 - job conclusion → **success**.
 
 Important checkpoints leading here:
@@ -41,11 +41,12 @@ Important checkpoints leading here:
 - `4bfb5b5...` / run #394: exact pinned compiled BambuStudio CLI independently matches an interior two-wall layer plus topmost and first-layer one-wall geometry, 684/684 green;
 - `425b64d...` / run #398: exact pinned compiled CLI independently matches non-speed overhang wall spans, cyclic supported/overhang role bands and the grown-support split at model `x=20.2mm`, 685/685 green;
 - `e382302...` / run #400: exact pinned compiled CLI independently matches partial-`Alltop` first-wall/remainder recombination, including the clipped inner-wall placement, 686/686 green;
-- `4a33e8d...` / run #402: exact pinned compiled CLI independently matches a 20×20mm frame with a 10×10mm through-hole: four Arachne loops and both contour/hole wall-span pairs, 687/687 green.
+- `4a33e8d...` / run #402: exact pinned compiled CLI independently matches a 20×20mm frame with a 10×10mm through-hole: four Arachne loops and both contour/hole wall-span pairs, 687/687 green;
+- `70ba8a1...` / run #412: exact pinned compiled `detect_overhang_degree()` return paths independently match both stepped-solid Arachne walls: 39 exact role/degree buckets each, with only closed-loop Y reflection normalization and source `SCALED_EPSILON` geometry tolerance, 688/688 green.
 
 ## Independent pinned BambuStudio oracle provenance
 
-The new process-level evidence comes from the **actual upstream compiled binary at the exact pinned source SHA**, not from a Dart-generated snapshot:
+The process-level evidence comes from the **actual upstream compiled binary at the exact pinned source SHA**, not from a Dart-generated snapshot:
 
 - upstream repository: `bambulab/BambuStudio`;
 - source commit: `f2b55a5a83f266cf56e06c7943a81a08bebb7fad`;
@@ -55,7 +56,7 @@ The new process-level evidence comes from the **actual upstream compiled binary 
 - extracted AppImage SHA-256: `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`;
 - CLI version: `02.08.03.66`.
 
-Committed JSON fixtures record that provenance plus G-code-derived wall dimensions. The comparison deliberately removes only downstream/global plate-arrange translation or closed-loop seam rebasing when those do not alter the source perimeter geometry.
+G-code fixtures deliberately remove only downstream/global plate-arrange translation or closed-loop seam rebasing when those do not alter source perimeter geometry. The speed-graded overhang oracle is stronger: it is captured from the compiled return value of `Slic3r::detect_overhang_degree()` before re-chaining, smoothing and G-code speed policy. For the symmetric closed stepped-solid probe, one global Y reflection is normalized because the source Clipper path may begin from the opposite horizontal side. Roles and quarter-degree buckets remain exact. Integer XY comparison uses only the pinned source `SCALED_EPSILON = EPSILON / SCALING_FACTOR = 10` source units to account for compiled STL slicing versus the Dart fixture beginning from the already-sliced polygon.
 
 ## Current represented classic surface → extrusion path — scoped parity verified
 
@@ -88,35 +89,36 @@ The represented Arachne dependency chain includes:
 
 ### Independently verified process-level fixture scopes
 
-The exact pinned compiled CLI now independently verifies the represented Dart output for:
+The exact pinned compiled binary now independently verifies the represented Dart output for:
 
 - normal interior two-wall square geometry and Inner→Outer order;
 - topmost one-wall geometry;
 - first-layer one-wall geometry;
 - non-speed active-overhang geometry and the support/unsupported split boundary;
 - partial `Alltop` first-wall/remainder recombination and placement;
-- through-hole contour/hole wall geometry, including the outer contour pair `18.886/19.600mm` and hole pair `11.114/10.400mm`.
+- through-hole contour/hole wall geometry, including the outer contour pair `18.886/19.600mm` and hole pair `11.114/10.400mm`;
+- speed-graded active overhang before downstream speed policy: both inner/external supported walls return the same 39 exact role/degree buckets as compiled `detect_overhang_degree()`, with XY differing by no more than source `SCALED_EPSILON` after one global closed-loop reflection normalization.
 
 These exact fixture scopes may be treated as **scoped `parity_verified` evidence**. The containing `process_arachne()` boundary remains **`implemented_unverified`** because the remaining process-level outputs below do not yet have independent pinned-binary/oracle coverage.
 
 ## Fuzzy / Arachne scope retained
 
-The 687-test suite re-runs all previously verified fuzzy/Arachne evidence, including seeded C++ fuzzy goldens, source ZAttributes / LineSegmentation behavior, direct Boost/Voronoi fixtures, both represented Arachne overhang branches, QIDI LoopNode production, the final composed surface path and the new compiled-CLI differential fixtures.
+The 688-test suite re-runs all previously verified fuzzy/Arachne evidence, including seeded C++ fuzzy goldens, source ZAttributes / LineSegmentation behavior, direct Boost/Voronoi fixtures, both represented Arachne overhang branches, QIDI LoopNode production, the final composed surface path and compiled process-level differential fixtures.
 
 ## First unfinished priority
 
 Continue independent validation in source order rather than adding another already-represented helper:
 
-1. obtain a process-level independent oracle for **speed-graded Arachne overhang geometry/degrees** without conflating downstream G-code speed policy;
-2. obtain independent evidence for Arachne QIDI `LoopNode` payload/ranges, which ordinary G-code does not expose directly;
-3. obtain independent circle-compensation metadata/geometry evidence; the through-hole CLI fixture verifies hole wall geometry only, not QIDI compensation flags;
-4. independently validate final `fill_surfaces` / `fill_no_overlap`, including no-wall and mixed-spacing cases that are not directly observable from normal G-code;
-5. expand to additional pathological/production geometries and resolve every differential mismatch without weakening literal source quirks;
-6. only after those gates are green consider promoting the represented `process_arachne()` boundary as a whole to scoped `parity_verified`, then continue later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths and downstream product systems.
+1. obtain independent evidence for Arachne QIDI `LoopNode` payload/ranges, which ordinary G-code does not expose directly;
+2. obtain independent circle-compensation metadata/geometry evidence; the through-hole CLI fixture verifies hole wall geometry only, not QIDI compensation flags;
+3. independently validate final `fill_surfaces` / `fill_no_overlap`, including no-wall and mixed-spacing cases that are not directly observable from normal G-code;
+4. expand to additional pathological/production geometries and resolve every differential mismatch without weakening literal source quirks;
+5. only after those gates are green consider promoting the represented `process_arachne()` boundary as a whole to scoped `parity_verified`, then continue later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths and downstream product systems.
 
 ## Numeric/source invariants
 
 - slicer coordinates use `SCALING_FACTOR = 0.00001` mm (100000 source units/mm);
+- pinned `EPSILON = 1e-4` and `SCALED_EPSILON = 10` source units;
 - preserve source integer geometry until the source converts units;
 - preserve explicit/implicit `float` boundaries before geometry/config arithmetic;
 - preserve source `scaled<T>` truncation, `lrint`, round and cast boundaries rather than normalizing them;
