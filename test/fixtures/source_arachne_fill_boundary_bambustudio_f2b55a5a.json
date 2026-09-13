@@ -1,0 +1,107 @@
+{
+  "source_commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+  "upstream_actions_run": 34298498452,
+  "artifact_id": 10085378329,
+  "artifact_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+  "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+  "binary_version": "02.08.03.66",
+  "probe": {
+    "geometry": "20x20x0.6mm square prism",
+    "wall_generator": "arachne",
+    "layer_id": 1,
+    "layer_height_mm": 0.2,
+    "sparse_infill_density": "0%",
+    "detect_overhang_wall": false,
+    "infill_wall_overlap_percent": 15
+  },
+  "capture": {
+    "symbol": "Slic3r::PerimeterGenerator::add_infill_contour_for_arachne(std::vector<Slic3r::ExPolygon, std::allocator<Slic3r::ExPolygon> >, int, int, int, int, int, bool)",
+    "entry_vaddr": "0x1a63870",
+    "post_output_vaddr": "0x1a63d61",
+    "fill_surfaces_member_offset": "0xb0",
+    "fill_no_overlap_member_offset": "0xb8",
+    "surface_size_bytes": 120,
+    "expolygon_size_bytes": 56,
+    "normalization": "The compiled STL probe is plate-arranged. Differential checks compare output contour spans only, removing global XY translation. Integer spans use pinned SCALED_EPSILON=10 because the Dart fixture starts from an already-sliced 20mm square."
+  },
+  "oracles": {
+    "no_wall": {
+      "wall_loops": 0,
+      "outer_wall_width_source": 40000,
+      "inner_wall_width_source": 40000,
+      "helper_args": {
+        "loops": -1,
+        "external_spacing_source": 35707,
+        "perimeter_spacing_source": 35707,
+        "min_perimeter_infill_spacing_source": 21424,
+        "spacing_source": 35707,
+        "is_inner_part": false
+      },
+      "fill_surfaces": {
+        "count": 1,
+        "surface_type": 3,
+        "holes": 0,
+        "contour_points": 4,
+        "span_source": [1995708, 1995708]
+      },
+      "fill_no_overlap": {
+        "count": 1,
+        "holes": 0,
+        "contour_points": 4,
+        "span_source": [1995708, 1995708]
+      }
+    },
+    "one_wall_mixed_spacing": {
+      "wall_loops": 1,
+      "outer_wall_width_source": 42000,
+      "inner_wall_width_source": 45000,
+      "helper_args": {
+        "loops": 0,
+        "external_spacing_source": 37707,
+        "perimeter_spacing_source": 40707,
+        "min_perimeter_infill_spacing_source": 21424,
+        "spacing_source": 39207,
+        "is_inner_part": false
+      },
+      "fill_surfaces": {
+        "count": 1,
+        "surface_type": 3,
+        "holes": 0,
+        "contour_points": 4,
+        "span_source": [1931608, 1931608]
+      },
+      "fill_no_overlap": {
+        "count": 1,
+        "holes": 0,
+        "contour_points": 4,
+        "span_source": [1920296, 1920296]
+      }
+    },
+    "two_wall": {
+      "wall_loops": 2,
+      "outer_wall_width_source": 40000,
+      "inner_wall_width_source": 40000,
+      "helper_args": {
+        "loops": 1,
+        "external_spacing_source": 35707,
+        "perimeter_spacing_source": 35707,
+        "min_perimeter_infill_spacing_source": 21424,
+        "spacing_source": 35707,
+        "is_inner_part": false
+      },
+      "fill_surfaces": {
+        "count": 1,
+        "surface_type": 3,
+        "holes": 0,
+        "contour_points": 4,
+        "span_source": [1863594, 1863594]
+      },
+      "fill_no_overlap": {
+        "count": 1,
+        "holes": 0,
+        "contour_points": 4,
+        "span_source": [1852882, 1852882]
+      }
+    }
+  }
+}
