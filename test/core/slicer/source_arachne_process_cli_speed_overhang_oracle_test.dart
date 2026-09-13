@@ -118,16 +118,22 @@ void _expectPointListClose(
   required String reason,
 }) {
   expect(actual, hasLength(expected.length), reason: reason);
+
+  // The compiled oracle starts from STL slicing while this Dart fixture starts
+  // from the already-sliced source polygon. Keep roles and overhang degrees
+  // exact, but compare integer geometry within the pinned source
+  // SCALED_EPSILON (EPSILON=1e-4 / SCALING_FACTOR=1e-5 => 10 units).
+  final coordinateTolerance = Slic3rUnits.scaledEpsilon.toDouble();
   for (var index = 0; index < expected.length; index++) {
     final actualY = reflectY ? ySum - actual[index].y : actual[index].y;
     expect(
       actual[index].x,
-      closeTo(expected[index].x, 1),
+      closeTo(expected[index].x, coordinateTolerance),
       reason: '$reason x[$index]',
     );
     expect(
       actualY,
-      closeTo(expected[index].y, 1),
+      closeTo(expected[index].y, coordinateTolerance),
       reason: '$reason y[$index]',
     );
   }
