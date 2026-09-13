@@ -56,7 +56,7 @@ SourceArachneSurfaceProcessSettings2 _settings() =>
     );
 
 List<SourceArachneExtrusionLine2> _generatedLines(
-  SourceArachneProcessSurfaceResult2 result,
+  SourceArachneSurfaceProcessResult2 result,
 ) => [
       for (final inset in result.totalPerimeters)
         for (final line in inset)
