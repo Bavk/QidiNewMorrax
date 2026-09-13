@@ -7,6 +7,7 @@ import 'source_arachne_wall_tool_paths.dart';
 import 'source_arachne_wall_tool_paths_beading_inputs.dart';
 import 'source_arachne_wall_tool_paths_postprocess.dart';
 import 'source_arachne_wall_tool_paths_prepare.dart';
+import 'source_arachne_wall_tool_paths_prepare_exact.dart';
 
 class SourceArachneWallToolPathsGenerated2 {
   const SourceArachneWallToolPathsGenerated2({
@@ -47,7 +48,7 @@ class SourceArachneWallToolPathsGenerate2 {
       );
     }
 
-    final prepared = SourceArachneWallToolPathsPrepare2.prepare(
+    final prepared = SourceArachneWallToolPathsPrepareExact2.prepare(
       state,
       enableHoleCompensation: enableHoleCompensation,
       holeIndices: holeIndices,
