@@ -7,25 +7,62 @@ import '../geometry/source_polygon.dart';
 /// Exact numerical subset of the pinned Clipper 6.2.9 offsetter used by
 /// BambuStudio's `offset(Polygons, float, jtMiter, 3.)`.
 ///
-/// The final cleaned result is currently exact for one simple convex positive
-/// contour. The helper also exposes the exact pre-union closed-path
+/// The final cleaned result is exact for a standalone simple convex path,
+/// including the CW-path sign/orientation convention used by BambuStudio's
+/// `raw_offset()`. The helper also exposes the exact pre-union closed-path
 /// `ClipperOffset::DoOffset()` stage for positive-area contours, including the
 /// source `AddPath()` short-edge pruning and the concave triplets emitted by
-/// `OffsetPoint()`. The pinned boolean cleanup after that raw stage remains the
-/// next dependency before concave/hole/multi-path cases can replace the
-/// Clipper2 compatibility path.
+/// `OffsetPoint()`. The pinned boolean cleanup after that raw stage and the
+/// final multi-path union remain the next dependencies for general concave and
+/// multi-path parity.
 class SourceClipper1MiterOffset2 {
   const SourceClipper1MiterOffset2._();
 
   static const double miterLimit = 3.0;
   static const double shortestEdgeFactor = 0.005;
 
-  /// Whether the path can use the exact cleaned simple-convex subset.
+  /// Whether the positive-area path can use the historical cleaned convex
+  /// subset API retained for the existing Arachne exact adapter.
   static bool supports(SourcePolygon2 polygon, double delta) {
+    if (polygon.signedArea <= 0) return false;
+    return supportsConvexSourcePath(polygon, delta);
+  }
+
+  /// Whether one source path can execute the exact per-path BambuStudio
+  /// `raw_offset()` convex path, including CW reorientation/sign reversal.
+  static bool supportsConvexSourcePath(SourcePolygon2 polygon, double delta) {
     final points = _prepareClosedPath(polygon.points, delta);
-    return polygon.signedArea > 0 &&
-        points.length >= 3 &&
-        _isConvex(points);
+    return points.length >= 3 && _isConvex(points);
+  }
+
+  /// Exact cleaned offset for one convex path using the pinned wrapper order:
+  /// `AddPath()`, remember original orientation, `Execute(ccw ? offset :
+  /// -offset)`, then reverse the result back for an original CW path.
+  ///
+  /// `Execute()` internally reorients a standalone CW closed polygon to CCW
+  /// before `DoOffset()`. Positive execution deltas need no topology cleanup for
+  /// a convex path; negative execution deltas are the represented exact convex
+  /// erosion cleanup.
+  static SourcePolygon2 offsetConvexSourcePath(
+    SourcePolygon2 polygon,
+    double delta,
+  ) {
+    final prepared = _prepareClosedPath(polygon.points, delta);
+    if (prepared.length < 3 || !_isConvex(prepared)) {
+      throw ArgumentError('Pinned convex Clipper1 source-path subset does not apply');
+    }
+
+    // ClipperLib::Orientation(path) is `Area(path) >= 0` in the pinned source.
+    final ccw = polygon.signedArea >= 0;
+    final oriented = ccw
+        ? prepared
+        : List<SourcePoint2>.of(prepared.reversed, growable: false);
+    final executionDelta = _f32(ccw ? delta : -delta);
+    final result = _offsetPreparedConvex(oriented, executionDelta);
+    if (ccw || result.points.isEmpty) return result;
+    return SourcePolygon2(
+      List<SourcePoint2>.of(result.points.reversed, growable: false),
+    );
   }
 
   /// Whether a standalone positive-area closed path survives the exact pinned
@@ -54,46 +91,22 @@ class SourceClipper1MiterOffset2 {
     }
     if (delta == 0) return SourcePolygon2(points);
 
-    final sourceDelta = _f32(delta);
-    final normals = <_SourceClipperNormal2>[
-      for (var index = 0; index < points.length; index++)
-        _unitNormal(points[index], points[(index + 1) % points.length]),
-    ];
-    final output = <SourcePoint2>[];
-    for (var index = 0; index < points.length; index++) {
-      final previous = (index - 1 + points.length) % points.length;
-      _appendOffsetPoint(
-        output,
-        points[index],
-        normals[previous],
-        normals[index],
-        sourceDelta,
-      );
-    }
-    return SourcePolygon2(output);
+    return _rawOffsetPreparedPath(points, _f32(delta));
   }
 
-  /// Closed convex `ClipperOffset` result using the pinned Clipper1 double
-  /// normals and half-away-from-zero `Round()` semantics.
-  ///
-  /// Positive offsets use the literal raw `OffsetPoint()` output, which needs
-  /// no boolean topology cleanup for the represented convex subset. Negative
-  /// offsets make every convex vertex take Clipper1's concave-triplet branch;
-  /// the source negative-offset union resolves those triplets to the inward
-  /// shifted-line intersections. For one convex contour that cleanup is exactly
-  /// the intersection of the shifted edge half-planes, so it either yields one
-  /// mitered convex contour or no contour at all.
+  /// Historical positive-contour entry point used by the exact Arachne adapter.
   static SourcePolygon2 offset(SourcePolygon2 polygon, double delta) {
-    if (polygon.signedArea <= 0) {
+    if (!supports(polygon, delta)) {
       throw ArgumentError('Pinned convex Clipper1 miter subset does not apply');
     }
-    final points = _prepareClosedPath(polygon.points, delta);
-    if (points.length < 3 || !_isConvex(points)) {
-      throw ArgumentError('Pinned convex Clipper1 miter subset does not apply');
-    }
-    if (delta == 0) return SourcePolygon2(points);
+    return offsetConvexSourcePath(polygon, delta);
+  }
 
-    final sourceDelta = _f32(delta);
+  static SourcePolygon2 _offsetPreparedConvex(
+    List<SourcePoint2> points,
+    double sourceDelta,
+  ) {
+    if (sourceDelta == 0) return SourcePolygon2(points);
     if (sourceDelta > 0) {
       return _rawOffsetPreparedPath(points, sourceDelta);
     }
