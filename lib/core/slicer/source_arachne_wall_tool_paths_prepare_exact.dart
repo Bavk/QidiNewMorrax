@@ -3,13 +3,16 @@ import 'source_arachne_wall_tool_paths.dart';
 import 'source_arachne_wall_tool_paths_prepare.dart';
 import 'source_clipper1_miter_offset.dart';
 
-/// Source-order `WallToolPaths::generate()` preparation with the exact pinned
-/// Clipper1 numerical path for simple convex outlines.
+/// Source-order `WallToolPaths::generate()` preparation with the pinned
+/// Clipper1 numerical path wherever the represented per-path executor is exact.
 ///
-/// Concave/multi-polygon offset execution still delegates to the existing
-/// Clipper2 compatibility adapter and therefore remains an explicit differential
-/// validation seam. All post-offset cleanup stages are the direct ports already
-/// hosted by [SourceArachneWallToolPathsPrepare2].
+/// One positive convex contour is fully handled without Clipper2. Multiple
+/// convex paths, including CW holes, now use exact Clipper1 per-path
+/// `raw_offset()` arithmetic and cleanup; only the final cross-path NonZero
+/// union still delegates to the existing Clipper2 compatibility adapter.
+/// Concave per-path `Execute()` cleanup therefore remains an explicit
+/// differential validation seam. All post-offset cleanup stages are the direct
+/// ports already hosted by [SourceArachneWallToolPathsPrepare2].
 class SourceArachneWallToolPathsPrepareExact2 {
   const SourceArachneWallToolPathsPrepareExact2._();
 
@@ -99,14 +102,21 @@ class SourceArachneWallToolPathsPrepareExact2 {
     );
   }
 
-  /// Pinned Clipper1 miter arithmetic for the simple-convex subset, with the
-  /// legacy compatibility implementation retained for every case that needs
-  /// Clipper1 boolean cleanup or multi-path orientation handling.
+  /// Pinned Clipper1 miter arithmetic for represented convex source paths.
+  ///
+  /// - one positive convex contour returns the exact Clipper1 result directly;
+  /// - several convex paths (CCW contours and/or CW holes) execute exact
+  ///   per-path Clipper1 offset/sign/orientation semantics, then use Clipper2
+  ///   only for the still-open final `clipper_union(raw_offset(...))` seam;
+  /// - any concave path falls back to the prior compatibility implementation
+  ///   until Clipper1 `Execute()` boolean cleanup is ported.
   static List<SourcePolygon2> offsetPolygons(
     Iterable<SourcePolygon2> polygons,
     double delta,
   ) {
     final values = List<SourcePolygon2>.of(polygons);
+    if (values.isEmpty) return const <SourcePolygon2>[];
+
     if (values.length == 1 &&
         SourceClipper1MiterOffset2.supports(values.single, delta)) {
       final offset = SourceClipper1MiterOffset2.offset(values.single, delta);
@@ -115,6 +125,28 @@ class SourceArachneWallToolPathsPrepareExact2 {
       }
       return List.unmodifiable([offset]);
     }
+
+    if (values.length > 1 &&
+        values.every(
+          (polygon) => SourceClipper1MiterOffset2.supportsConvexSourcePath(
+            polygon,
+            delta,
+          ),
+        )) {
+      final perPath = <SourcePolygon2>[];
+      for (final polygon in values) {
+        final offset = SourceClipper1MiterOffset2.offsetConvexSourcePath(
+          polygon,
+          delta,
+        );
+        if (offset.points.length >= 3 && offset.signedArea != 0) {
+          perPath.add(offset);
+        }
+      }
+      if (perPath.isEmpty) return const <SourcePolygon2>[];
+      return SourceArachneWallToolPathsPrepare2.unionNonZero(perPath);
+    }
+
     return SourceArachneWallToolPathsPrepare2.offsetPolygons(values, delta);
   }
 }
