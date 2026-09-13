@@ -9,12 +9,13 @@ import '../geometry/source_polygon.dart';
 ///
 /// The final cleaned result is exact for a standalone simple convex path,
 /// including the CW-path sign/orientation convention used by BambuStudio's
-/// `raw_offset()`. The helper also exposes the exact pre-union closed-path
-/// `ClipperOffset::DoOffset()` stage for positive-area contours, including the
-/// source `AddPath()` short-edge pruning and the concave triplets emitted by
-/// `OffsetPoint()`. The pinned boolean cleanup after that raw stage and the
-/// final multi-path union remain the next dependencies for general concave and
-/// multi-path parity.
+/// `raw_offset()`. A second exact subset covers simple orthogonal concave
+/// positive contours when a conservative non-adjacent-edge clearance proves
+/// the offset cannot create a global topology interaction. The helper also
+/// exposes the exact pre-union closed-path `ClipperOffset::DoOffset()` stage,
+/// including source `AddPath()` short-edge pruning and concave triplets.
+/// General concave boolean cleanup and the final multi-path union remain the
+/// next dependencies.
 class SourceClipper1MiterOffset2 {
   const SourceClipper1MiterOffset2._();
 
@@ -33,6 +34,86 @@ class SourceClipper1MiterOffset2 {
   static bool supportsConvexSourcePath(SourcePolygon2 polygon, double delta) {
     final points = _prepareClosedPath(polygon.points, delta);
     return points.length >= 3 && _isConvex(points);
+  }
+
+  /// Whether a non-convex positive contour is inside the independently
+  /// validated simple-orthogonal `ClipperOffset::Execute()` subset.
+  ///
+  /// This is deliberately conservative. Every retained turn must be a strict
+  /// 90-degree turn and every pair of non-adjacent edges must remain separated
+  /// after both may move by the requested offset. If that proof fails, callers
+  /// must keep using the generic compatibility path until the full Clipper1
+  /// boolean executor is represented.
+  static bool supportsSimpleOrthogonalConcavePositiveContour(
+    SourcePolygon2 polygon,
+    double delta,
+  ) {
+    if (polygon.signedArea <= 0) return false;
+    final points = _prepareClosedPath(polygon.points, delta);
+    if (points.length < 4 || _isConvex(points)) return false;
+    if (!_isStrictSimpleOrthogonal(points)) return false;
+
+    final clearance = _minimumNonAdjacentEdgeDistance(points);
+    if (!clearance.isFinite || clearance <= 0) return false;
+    final sourceDelta = _f32(delta).abs();
+    // Each of two unrelated edges may move by |delta|. One extra source unit
+    // per edge keeps half-away integer rounding outside the accepted seam.
+    return clearance > sourceDelta * 2.0 + 2.0;
+  }
+
+  /// Exact `Slic3r::offset(Polygon,float,jtMiter,3.)` result for the validated
+  /// safe orthogonal concave positive-contour subset.
+  ///
+  /// Pinned compiled-binary oracles for an L-notch confirm both positive and
+  /// negative execution: the boolean union replaces each raw concave triplet
+  /// by the intersection of the two rounded shifted edge lines. The output
+  /// starts at Clipper1's stable rightmost/highest vertex for this subset.
+  static SourcePolygon2 offsetSimpleOrthogonalConcavePositiveContour(
+    SourcePolygon2 polygon,
+    double delta,
+  ) {
+    if (!supportsSimpleOrthogonalConcavePositiveContour(polygon, delta)) {
+      throw ArgumentError(
+        'Pinned safe orthogonal concave Clipper1 subset does not apply',
+      );
+    }
+    final points = _prepareClosedPath(polygon.points, delta);
+    final sourceDelta = _f32(delta);
+    final normals = <_SourceClipperNormal2>[
+      for (var index = 0; index < points.length; index++)
+        _unitNormal(points[index], points[(index + 1) % points.length]),
+    ];
+    final output = <SourcePoint2>[];
+
+    for (var index = 0; index < points.length; index++) {
+      final previousIndex = (index - 1 + points.length) % points.length;
+      final previousNormal = normals[previousIndex];
+      final currentNormal = normals[index];
+      final point = points[index];
+      final previousShift = SourcePoint2(
+        _clipperRound(point.x + previousNormal.x * sourceDelta),
+        _clipperRound(point.y + previousNormal.y * sourceDelta),
+      );
+      final currentShift = SourcePoint2(
+        _clipperRound(point.x + currentNormal.x * sourceDelta),
+        _clipperRound(point.y + currentNormal.y * sourceDelta),
+      );
+      final previousPoint = points[previousIndex];
+      final nextPoint = points[(index + 1) % points.length];
+      final previousHorizontal = previousPoint.y == point.y;
+      final currentHorizontal = point.y == nextPoint.y;
+
+      if (previousHorizontal == currentHorizontal) {
+        throw StateError('Validated orthogonal turn unexpectedly became collinear');
+      }
+      output.add(
+        previousHorizontal
+            ? SourcePoint2(currentShift.x, previousShift.y)
+            : SourcePoint2(previousShift.x, currentShift.y),
+      );
+    }
+
+    return SourcePolygon2(_rotateToClipperStart(output));
   }
 
   /// Exact cleaned offset for one convex path using the pinned wrapper order:
@@ -80,7 +161,7 @@ class SourceClipper1MiterOffset2 {
   /// For concave vertices this intentionally returns the three source points
   /// (previous shifted point, original vertex, current shifted point). Pinned
   /// `Execute()` subsequently unions these raw polygons with positive/negative
-  /// fill semantics; that cleanup is not approximated here.
+  /// fill semantics; that generic cleanup is not approximated here.
   static SourcePolygon2 rawOffsetPath(SourcePolygon2 polygon, double delta) {
     if (polygon.signedArea <= 0) {
       throw ArgumentError('Pinned raw Clipper1 closed-path subset does not apply');
@@ -313,6 +394,70 @@ class SourceClipper1MiterOffset2 {
       }
     }
     return true;
+  }
+
+  static bool _isStrictSimpleOrthogonal(List<SourcePoint2> points) {
+    for (var index = 0; index < points.length; index++) {
+      final previous = points[(index - 1 + points.length) % points.length];
+      final point = points[index];
+      final next = points[(index + 1) % points.length];
+      final previousHorizontal = previous.y == point.y && previous.x != point.x;
+      final previousVertical = previous.x == point.x && previous.y != point.y;
+      final currentHorizontal = point.y == next.y && point.x != next.x;
+      final currentVertical = point.x == next.x && point.y != next.y;
+      if (!(previousHorizontal || previousVertical) ||
+          !(currentHorizontal || currentVertical) ||
+          previousHorizontal == currentHorizontal) {
+        return false;
+      }
+    }
+    return _minimumNonAdjacentEdgeDistance(points) > 0;
+  }
+
+  static double _minimumNonAdjacentEdgeDistance(List<SourcePoint2> points) {
+    var minimumSquared = double.infinity;
+    final count = points.length;
+    for (var first = 0; first < count; first++) {
+      final firstNext = (first + 1) % count;
+      final a0 = points[first];
+      final a1 = points[firstNext];
+      for (var second = first + 1; second < count; second++) {
+        final secondNext = (second + 1) % count;
+        if (second == firstNext || secondNext == first) continue;
+        final b0 = points[second];
+        final b1 = points[secondNext];
+        final minAx = math.min(a0.x, a1.x).toDouble();
+        final maxAx = math.max(a0.x, a1.x).toDouble();
+        final minAy = math.min(a0.y, a1.y).toDouble();
+        final maxAy = math.max(a0.y, a1.y).toDouble();
+        final minBx = math.min(b0.x, b1.x).toDouble();
+        final maxBx = math.max(b0.x, b1.x).toDouble();
+        final minBy = math.min(b0.y, b1.y).toDouble();
+        final maxBy = math.max(b0.y, b1.y).toDouble();
+        final gapX = math.max(0.0, math.max(minAx, minBx) - math.min(maxAx, maxBx));
+        final gapY = math.max(0.0, math.max(minAy, minBy) - math.min(maxAy, maxBy));
+        final squared = gapX * gapX + gapY * gapY;
+        minimumSquared = math.min(minimumSquared, squared);
+      }
+    }
+    return math.sqrt(minimumSquared);
+  }
+
+  static List<SourcePoint2> _rotateToClipperStart(List<SourcePoint2> points) {
+    if (points.isEmpty) return const <SourcePoint2>[];
+    var start = 0;
+    for (var index = 1; index < points.length; index++) {
+      final point = points[index];
+      final best = points[start];
+      if (point.x > best.x || (point.x == best.x && point.y > best.y)) {
+        start = index;
+      }
+    }
+    return List<SourcePoint2>.generate(
+      points.length,
+      (index) => points[(start + index) % points.length],
+      growable: false,
+    );
   }
 
   static void _appendSquare(
