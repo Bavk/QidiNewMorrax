@@ -19,9 +19,8 @@ class SourceClipper1MiterOffset2 {
   static const double shortestEdgeFactor = 0.005;
 
   /// Whether the path can use the exact simple-convex arithmetic subset. The
-  /// source sets `ShortestEdgeLength` to `abs(delta * 0.005f)`; paths at/below
-  /// that seam deliberately stay on the compatibility fallback until
-  /// `ClipperOffset::AddPath` is fully ported.
+  /// source sets `ShortestEdgeLength` to `abs(delta * 0.005f)` and `AddPath()`
+  /// drops edges strictly shorter than that threshold.
   static bool supports(SourcePolygon2 polygon, double delta) {
     final points = _withoutClosingDuplicate(polygon.points);
     if (points.length < 3) return false;
@@ -38,7 +37,7 @@ class SourceClipper1MiterOffset2 {
       final b = points[(index + 1) % points.length];
       final dx = (b.x - a.x).toDouble();
       final dy = (b.y - a.y).toDouble();
-      if (dx * dx + dy * dy <= shortestSquared) return false;
+      if (dx * dx + dy * dy < shortestSquared) return false;
     }
     return true;
   }
@@ -179,17 +178,19 @@ class SourceClipper1MiterOffset2 {
   ) {
     final dot = previous.x * current.x + previous.y * current.y;
     final dx = math.tan(math.atan2(sinA, dot) / 4.0);
+    // Literal Clipper1 6.2.9 `DoSquare()` signs. These are intentionally not
+    // the Clipper2 square-join construction.
     output
       ..add(
         SourcePoint2(
-          _clipperRound(point.x + delta * (previous.x + previous.y * dx)),
-          _clipperRound(point.y + delta * (previous.y - previous.x * dx)),
+          _clipperRound(point.x + delta * (previous.x - previous.y * dx)),
+          _clipperRound(point.y + delta * (previous.y + previous.x * dx)),
         ),
       )
       ..add(
         SourcePoint2(
-          _clipperRound(point.x + delta * (current.x - current.y * dx)),
-          _clipperRound(point.y + delta * (current.y + current.x * dx)),
+          _clipperRound(point.x + delta * (current.x + current.y * dx)),
+          _clipperRound(point.y + delta * (current.y - current.x * dx)),
         ),
       );
   }
