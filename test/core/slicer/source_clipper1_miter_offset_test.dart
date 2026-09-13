@@ -10,6 +10,13 @@ SourcePolygon2 _square(int size) => SourcePolygon2([
       SourcePoint2(0, size),
     ]);
 
+SourcePolygon2 _clockwiseSquare(int size) => SourcePolygon2([
+      const SourcePoint2(0, 0),
+      SourcePoint2(0, size),
+      SourcePoint2(size, size),
+      SourcePoint2(size, 0),
+    ]);
+
 void main() {
   test('Clipper1 convex square expansion keeps half-away source corners', () {
     final result = SourceClipper1MiterOffset2.offset(_square(1000000), 10000);
@@ -141,6 +148,47 @@ void main() {
         SourcePoint2(-10000, 110000),
       ],
     );
+  });
+
+  test('Clipper1 raw_offset positive delta shrinks a convex CW hole', () {
+    final hole = _clockwiseSquare(100000);
+    expect(hole.signedArea, lessThan(0));
+    expect(SourceClipper1MiterOffset2.supports(hole, 10000), isFalse);
+    expect(
+      SourceClipper1MiterOffset2.supportsConvexSourcePath(hole, 10000),
+      isTrue,
+    );
+
+    final result =
+        SourceClipper1MiterOffset2.offsetConvexSourcePath(hole, 10000);
+    expect(
+      result.points,
+      const [
+        SourcePoint2(10000, 10000),
+        SourcePoint2(10000, 90000),
+        SourcePoint2(90000, 90000),
+        SourcePoint2(90000, 10000),
+      ],
+    );
+    expect(result.signedArea, lessThan(0));
+  });
+
+  test('Clipper1 raw_offset negative delta expands a convex CW hole', () {
+    final result = SourceClipper1MiterOffset2.offsetConvexSourcePath(
+      _clockwiseSquare(100000),
+      -10000,
+    );
+
+    expect(
+      result.points,
+      const [
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(-10000, 110000),
+        SourcePoint2(110000, 110000),
+        SourcePoint2(110000, -10000),
+      ],
+    );
+    expect(result.signedArea, lessThan(0));
   });
 
   test('raw negative convex stage preserves source concave triplets', () {
