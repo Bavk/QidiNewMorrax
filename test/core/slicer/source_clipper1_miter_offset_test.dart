@@ -25,6 +25,25 @@ void main() {
     );
   });
 
+  test('Clipper1 sharp convex corner uses pinned DoSquare signs', () {
+    final sharp = SourcePolygon2(const [
+      SourcePoint2(0, 0),
+      SourcePoint2(1000000, 0),
+      SourcePoint2(1000000, 100000),
+    ]);
+
+    final result = SourceClipper1MiterOffset2.offset(sharp, 10000);
+    expect(
+      result.points,
+      const [
+        SourcePoint2(-10461, 9004),
+        SourcePoint2(-9514, -10000),
+        SourcePoint2(1010000, -10000),
+        SourcePoint2(1010000, 111050),
+      ],
+    );
+  });
+
   test('Clipper1 convex erosion intersects inward shifted half-planes', () {
     final result = SourceClipper1MiterOffset2.offset(_square(1000000), -10000);
 
