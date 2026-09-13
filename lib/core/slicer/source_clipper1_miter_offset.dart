@@ -7,27 +7,142 @@ import '../geometry/source_polygon.dart';
 /// Exact numerical subset of the pinned Clipper 6.2.9 offsetter used by
 /// BambuStudio's `offset(Polygons, float, jtMiter, 3.)`.
 ///
-/// This helper intentionally handles only a single simple convex positive
-/// contour. That subset is enough to avoid Clipper2 rounding drift on ordinary
-/// convex Arachne outlines while leaving holes, concave/multi-path boolean
-/// cleanup and other orientation cases to the existing compatibility path until
-/// the complete Clipper1 offset executor is ported.
+/// The final cleaned result is currently exact for one simple convex positive
+/// contour. The helper also exposes the exact pre-union closed-path
+/// `ClipperOffset::DoOffset()` stage for positive-area contours, including the
+/// concave triplets emitted by `OffsetPoint()`. That raw stage is the next
+/// dependency needed before the pinned Clipper1 boolean cleanup can replace the
+/// remaining Clipper2 compatibility path for concave/hole/multi-path cases.
 class SourceClipper1MiterOffset2 {
   const SourceClipper1MiterOffset2._();
 
   static const double miterLimit = 3.0;
   static const double shortestEdgeFactor = 0.005;
 
-  /// Whether the path can use the exact simple-convex arithmetic subset. The
-  /// source sets `ShortestEdgeLength` to `abs(delta * 0.005f)` and `AddPath()`
-  /// drops edges strictly shorter than that threshold.
+  /// Whether the path can use the exact cleaned simple-convex subset.
   static bool supports(SourcePolygon2 polygon, double delta) {
     final points = _withoutClosingDuplicate(polygon.points);
+    return _supportsRawClosedPath(polygon, points, delta) && _isConvex(points);
+  }
+
+  /// Whether the single positive-area closed path can execute the exact raw
+  /// Clipper1 `DoOffset()` arithmetic without needing the still-open AddPath
+  /// shortest-edge pruning port.
+  ///
+  /// Pinned `ClipperOffset::AddPath()` sets `ShortestEdgeLength` to
+  /// `abs(delta * 0.005f)` and drops edges strictly shorter than that value.
+  /// Until that point-pruning loop is ported literally, this raw executor is
+  /// deliberately limited to paths on which the source would keep every edge.
+  static bool supportsRawClosedPath(SourcePolygon2 polygon, double delta) {
+    final points = _withoutClosingDuplicate(polygon.points);
+    return _supportsRawClosedPath(polygon, points, delta);
+  }
+
+  /// Exact pre-union `ClipperOffset::DoOffset()` result for one kept closed
+  /// positive-area path using pinned jtMiter, miter limit 3, double normals and
+  /// half-away-from-zero `Round()` semantics.
+  ///
+  /// For concave vertices this intentionally returns the three source points
+  /// (previous shifted point, original vertex, current shifted point). Pinned
+  /// `Execute()` subsequently unions these raw polygons with positive/negative
+  /// fill semantics; that cleanup is not approximated here.
+  static SourcePolygon2 rawOffsetPath(SourcePolygon2 polygon, double delta) {
+    final points = _withoutClosingDuplicate(polygon.points);
+    if (!_supportsRawClosedPath(polygon, points, delta)) {
+      throw ArgumentError('Pinned raw Clipper1 closed-path subset does not apply');
+    }
+    if (delta == 0) return SourcePolygon2(points);
+
+    final sourceDelta = _f32(delta);
+    final normals = <_SourceClipperNormal2>[
+      for (var index = 0; index < points.length; index++)
+        _unitNormal(points[index], points[(index + 1) % points.length]),
+    ];
+    final output = <SourcePoint2>[];
+    for (var index = 0; index < points.length; index++) {
+      final previous = (index - 1 + points.length) % points.length;
+      _appendOffsetPoint(
+        output,
+        points[index],
+        normals[previous],
+        normals[index],
+        sourceDelta,
+      );
+    }
+    return SourcePolygon2(output);
+  }
+
+  /// Closed convex `ClipperOffset` result using the pinned Clipper1 double
+  /// normals and half-away-from-zero `Round()` semantics.
+  ///
+  /// Positive offsets use the literal raw `OffsetPoint()` output, which needs
+  /// no boolean topology cleanup for the represented convex subset. Negative
+  /// offsets make every convex vertex take Clipper1's concave-triplet branch;
+  /// the source negative-offset union resolves those triplets to the inward
+  /// shifted-line intersections. For one convex contour that cleanup is exactly
+  /// the intersection of the shifted edge half-planes, so it either yields one
+  /// mitered convex contour or no contour at all.
+  static SourcePolygon2 offset(SourcePolygon2 polygon, double delta) {
+    final points = _withoutClosingDuplicate(polygon.points);
+    if (!supports(polygon, delta)) {
+      throw ArgumentError('Pinned convex Clipper1 miter subset does not apply');
+    }
+    if (delta == 0) return SourcePolygon2(points);
+
+    final sourceDelta = _f32(delta);
+    if (sourceDelta > 0) {
+      return rawOffsetPath(polygon, sourceDelta);
+    }
+
+    final normals = <_SourceClipperNormal2>[
+      for (var index = 0; index < points.length; index++)
+        _unitNormal(points[index], points[(index + 1) % points.length]),
+    ];
+    final output = <SourcePoint2>[];
+
+    for (var index = 0; index < points.length; index++) {
+      final previous = (index - 1 + points.length) % points.length;
+      final normalPrevious = normals[previous];
+      final normalCurrent = normals[index];
+      final dot = normalPrevious.x * normalCurrent.x +
+          normalPrevious.y * normalCurrent.y;
+      final r = 1.0 + dot;
+
+      // The source first emits the two shifted edge points plus the original
+      // vertex, then its negative-offset union resolves the convex triplets to
+      // the adjacent shifted-line intersection. A non-positive `r` is the
+      // degenerate 180-degree seam and cannot leave a convex erosion.
+      if (r <= 0) return SourcePolygon2(const <SourcePoint2>[]);
+      _appendMiter(
+        output,
+        points[index],
+        normalPrevious,
+        normalCurrent,
+        sourceDelta,
+        r,
+      );
+    }
+
+    if (!_insideEveryShiftedHalfPlane(
+      points,
+      normals,
+      sourceDelta,
+      output,
+    )) {
+      return SourcePolygon2(const <SourcePoint2>[]);
+    }
+    return SourcePolygon2(output);
+  }
+
+  static bool _supportsRawClosedPath(
+    SourcePolygon2 polygon,
+    List<SourcePoint2> points,
+    double delta,
+  ) {
     if (points.length < 3) return false;
-    // Single clockwise paths have Clipper1 orientation/fill semantics that
-    // belong to the full executor; do not approximate them here.
+    // Multi-path FixOrientations is not represented here. A standalone positive
+    // contour is the source orientation used by the current Arachne caller.
     if (polygon.signedArea <= 0) return false;
-    if (!_isConvex(points)) return false;
 
     final sourceDelta = _f32(delta);
     final shortest = _f32(sourceDelta * _f32(shortestEdgeFactor)).abs();
@@ -42,85 +157,63 @@ class SourceClipper1MiterOffset2 {
     return true;
   }
 
-  /// Closed convex `ClipperOffset` result using the pinned Clipper1 double
-  /// normals and half-away-from-zero `Round()` semantics.
-  ///
-  /// Positive offsets execute the source jtMiter/jtSquare branch directly.
-  /// Negative offsets hit Clipper1's concave-triplet branch at every convex
-  /// vertex and are then resolved by the source negative-offset union. For a
-  /// single convex contour that cleanup is exactly the intersection of the
-  /// inward-shifted edge half-planes, so it either yields one mitered convex
-  /// contour or no contour at all.
-  static SourcePolygon2 offset(SourcePolygon2 polygon, double delta) {
-    final points = _withoutClosingDuplicate(polygon.points);
-    if (!supports(polygon, delta)) {
-      throw ArgumentError('Pinned convex Clipper1 miter subset does not apply');
-    }
-    if (delta == 0) return SourcePolygon2(points);
+  static void _appendOffsetPoint(
+    List<SourcePoint2> output,
+    SourcePoint2 point,
+    _SourceClipperNormal2 previous,
+    _SourceClipperNormal2 current,
+    double delta,
+  ) {
+    var sinA = previous.x * current.y - current.x * previous.y;
 
-    final sourceDelta = _f32(delta);
-    final normals = <_SourceClipperNormal2>[
-      for (var index = 0; index < points.length; index++)
-        _unitNormal(points[index], points[(index + 1) % points.length]),
-    ];
-    final miterLimitThreshold = 2.0 / (miterLimit * miterLimit);
-    final output = <SourcePoint2>[];
-
-    for (var index = 0; index < points.length; index++) {
-      final previous = (index - 1 + points.length) % points.length;
-      final normalPrevious = normals[previous];
-      final normalCurrent = normals[index];
-      final sinA = normalPrevious.x * normalCurrent.y -
-          normalCurrent.x * normalPrevious.y;
-      final dot = normalPrevious.x * normalCurrent.x +
-          normalPrevious.y * normalCurrent.y;
-      final r = 1.0 + dot;
-
-      if (sourceDelta < 0) {
-        // The source first emits the two shifted edge points plus the original
-        // vertex, then its negative-offset union resolves the convex triplets
-        // to the adjacent shifted-line intersection. A non-positive `r` is the
-        // degenerate 180-degree seam and cannot leave a convex erosion.
-        if (r <= 0) return SourcePolygon2(const <SourcePoint2>[]);
-        _appendMiter(
-          output,
-          points[index],
-          normalPrevious,
-          normalCurrent,
-          sourceDelta,
-          r,
+    // Literal Clipper1 `OffsetPoint()` near-collinear branch. When the turn is
+    // below one offset coordinate unit it keeps the previous shifted point and
+    // returns before the concave/miter/square branches.
+    if ((sinA * delta).abs() < 1.0) {
+      final cosA = previous.x * current.x + current.y * previous.y;
+      if (cosA > 0) {
+        output.add(
+          SourcePoint2(
+            _clipperRound(point.x + previous.x * delta),
+            _clipperRound(point.y + previous.y * delta),
+          ),
         );
-      } else if (r >= miterLimitThreshold) {
-        _appendMiter(
-          output,
-          points[index],
-          normalPrevious,
-          normalCurrent,
-          sourceDelta,
-          r,
-        );
-      } else {
-        _appendSquare(
-          output,
-          points[index],
-          normalPrevious,
-          normalCurrent,
-          sinA,
-          sourceDelta,
-        );
+        return;
       }
+      // Otherwise source treats the turn as approximately 180 degrees and
+      // continues into the normal branch selection below.
+    } else if (sinA > 1.0) {
+      sinA = 1.0;
+    } else if (sinA < -1.0) {
+      sinA = -1.0;
     }
 
-    if (sourceDelta < 0 &&
-        !_insideEveryShiftedHalfPlane(
-          points,
-          normals,
-          sourceDelta,
-          output,
-        )) {
-      return SourcePolygon2(const <SourcePoint2>[]);
+    if (sinA * delta < 0) {
+      output
+        ..add(
+          SourcePoint2(
+            _clipperRound(point.x + previous.x * delta),
+            _clipperRound(point.y + previous.y * delta),
+          ),
+        )
+        ..add(point)
+        ..add(
+          SourcePoint2(
+            _clipperRound(point.x + current.x * delta),
+            _clipperRound(point.y + current.y * delta),
+          ),
+        );
+      return;
     }
-    return SourcePolygon2(output);
+
+    final dot = current.x * previous.x + current.y * previous.y;
+    final r = 1.0 + dot;
+    final miterLimitThreshold = 2.0 / (miterLimit * miterLimit);
+    if (r >= miterLimitThreshold) {
+      _appendMiter(output, point, previous, current, delta, r);
+    } else {
+      _appendSquare(output, point, previous, current, sinA, delta);
+    }
   }
 
   static void _appendMiter(
