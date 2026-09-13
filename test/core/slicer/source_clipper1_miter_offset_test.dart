@@ -78,6 +78,71 @@ void main() {
     );
   });
 
+  test('Clipper1 AddPath prunes point strictly inside shortest-edge seam', () {
+    final withShortEdge = SourcePolygon2(const [
+      SourcePoint2(0, 0),
+      SourcePoint2(49, 0),
+      SourcePoint2(100000, 0),
+      SourcePoint2(100000, 100000),
+      SourcePoint2(0, 100000),
+    ]);
+
+    final raw = SourceClipper1MiterOffset2.rawOffsetPath(withShortEdge, 10000);
+    expect(
+      raw.points,
+      const [
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(110000, -10000),
+        SourcePoint2(110000, 110000),
+        SourcePoint2(-10000, 110000),
+      ],
+    );
+  });
+
+  test('Clipper1 AddPath keeps point exactly at shortest-edge seam', () {
+    final atBoundary = SourcePolygon2(const [
+      SourcePoint2(0, 0),
+      SourcePoint2(50, 0),
+      SourcePoint2(100000, 0),
+      SourcePoint2(100000, 100000),
+      SourcePoint2(0, 100000),
+    ]);
+
+    final raw = SourceClipper1MiterOffset2.rawOffsetPath(atBoundary, 10000);
+    expect(
+      raw.points,
+      const [
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(50, -10000),
+        SourcePoint2(110000, -10000),
+        SourcePoint2(110000, 110000),
+        SourcePoint2(-10000, 110000),
+      ],
+    );
+  });
+
+  test('Clipper1 AddPath prunes trailing point near the first point', () {
+    final trailingNearFirst = SourcePolygon2(const [
+      SourcePoint2(0, 0),
+      SourcePoint2(100000, 0),
+      SourcePoint2(100000, 100000),
+      SourcePoint2(0, 100000),
+      SourcePoint2(0, 49),
+    ]);
+
+    final raw =
+        SourceClipper1MiterOffset2.rawOffsetPath(trailingNearFirst, 10000);
+    expect(
+      raw.points,
+      const [
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(110000, -10000),
+        SourcePoint2(110000, 110000),
+        SourcePoint2(-10000, 110000),
+      ],
+    );
+  });
+
   test('raw negative convex stage preserves source concave triplets', () {
     final raw = SourceClipper1MiterOffset2.rawOffsetPath(
       _square(100000),
