@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "bambulab/BambuStudio",
+    "commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+    "workflow_run": 34298498452,
+    "artifact_id": 10085378329,
+    "artifact_name": "BambuStudio_ubuntu-24.04_V02.08.03.66",
+    "artifact_zip_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+    "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+    "cli_version": "02.08.03.66"
+  },
+  "probe": {
+    "model": "three-layer stepped solid: lower footprint x=0..20,y=0..20,z=0..0.2; upper body x=5..25,y=0..20,z=0.2..0.6",
+    "model_sha256": "daa0fff136c0fe73c1056b09aa7add4435fadac2f434272b1fa27b8b1309b14f",
+    "process_settings_sha256": "b0e9e7ce2d80162f4b63a555d108e20cd6fb51bf777c3c9b87df589d4d3061ef",
+    "compiled_gcode_sha256": "fe945cb996d03aaa2db9d14c2b99a8b48ec14ba35868340bd44abf46bff9bb7b",
+    "canonical_first_six_wall_blocks_sha256": "a46847726a847a19c85786ba7cdc25d98bc6cb8a0f96591565103451bfb41bc7",
+    "machine_profile": "Bambu Lab X1 Carbon 0.4 nozzle",
+    "filament_profile": "Bambu PLA Basic @BBL X1C",
+    "base_process_profile": "0.20mm Standard @BBL X1C",
+    "enable_overhang_speed": true,
+    "wall_generator": "arachne",
+    "wall_loops": 2,
+    "line_width_mm": 0.4,
+    "layer_height_mm": 0.2,
+    "slicedata_export_available": false
+  },
+  "source_degree_contract": {
+    "sampling_interval_mm": 2.0,
+    "min_degree_gap": 0.25,
+    "non_uniform_degree_map_percent": [0, 10, 25, 50, 75, 100],
+    "supported_degree_min": 0.0,
+    "supported_degree_max": 5.0,
+    "bent_unsupported_degree": 5.0
+  },
+  "gcode_serialization_tolerance_mm": 0.00051,
+  "oracle": {
+    "layer_index": 1,
+    "z_height_mm": 0.4,
+    "grown_lower_support_edge_model_x_mm": 20.2,
+    "comparison_window_min_model_x_mm": 18.7,
+    "normalization": {
+      "compiled_cli_arrange_x_mm": 87.5,
+      "note": "Only global plate-arrange translation is removed. Feedrate F values are intentionally not part of this oracle."
+    },
+    "inner_wall": {
+      "bottom_supported_x_model_mm": [18.789, 19.189, 19.589, 19.621, 19.653, 19.686, 19.718, 19.75, 19.782, 19.814, 19.846, 19.879, 19.911, 19.943, 19.975, 20.007, 20.039, 20.071, 20.104, 20.136, 20.168, 20.2],
+      "top_supported_x_model_mm": [18.7, 18.8, 18.9, 19.0, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7, 19.8, 19.9, 20.0, 20.1, 20.2]
+    },
+    "outer_wall": {
+      "bottom_supported_x_model_mm": [19.25, 19.3, 19.35, 19.4, 19.45, 19.5, 19.55, 19.6, 19.65, 19.7, 19.75, 19.8, 19.85, 19.9, 19.95, 20.0, 20.05, 20.1, 20.15, 20.2],
+      "top_supported_x_model_mm": [18.7, 18.8, 18.9, 19.0, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7, 19.8, 19.9, 20.0, 20.1, 20.2]
+    }
+  }
+}
