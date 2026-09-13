@@ -10,9 +10,10 @@ import '../geometry/source_polygon.dart';
 /// The final cleaned result is currently exact for one simple convex positive
 /// contour. The helper also exposes the exact pre-union closed-path
 /// `ClipperOffset::DoOffset()` stage for positive-area contours, including the
-/// concave triplets emitted by `OffsetPoint()`. That raw stage is the next
-/// dependency needed before the pinned Clipper1 boolean cleanup can replace the
-/// remaining Clipper2 compatibility path for concave/hole/multi-path cases.
+/// source `AddPath()` short-edge pruning and the concave triplets emitted by
+/// `OffsetPoint()`. The pinned boolean cleanup after that raw stage remains the
+/// next dependency before concave/hole/multi-path cases can replace the
+/// Clipper2 compatibility path.
 class SourceClipper1MiterOffset2 {
   const SourceClipper1MiterOffset2._();
 
@@ -21,35 +22,35 @@ class SourceClipper1MiterOffset2 {
 
   /// Whether the path can use the exact cleaned simple-convex subset.
   static bool supports(SourcePolygon2 polygon, double delta) {
-    final points = _withoutClosingDuplicate(polygon.points);
-    return _supportsRawClosedPath(polygon, points, delta) && _isConvex(points);
+    final points = _prepareClosedPath(polygon.points, delta);
+    return polygon.signedArea > 0 &&
+        points.length >= 3 &&
+        _isConvex(points);
   }
 
-  /// Whether the single positive-area closed path can execute the exact raw
-  /// Clipper1 `DoOffset()` arithmetic without needing the still-open AddPath
-  /// shortest-edge pruning port.
-  ///
-  /// Pinned `ClipperOffset::AddPath()` sets `ShortestEdgeLength` to
-  /// `abs(delta * 0.005f)` and drops edges strictly shorter than that value.
-  /// Until that point-pruning loop is ported literally, this raw executor is
-  /// deliberately limited to paths on which the source would keep every edge.
+  /// Whether a standalone positive-area closed path survives the exact pinned
+  /// `ClipperOffset::AddPath()` input pruning and can execute the represented
+  /// raw `DoOffset()` arithmetic.
   static bool supportsRawClosedPath(SourcePolygon2 polygon, double delta) {
-    final points = _withoutClosingDuplicate(polygon.points);
-    return _supportsRawClosedPath(polygon, points, delta);
+    if (polygon.signedArea <= 0) return false;
+    return _prepareClosedPath(polygon.points, delta).length >= 3;
   }
 
-  /// Exact pre-union `ClipperOffset::DoOffset()` result for one kept closed
-  /// positive-area path using pinned jtMiter, miter limit 3, double normals and
-  /// half-away-from-zero `Round()` semantics.
+  /// Exact pre-union `ClipperOffset::DoOffset()` result for one positive-area
+  /// closed path using pinned jtMiter, miter limit 3, source `AddPath()` point
+  /// pruning, double normals and half-away-from-zero `Round()` semantics.
   ///
   /// For concave vertices this intentionally returns the three source points
   /// (previous shifted point, original vertex, current shifted point). Pinned
   /// `Execute()` subsequently unions these raw polygons with positive/negative
   /// fill semantics; that cleanup is not approximated here.
   static SourcePolygon2 rawOffsetPath(SourcePolygon2 polygon, double delta) {
-    final points = _withoutClosingDuplicate(polygon.points);
-    if (!_supportsRawClosedPath(polygon, points, delta)) {
+    if (polygon.signedArea <= 0) {
       throw ArgumentError('Pinned raw Clipper1 closed-path subset does not apply');
+    }
+    final points = _prepareClosedPath(polygon.points, delta);
+    if (points.length < 3) {
+      throw ArgumentError('Pinned raw Clipper1 closed path was pruned away');
     }
     if (delta == 0) return SourcePolygon2(points);
 
@@ -83,15 +84,18 @@ class SourceClipper1MiterOffset2 {
   /// the intersection of the shifted edge half-planes, so it either yields one
   /// mitered convex contour or no contour at all.
   static SourcePolygon2 offset(SourcePolygon2 polygon, double delta) {
-    final points = _withoutClosingDuplicate(polygon.points);
-    if (!supports(polygon, delta)) {
+    if (polygon.signedArea <= 0) {
+      throw ArgumentError('Pinned convex Clipper1 miter subset does not apply');
+    }
+    final points = _prepareClosedPath(polygon.points, delta);
+    if (points.length < 3 || !_isConvex(points)) {
       throw ArgumentError('Pinned convex Clipper1 miter subset does not apply');
     }
     if (delta == 0) return SourcePolygon2(points);
 
     final sourceDelta = _f32(delta);
     if (sourceDelta > 0) {
-      return rawOffsetPath(polygon, sourceDelta);
+      return _rawOffsetPreparedPath(points, sourceDelta);
     }
 
     final normals = <_SourceClipperNormal2>[
@@ -134,27 +138,64 @@ class SourceClipper1MiterOffset2 {
     return SourcePolygon2(output);
   }
 
-  static bool _supportsRawClosedPath(
-    SourcePolygon2 polygon,
+  static SourcePolygon2 _rawOffsetPreparedPath(
     List<SourcePoint2> points,
+    double sourceDelta,
+  ) {
+    final normals = <_SourceClipperNormal2>[
+      for (var index = 0; index < points.length; index++)
+        _unitNormal(points[index], points[(index + 1) % points.length]),
+    ];
+    final output = <SourcePoint2>[];
+    for (var index = 0; index < points.length; index++) {
+      final previous = (index - 1 + points.length) % points.length;
+      _appendOffsetPoint(
+        output,
+        points[index],
+        normals[previous],
+        normals[index],
+        sourceDelta,
+      );
+    }
+    return SourcePolygon2(output);
+  }
+
+  /// Literal closed-polygon point preparation from the pinned modified
+  /// `ClipperOffset::AddPath()`.
+  ///
+  /// `ShortestEdgeLength` is assigned from `abs(offset * 0.005f)`. For a closed
+  /// path source first removes trailing points strictly nearer than that value
+  /// to the first point, then walks forward and compares each candidate against
+  /// the last point actually retained. Equality is deliberately kept.
+  static List<SourcePoint2> _prepareClosedPath(
+    List<SourcePoint2> input,
     double delta,
   ) {
-    if (points.length < 3) return false;
-    // Multi-path FixOrientations is not represented here. A standalone positive
-    // contour is the source orientation used by the current Arachne caller.
-    if (polygon.signedArea <= 0) return false;
+    if (input.isEmpty) return const <SourcePoint2>[];
 
     final sourceDelta = _f32(delta);
     final shortest = _f32(sourceDelta * _f32(shortestEdgeFactor)).abs();
+    final hasShortest = shortest > 0.0;
     final shortestSquared = shortest * shortest;
-    for (var index = 0; index < points.length; index++) {
-      final a = points[index];
-      final b = points[(index + 1) % points.length];
-      final dx = (b.x - a.x).toDouble();
-      final dy = (b.y - a.y).toDouble();
-      if (dx * dx + dy * dy < shortestSquared) return false;
+
+    bool same(SourcePoint2 a, SourcePoint2 b) {
+      if (!hasShortest) return a == b;
+      final dx = (a.x - b.x).toDouble();
+      final dy = (a.y - b.y).toDouble();
+      return dx * dx + dy * dy < shortestSquared;
     }
-    return true;
+
+    var highIndex = input.length - 1;
+    while (highIndex > 0 && same(input[highIndex], input[0])) {
+      highIndex--;
+    }
+
+    final result = <SourcePoint2>[input[0]];
+    for (var index = 1; index <= highIndex; index++) {
+      if (same(input[index], result.last)) continue;
+      result.add(input[index]);
+    }
+    return result;
   }
 
   static void _appendOffsetPoint(
@@ -318,16 +359,6 @@ class SourceClipper1MiterOffset2 {
       }
     }
     return sign != 0;
-  }
-
-  static List<SourcePoint2> _withoutClosingDuplicate(List<SourcePoint2> input) {
-    if (input.isEmpty) return const <SourcePoint2>[];
-    final result = <SourcePoint2>[];
-    for (final point in input) {
-      if (result.isEmpty || result.last != point) result.add(point);
-    }
-    if (result.length > 1 && result.first == result.last) result.removeLast();
-    return result;
   }
 
   static int _clipperRound(double value) =>
