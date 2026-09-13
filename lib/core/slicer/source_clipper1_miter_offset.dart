@@ -43,13 +43,15 @@ class SourceClipper1MiterOffset2 {
     return true;
   }
 
-  /// Closed convex `ClipperOffset` miter result using the pinned Clipper1
-  /// double normals and half-away-from-zero `Round()` semantics.
+  /// Closed convex `ClipperOffset` result using the pinned Clipper1 double
+  /// normals and half-away-from-zero `Round()` semantics.
   ///
-  /// For a negative offset, the source's post-offset boolean cleanup removes
-  /// a contour once the inward shifted edge intersections invert its winding.
-  /// A convex erosion can only remain one convex contour or become empty, so
-  /// that cleanup is represented exactly by the winding-collapse gate below.
+  /// Positive offsets execute the source jtMiter/jtSquare branch directly.
+  /// Negative offsets hit Clipper1's concave-triplet branch at every convex
+  /// vertex and are then resolved by the source negative-offset union. For a
+  /// single convex contour that cleanup is exactly the intersection of the
+  /// inward-shifted edge half-planes, so it either yields one mitered convex
+  /// contour or no contour at all.
   static SourcePolygon2 offset(SourcePolygon2 polygon, double delta) {
     final points = _withoutClosingDuplicate(polygon.points);
     if (!supports(polygon, delta)) {
@@ -75,23 +77,28 @@ class SourceClipper1MiterOffset2 {
           normalPrevious.y * normalCurrent.y;
       final r = 1.0 + dot;
 
-      // A convex positive contour reaches the source jtMiter / jtSquare
-      // construction. For inward offsets, computing adjacent shifted-line
-      // intersections gives the same surviving convex contour; the boolean
-      // collapse case is handled after the loop.
-      if (r >= miterLimitThreshold) {
-        final q = sourceDelta / r;
-        output.add(
-          SourcePoint2(
-            _clipperRound(
-              points[index].x +
-                  (normalPrevious.x + normalCurrent.x) * q,
-            ),
-            _clipperRound(
-              points[index].y +
-                  (normalPrevious.y + normalCurrent.y) * q,
-            ),
-          ),
+      if (sourceDelta < 0) {
+        // The source first emits the two shifted edge points plus the original
+        // vertex, then its negative-offset union resolves the convex triplets
+        // to the adjacent shifted-line intersection. A non-positive `r` is the
+        // degenerate 180-degree seam and cannot leave a convex erosion.
+        if (r <= 0) return SourcePolygon2(const <SourcePoint2>[]);
+        _appendMiter(
+          output,
+          points[index],
+          normalPrevious,
+          normalCurrent,
+          sourceDelta,
+          r,
+        );
+      } else if (r >= miterLimitThreshold) {
+        _appendMiter(
+          output,
+          points[index],
+          normalPrevious,
+          normalCurrent,
+          sourceDelta,
+          r,
         );
       } else {
         _appendSquare(
@@ -105,11 +112,61 @@ class SourceClipper1MiterOffset2 {
       }
     }
 
-    final result = SourcePolygon2(output);
-    if (sourceDelta < 0 && result.signedArea <= 0) {
+    if (sourceDelta < 0 &&
+        !_insideEveryShiftedHalfPlane(
+          points,
+          normals,
+          sourceDelta,
+          output,
+        )) {
       return SourcePolygon2(const <SourcePoint2>[]);
     }
-    return result;
+    return SourcePolygon2(output);
+  }
+
+  static void _appendMiter(
+    List<SourcePoint2> output,
+    SourcePoint2 point,
+    _SourceClipperNormal2 previous,
+    _SourceClipperNormal2 current,
+    double delta,
+    double r,
+  ) {
+    final q = delta / r;
+    output.add(
+      SourcePoint2(
+        _clipperRound(point.x + (previous.x + current.x) * q),
+        _clipperRound(point.y + (previous.y + current.y) * q),
+      ),
+    );
+  }
+
+  static bool _insideEveryShiftedHalfPlane(
+    List<SourcePoint2> points,
+    List<_SourceClipperNormal2> normals,
+    double delta,
+    List<SourcePoint2> output,
+  ) {
+    // Clipper1 rounds each constructed offset vertex to coord_t before the
+    // boolean cleanup. Allow one source unit of perpendicular rounding drift;
+    // an exhausted erosion violates at least one shifted edge by the actual
+    // over-inset amount, not by this rounding quantum.
+    const perpendicularTolerance = 1.0;
+    for (final candidate in output) {
+      for (var index = 0; index < points.length; index++) {
+        final a = points[index];
+        final b = points[(index + 1) % points.length];
+        final edgeX = (b.x - a.x).toDouble();
+        final edgeY = (b.y - a.y).toDouble();
+        final edgeLength = math.sqrt(edgeX * edgeX + edgeY * edgeY);
+        final shiftedX = a.x + normals[index].x * delta;
+        final shiftedY = a.y + normals[index].y * delta;
+        final cross = edgeX * (candidate.y - shiftedY) -
+            edgeY * (candidate.x - shiftedX);
+        if (cross < -perpendicularTolerance * edgeLength) return false;
+      }
+    }
+    return true;
   }
 
   static void _appendSquare(
