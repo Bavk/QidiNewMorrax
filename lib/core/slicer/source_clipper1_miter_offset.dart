@@ -7,24 +7,27 @@ import '../geometry/source_polygon.dart';
 /// Exact numerical subset of the pinned Clipper 6.2.9 offsetter used by
 /// BambuStudio's `offset(Polygons, float, jtMiter, 3.)`.
 ///
-/// This helper intentionally handles only a single simple convex closed path.
-/// That subset is enough to avoid Clipper2 rounding drift on ordinary convex
-/// Arachne outlines while leaving concave/multi-path boolean cleanup to the
-/// existing compatibility path until the complete Clipper1 offset executor is
-/// ported.
+/// This helper intentionally handles only a single simple convex positive
+/// contour. That subset is enough to avoid Clipper2 rounding drift on ordinary
+/// convex Arachne outlines while leaving holes, concave/multi-path boolean
+/// cleanup and other orientation cases to the existing compatibility path until
+/// the complete Clipper1 offset executor is ported.
 class SourceClipper1MiterOffset2 {
   const SourceClipper1MiterOffset2._();
 
   static const double miterLimit = 3.0;
   static const double shortestEdgeFactor = 0.005;
 
-  /// Whether the path can be offset without invoking Clipper1's post-offset
-  /// boolean cleanup. The source sets `ShortestEdgeLength` to
-  /// `abs(delta * 0.005f)`; paths at/below that seam deliberately stay on the
-  /// compatibility fallback until `ClipperOffset::AddPath` is fully ported.
+  /// Whether the path can use the exact simple-convex arithmetic subset. The
+  /// source sets `ShortestEdgeLength` to `abs(delta * 0.005f)`; paths at/below
+  /// that seam deliberately stay on the compatibility fallback until
+  /// `ClipperOffset::AddPath` is fully ported.
   static bool supports(SourcePolygon2 polygon, double delta) {
     final points = _withoutClosingDuplicate(polygon.points);
     if (points.length < 3) return false;
+    // Single clockwise paths have Clipper1 orientation/fill semantics that
+    // belong to the full executor; do not approximate them here.
+    if (polygon.signedArea <= 0) return false;
     if (!_isConvex(points)) return false;
 
     final sourceDelta = _f32(delta);
@@ -42,6 +45,11 @@ class SourceClipper1MiterOffset2 {
 
   /// Closed convex `ClipperOffset` miter result using the pinned Clipper1
   /// double normals and half-away-from-zero `Round()` semantics.
+  ///
+  /// For a negative offset, the source's post-offset boolean cleanup removes
+  /// a contour once the inward shifted edge intersections invert its winding.
+  /// A convex erosion can only remain one convex contour or become empty, so
+  /// that cleanup is represented exactly by the winding-collapse gate below.
   static SourcePolygon2 offset(SourcePolygon2 polygon, double delta) {
     final points = _withoutClosingDuplicate(polygon.points);
     if (!supports(polygon, delta)) {
@@ -67,12 +75,10 @@ class SourceClipper1MiterOffset2 {
           normalPrevious.y * normalCurrent.y;
       final r = 1.0 + dot;
 
-      // A convex polygon reaches the source jtMiter / jtSquare branch for an
-      // outward offset. For an inward offset Clipper1 emits a concave triplet
-      // and its Execute() boolean pass resolves it to the same two-line
-      // intersection. Computing that intersection directly keeps the exact
-      // Clipper1 normal/rounding arithmetic without introducing Clipper2's
-      // different offset construction.
+      // A convex positive contour reaches the source jtMiter / jtSquare
+      // construction. For inward offsets, computing adjacent shifted-line
+      // intersections gives the same surviving convex contour; the boolean
+      // collapse case is handled after the loop.
       if (r >= miterLimitThreshold) {
         final q = sourceDelta / r;
         output.add(
@@ -99,7 +105,11 @@ class SourceClipper1MiterOffset2 {
       }
     }
 
-    return SourcePolygon2(output);
+    final result = SourcePolygon2(output);
+    if (sourceDelta < 0 && result.signedArea <= 0) {
+      return SourcePolygon2(const <SourcePoint2>[]);
+    }
+    return result;
   }
 
   static void _appendSquare(
@@ -127,7 +137,10 @@ class SourceClipper1MiterOffset2 {
       );
   }
 
-  static _SourceClipperNormal2 _unitNormal(SourcePoint2 first, SourcePoint2 second) {
+  static _SourceClipperNormal2 _unitNormal(
+    SourcePoint2 first,
+    SourcePoint2 second,
+  ) {
     var dx = (second.x - first.x).toDouble();
     var dy = (second.y - first.y).toDouble();
     if (dx == 0 && dy == 0) return const _SourceClipperNormal2(0, 0);
