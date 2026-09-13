@@ -1,0 +1,47 @@
+{
+  "source_commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+  "upstream_actions_run": 34298498452,
+  "artifact_id": 10085378329,
+  "artifact_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+  "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+  "binary_version": "02.08.03.66",
+  "probe": {
+    "geometry": "128-segment 20mm OD / 10mm ID ring, 0.6mm high",
+    "wall_generator": "arachne",
+    "wall_loops": 2,
+    "layer_height_mm": 0.2,
+    "enable_circle_compensation": true,
+    "diameter_limit_mm": 50,
+    "filament_profile": "Generic PLA",
+    "source_surface_copy": "PerimeterGenerator::process_arachne starts with Surfaces all_surfaces = this->slices->surfaces; Surface copy constructor omits counter_circle_compensation and holes_circle_compensation"
+  },
+  "capture": {
+    "symbol": "Slic3r::traverse_extrusions(Slic3r::PerimeterGenerator const&, std::vector<Slic3r::PerimeterGeneratorArachneExtrusion, std::allocator<Slic3r::PerimeterGeneratorArachneExtrusion> >&)",
+    "post_should_apply_hole_compensation_vaddr": "0x1a6a472",
+    "should_apply_symbol_vaddr": "0x1ae9cb0",
+    "extrusion_junction_size_bytes": 24,
+    "hole_compensation_flag_offset": 0
+  },
+  "interior_layer": {
+    "layer_id": 1,
+    "calls": [
+      {"inset_idx": 1, "closed": true, "junctions": 66, "marked_junctions": 0, "marked_rate": 0.0, "should_apply_hole_compensation": false},
+      {"inset_idx": 0, "closed": true, "junctions": 66, "marked_junctions": 0, "marked_rate": 0.0, "should_apply_hole_compensation": false},
+      {"inset_idx": 1, "closed": true, "junctions": 66, "marked_junctions": 0, "marked_rate": 0.0, "should_apply_hole_compensation": false},
+      {"inset_idx": 0, "closed": true, "junctions": 66, "marked_junctions": 0, "marked_rate": 0.0, "should_apply_hole_compensation": false}
+    ],
+    "enabled_centerline_abs_max_x_source": {
+      "outer_contour_inset_1": 947359,
+      "outer_contour_inset_0": 982970,
+      "hole_inset_1": 563541,
+      "hole_inset_0": 527845
+    },
+    "disabled_centerline_abs_max_x_source": {
+      "outer_contour_inset_1": 943944,
+      "outer_contour_inset_0": 979683,
+      "hole_inset_1": 555155,
+      "hole_inset_0": 518191
+    },
+    "interpretation": "Auto circle compensation changes sliced geometry, but process_arachne's source Surface copy resets QIDI compensation metadata before to_polygons_with_flag; therefore every Arachne line reaches shouldApplyHoleCompensation with zero marked junctions."
+  }
+}
