@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "source": {
     "repository": "bambulab/BambuStudio",
     "commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
@@ -26,31 +26,29 @@
     "layer_height_mm": 0.2,
     "slicedata_export_available": false
   },
-  "source_degree_contract": {
-    "sampling_interval_mm": 2.0,
-    "min_degree_gap": 0.25,
-    "non_uniform_degree_map_percent": [0, 10, 25, 50, 75, 100],
-    "supported_degree_min": 0.0,
-    "supported_degree_max": 5.0,
-    "bent_unsupported_degree": 5.0
-  },
-  "gcode_serialization_tolerance_mm": 0.00051,
-  "oracle": {
-    "layer_index": 1,
-    "z_height_mm": 0.4,
-    "grown_lower_support_edge_model_x_mm": 20.2,
-    "comparison_window_min_model_x_mm": 18.7,
-    "normalization": {
-      "compiled_cli_arrange_x_mm": 87.5,
-      "note": "Only global plate-arrange translation is removed. Feedrate F values are intentionally not part of this oracle."
-    },
+  "debugger_oracle": {
+    "method": "LLDB symbol breakpoint on compiled Slic3r::detect_overhang_degree(Flow const&, ExtrusionRole, Polygons const&, ZPaths const&, ZPath const&, double), reading the returned std::vector<ExtrusionPath> before unsupported-path append, chain/reorder, smooth_overhang_level(), and G-code generation",
+    "extrusion_path_size_bytes": 120,
+    "model_translation_source": [1250000, 1000000],
+    "note": "The previous schema compared XY points emitted by G-code speed smoothing. Those points are downstream interpolation and are intentionally not used as a process oracle here.",
+    "degrees": [4.75, 4.5, 4.25, 4.0, 3.75, 3.5, 3.25, 3.0, 2.75, 2.5, 2.25, 2.0, 1.75, 1.5, 1.25, 1.0, 0.75, 0.5, 0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75],
     "inner_wall": {
-      "bottom_supported_x_model_mm": [18.789, 19.189, 19.589, 19.621, 19.653, 19.686, 19.718, 19.75, 19.782, 19.814, 19.846, 19.879, 19.911, 19.943, 19.975, 20.007, 20.039, 20.071, 20.104, 20.136, 20.168, 20.2],
-      "top_supported_x_model_mm": [18.7, 18.8, 18.9, 19.0, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7, 19.8, 19.9, 20.0, 20.1, 20.2]
+      "role": 1,
+      "path_count": 39,
+      "top_y": 1944295,
+      "bottom_y": 55707,
+      "top_boundaries_x": [2020000, 2010000, 2000000, 1990000, 1980000, 1970000, 1960000, 1950000, 1940000, 1930000, 1920000, 1910000, 1900000, 1890000, 1880000, 1870000, 1860000, 1850000, 1840000, 1830000],
+      "degree_zero_points": [[1830000, 1944295], [1820000, 1944295], [1620000, 1944295], [1420000, 1944295], [1220000, 1944295], [1020001, 1944295], [820001, 1944295], [620001, 1944295], [555706, 1944295], [555706, 1744295], [555706, 1544295], [555706, 1344295], [555706, 1144295], [555706, 944296], [555706, 744296], [555706, 544296], [555706, 344296], [555706, 144296], [555706, 55707], [755706, 55707], [955706, 55707], [1155706, 55707], [1355706, 55707], [1555705, 55707], [1755705, 55707], [1955705, 55707], [1958919, 55707]],
+      "bottom_boundaries_x": [1958919, 1962134, 1965349, 1968564, 1971778, 1974993, 1978208, 1981423, 1984637, 1987852, 1991067, 1994282, 1997496, 2000711, 2003926, 2007141, 2010355, 2013570, 2016785, 2020000]
     },
     "outer_wall": {
-      "bottom_supported_x_model_mm": [19.25, 19.3, 19.35, 19.4, 19.45, 19.5, 19.55, 19.6, 19.65, 19.7, 19.75, 19.8, 19.85, 19.9, 19.95, 20.0, 20.05, 20.1, 20.15, 20.2],
-      "top_supported_x_model_mm": [18.7, 18.8, 18.9, 19.0, 19.1, 19.2, 19.3, 19.4, 19.5, 19.6, 19.7, 19.8, 19.9, 20.0, 20.1, 20.2]
+      "role": 2,
+      "path_count": 39,
+      "top_y": 1980002,
+      "bottom_y": 20000,
+      "top_boundaries_x": [2020000, 2010000, 2000000, 1990000, 1980000, 1970000, 1960000, 1950000, 1940000, 1930000, 1920000, 1910000, 1900000, 1890000, 1880000, 1870000, 1860000, 1850000, 1840000, 1830000],
+      "degree_zero_points": [[1830000, 1980002], [1820000, 1980002], [1620000, 1980002], [1420000, 1980002], [1220001, 1980002], [1020001, 1980002], [820001, 1980002], [620001, 1980002], [519999, 1980002], [519999, 1780002], [519999, 1580002], [519999, 1380002], [519999, 1180002], [519999, 980003], [519999, 780003], [519999, 580003], [519999, 380003], [519999, 180003], [519999, 20000], [719999, 20000], [919999, 20000], [1119999, 20000], [1319998, 20000], [1519998, 20000], [1719998, 20000], [1919998, 20000], [1924998, 20000]],
+      "bottom_boundaries_x": [1924998, 1929998, 1934998, 1939998, 1944998, 1949998, 1954998, 1959998, 1964998, 1969999, 1974999, 1979999, 1984999, 1989999, 1994999, 1999999, 2004999, 2009999, 2014999, 2020000]
     }
   }
 }
