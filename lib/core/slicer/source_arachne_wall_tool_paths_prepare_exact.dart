@@ -6,13 +6,15 @@ import 'source_clipper1_miter_offset.dart';
 /// Source-order `WallToolPaths::generate()` preparation with the pinned
 /// Clipper1 numerical path wherever the represented per-path executor is exact.
 ///
-/// One positive convex contour is fully handled without Clipper2. Multiple
-/// convex paths, including CW holes, now use exact Clipper1 per-path
-/// `raw_offset()` arithmetic and cleanup; only the final cross-path NonZero
-/// union still delegates to the existing Clipper2 compatibility adapter.
-/// Concave per-path `Execute()` cleanup therefore remains an explicit
-/// differential validation seam. All post-offset cleanup stages are the direct
-/// ports already hosted by [SourceArachneWallToolPathsPrepare2].
+/// One positive convex contour is fully handled without Clipper2. A validated
+/// safe orthogonal concave positive-contour subset now also uses exact compiled-
+/// oracle Clipper1 positive/negative `Execute()` cleanup. Multiple convex paths,
+/// including CW holes, use exact Clipper1 per-path `raw_offset()` arithmetic and
+/// cleanup; only the final cross-path NonZero union still delegates to the
+/// existing Clipper2 compatibility adapter. General concave topology-changing
+/// execution therefore remains an explicit differential validation seam. All
+/// post-offset cleanup stages are the direct ports already hosted by
+/// [SourceArachneWallToolPathsPrepare2].
 class SourceArachneWallToolPathsPrepareExact2 {
   const SourceArachneWallToolPathsPrepareExact2._();
 
@@ -102,14 +104,17 @@ class SourceArachneWallToolPathsPrepareExact2 {
     );
   }
 
-  /// Pinned Clipper1 miter arithmetic for represented convex source paths.
+  /// Pinned Clipper1 miter arithmetic for the represented exact source paths.
   ///
   /// - one positive convex contour returns the exact Clipper1 result directly;
+  /// - one safe simple orthogonal concave positive contour uses the exact
+  ///   compiled-oracle positive/negative Clipper1 `Execute()` subset;
   /// - several convex paths (CCW contours and/or CW holes) execute exact
   ///   per-path Clipper1 offset/sign/orientation semantics, then use Clipper2
   ///   only for the still-open final `clipper_union(raw_offset(...))` seam;
-  /// - any concave path falls back to the prior compatibility implementation
-  ///   until Clipper1 `Execute()` boolean cleanup is ported.
+  /// - topology-changing or non-orthogonal concave paths fall back to the prior
+  ///   compatibility implementation until full Clipper1 boolean cleanup is
+  ///   ported.
   static List<SourcePolygon2> offsetPolygons(
     Iterable<SourcePolygon2> polygons,
     double delta,
@@ -120,6 +125,23 @@ class SourceArachneWallToolPathsPrepareExact2 {
     if (values.length == 1 &&
         SourceClipper1MiterOffset2.supports(values.single, delta)) {
       final offset = SourceClipper1MiterOffset2.offset(values.single, delta);
+      if (offset.points.length < 3 || offset.signedArea <= 0) {
+        return const <SourcePolygon2>[];
+      }
+      return List.unmodifiable([offset]);
+    }
+
+    if (values.length == 1 &&
+        SourceClipper1MiterOffset2
+            .supportsSimpleOrthogonalConcavePositiveContour(
+          values.single,
+          delta,
+        )) {
+      final offset = SourceClipper1MiterOffset2
+          .offsetSimpleOrthogonalConcavePositiveContour(
+        values.single,
+        delta,
+      );
       if (offset.points.length < 3 || offset.signedArea <= 0) {
         return const <SourcePolygon2>[];
       }
