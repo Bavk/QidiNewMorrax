@@ -1,0 +1,72 @@
+{
+  "source_commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+  "upstream_actions_run": 34298498452,
+  "artifact_id": 10085378329,
+  "artifact_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+  "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+  "binary_version": "02.08.03.66",
+  "capture": {
+    "symbol": "Slic3r::traverse_extrusions(Slic3r::PerimeterGenerator const&, std::vector<Slic3r::PerimeterGeneratorArachneExtrusion, std::allocator<Slic3r::PerimeterGeneratorArachneExtrusion> >&)",
+    "post_producer_vaddr": "0x1a6ad72",
+    "loop_node_size_bytes": 136,
+    "loop_nodes_member_offset": "0x150",
+    "loop_node_range_offsets": [44, 48],
+    "normalization": "The compiled STL probe is plate-arranged before slicing. Differential checks subtract each LoopNode bbox minimum from XY only; node/range IDs, loop flag and raw widths are not normalized. Integer XY uses pinned SCALED_EPSILON=10 because the Dart fixture begins from the already-sliced polygon."
+  },
+  "probe": {
+    "outer_wall_line_width_mm": 0.4,
+    "wall_loops": 2,
+    "wall_sequence": "inner_outer",
+    "top_one_wall_type": "all_top",
+    "z_direction_outwall_speed_continuous": true,
+    "detect_overhang_wall": false
+  },
+  "oracles": {
+    "interior_two_wall": {
+      "layer_id": 1,
+      "loop_node_range": [0, 1],
+      "global_node_count": 1,
+      "node": {
+        "node_id": 0,
+        "loop_id": 1,
+        "is_loop": true,
+        "points": [
+          [1230001, 1],
+          [1230001, -980000],
+          [-730001, -980000],
+          [-730001, 980002],
+          [1230001, 980002],
+          [1230001, 1]
+        ],
+        "widths": [35707, 35707, 35707, 35707, 35707, 35707],
+        "bbox": [-730001, -980000, 1230001, 980002],
+        "merged_id": -1,
+        "upper_node_ids": [],
+        "lower_node_ids": []
+      }
+    },
+    "topmost_one_wall": {
+      "layer_id": 2,
+      "loop_node_range": [0, 1],
+      "global_node_count": 1,
+      "node": {
+        "node_id": 0,
+        "loop_id": 0,
+        "is_loop": true,
+        "points": [
+          [1230001, 1],
+          [1230001, -980000],
+          [-730001, -980000],
+          [-730001, 980002],
+          [1230001, 980002],
+          [1230001, 1]
+        ],
+        "widths": [35707, 35707, 35707, 35707, 35707, 35707],
+        "bbox": [-730001, -980000, 1230001, 980002],
+        "merged_id": -1,
+        "upper_node_ids": [],
+        "lower_node_ids": []
+      }
+    }
+  }
+}
