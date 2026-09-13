@@ -1,0 +1,72 @@
+{
+  "source_commit": "f2b55a5a83f266cf56e06c7943a81a08bebb7fad",
+  "upstream_actions_run": 34298498452,
+  "artifact_id": 10085378329,
+  "artifact_sha256": "912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8",
+  "appimage_sha256": "ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46",
+  "binary_version": "02.08.03.66",
+  "probe": {
+    "geometry": "20mm long symmetric wedge, width 0.45mm at x=-10mm and 1.20mm at x=+10mm, height 0.6mm",
+    "layer_id": 1,
+    "wall_generator": "arachne",
+    "wall_loops": 2,
+    "line_width_mm": 0.4,
+    "outer_wall_line_width_mm": 0.4,
+    "inner_wall_line_width_mm": 0.4,
+    "detect_overhang_wall": false,
+    "top_one_wall_type": "none",
+    "model_contour_source": [
+      [-1000000, -22500],
+      [1000000, -60000],
+      [1000000, 60000],
+      [-1000000, 22500]
+    ]
+  },
+  "capture": {
+    "symbol": "Slic3r::traverse_extrusions(Slic3r::PerimeterGenerator const&, std::vector<Slic3r::PerimeterGeneratorArachneExtrusion, std::allocator<Slic3r::PerimeterGeneratorArachneExtrusion> >&)",
+    "post_should_apply_hole_compensation_vaddr": "0x1a6a472",
+    "extrusion_junction_size_bytes": 24,
+    "normalization": "The compiled STL is plate-arranged to the same centered wedge used by the Dart already-sliced polygon. Differential matching identifies lines by inset/odd/closed/junction-count and compares the unordered junction payload within pinned SCALED_EPSILON=10; this removes only closed-line seam/direction, not line placement, widths, perimeter indexes or structure."
+  },
+  "interior_layer": {
+    "line_count": 3,
+    "lines": [
+      {
+        "inset_idx": 0,
+        "odd": false,
+        "closed": true,
+        "junctions": [
+          [980002, 0, 35707, 0],
+          [980002, -39621, 35707, 0],
+          [662113, -33660, 35707, 0],
+          [622269, -25380, 50768, 0],
+          [-438716, -15435, 30875, 0],
+          [-478426, 0, 60250, 0],
+          [-438716, 15435, 30875, 0],
+          [622269, 25380, 50768, 0],
+          [662113, 33660, 35707, 0],
+          [980002, 39621, 35707, 0],
+          [980002, 0, 35707, 0]
+        ]
+      },
+      {
+        "inset_idx": 1,
+        "odd": true,
+        "closed": false,
+        "junctions": [
+          [662744, 0, 31624, 1],
+          [941117, 0, 42062, 1]
+        ]
+      },
+      {
+        "inset_idx": 0,
+        "odd": true,
+        "closed": false,
+        "junctions": [
+          [-977074, 0, 41556, 0],
+          [-478426, 0, 60250, 0]
+        ]
+      }
+    ]
+  }
+}
