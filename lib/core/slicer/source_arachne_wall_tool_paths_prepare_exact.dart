@@ -109,9 +109,11 @@ class SourceArachneWallToolPathsPrepareExact2 {
     final values = List<SourcePolygon2>.of(polygons);
     if (values.length == 1 &&
         SourceClipper1MiterOffset2.supports(values.single, delta)) {
-      return List.unmodifiable([
-        SourceClipper1MiterOffset2.offset(values.single, delta),
-      ]);
+      final offset = SourceClipper1MiterOffset2.offset(values.single, delta);
+      if (offset.points.length < 3 || offset.signedArea <= 0) {
+        return const <SourcePolygon2>[];
+      }
+      return List.unmodifiable([offset]);
     }
     return SourceArachneWallToolPathsPrepare2.offsetPolygons(values, delta);
   }
