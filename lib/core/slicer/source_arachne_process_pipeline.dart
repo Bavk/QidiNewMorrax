@@ -81,8 +81,13 @@ class SourceArachneProcessPipeline2 {
       );
     }
 
+    // Pinned `process_arachne()` begins with
+    // `Surfaces all_surfaces = this->slices->surfaces;`. The supplied Surface
+    // copy constructor deliberately omits QIDI circle-compensation members,
+    // resetting them before the later `to_polygons_with_flag()` lookup.
+    final processSurface = Surface2.sourceCopy(surface);
     final surfaceResult = SourceArachneProcessSurface2.process(
-      surface: surface,
+      surface: processSurface,
       settings: settings.surfaceSettings,
       layerIndex: layerIndex,
     );
