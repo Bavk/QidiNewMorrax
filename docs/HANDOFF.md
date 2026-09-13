@@ -16,12 +16,12 @@ Do not infer completion from visual similarity, compilation, or common-case test
 
 Latest validated code checkpoint:
 
-- code commit `70ba8a1086f06a123990543ca52c4d341d445e60` (`test: use source epsilon for Arachne debugger geometry`);
-- `.github/workflows/flutter-parity.yml` run `34742895341` (#412);
+- code commit `7b4f2ba667db4ff509e2da62addf8d5af49e4abc` (`test: compare Arachne LoopNode with pinned binary`);
+- `.github/workflows/flutter-parity.yml` run `34743283594` (#416);
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **688/688 passed**;
+- `flutter test --reporter expanded` → **690/690 passed**;
 - job conclusion → **success**.
 
 Important checkpoints leading here:
@@ -42,7 +42,8 @@ Important checkpoints leading here:
 - `425b64d...` / run #398: exact pinned compiled CLI independently matches non-speed overhang wall spans, cyclic supported/overhang role bands and the grown-support split at model `x=20.2mm`, 685/685 green;
 - `e382302...` / run #400: exact pinned compiled CLI independently matches partial-`Alltop` first-wall/remainder recombination, including the clipped inner-wall placement, 686/686 green;
 - `4a33e8d...` / run #402: exact pinned compiled CLI independently matches a 20×20mm frame with a 10×10mm through-hole: four Arachne loops and both contour/hole wall-span pairs, 687/687 green;
-- `70ba8a1...` / run #412: exact pinned compiled `detect_overhang_degree()` return paths independently match both stepped-solid Arachne walls: 39 exact role/degree buckets each, with only closed-loop Y reflection normalization and source `SCALED_EPSILON` geometry tolerance, 688/688 green.
+- `70ba8a1...` / run #412: exact pinned compiled `detect_overhang_degree()` return paths independently match both stepped-solid Arachne walls: 39 exact role/degree buckets each, with only closed-loop Y reflection normalization and source `SCALED_EPSILON` geometry tolerance, 688/688 green;
+- `7b4f2ba...` / run #416: exact pinned compiled `traverse_extrusions()` state independently matches Arachne QIDI `LoopNode` payload/ranges for normal two-wall and topmost one-wall cases, 690/690 green.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -58,6 +59,8 @@ The process-level evidence comes from the **actual upstream compiled binary at t
 
 G-code fixtures deliberately remove only downstream/global plate-arrange translation or closed-loop seam rebasing when those do not alter source perimeter geometry. The speed-graded overhang oracle is stronger: it is captured from the compiled return value of `Slic3r::detect_overhang_degree()` before re-chaining, smoothing and G-code speed policy. For the symmetric closed stepped-solid probe, one global Y reflection is normalized because the source Clipper path may begin from the opposite horizontal side. Roles and quarter-degree buckets remain exact. Integer XY comparison uses only the pinned source `SCALED_EPSILON = EPSILON / SCALING_FACTOR = 10` source units to account for compiled STL slicing versus the Dart fixture beginning from the already-sliced polygon.
 
+The QIDI Arachne `LoopNode` oracle is likewise captured from the compiled `traverse_extrusions()` process state rather than G-code. Machine-code inspection fixes the `LoopNode` stride at 136 bytes and identifies the global `loop_nodes` and returned `loop_node_range` fields. The differential keeps node/range IDs, raw width payloads, loop flags and raw junction order exact; it removes only global plate translation from XY and uses the same pinned `SCALED_EPSILON` for compiled STL slicing versus an already-sliced Dart polygon. It also independently confirms the QIDI bbox quirk: `outer_wall_line_width / 2` is passed directly to integer `BoundingBox::offset`, so `0.4 / 2` narrows to zero source units.
+
 ## Current represented classic surface → extrusion path — scoped parity verified
 
 Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
@@ -66,7 +69,7 @@ The represented `PerimeterGenerator::process_classic()` path composes, in source
 
 ### QIDI outwall / loop-node metadata
 
-The classic `z_direction_outwall_speed_continuous` producer is represented for raw thin/smaller/normal outer-wall `NodeContour` capture, literal `Point::is_in_lines`, global node IDs and per-island `loop_node_range`. The Arachne producer is represented separately from raw pre-fuzzy external Arachne lines and preserves its distinct bbox behavior. Downstream inter-layer relationship/speed-control consumers remain open.
+The classic `z_direction_outwall_speed_continuous` producer is represented for raw thin/smaller/normal outer-wall `NodeContour` capture, literal `Point::is_in_lines`, global node IDs and per-island `loop_node_range`. The Arachne producer is represented separately from raw pre-fuzzy external Arachne lines and preserves its distinct bbox behavior. The Arachne producer payload/range semantics now also have independent compiled-binary evidence. Downstream inter-layer relationship/speed-control consumers remain open.
 
 ### Important QIDI compensation quirk retained
 
@@ -97,23 +100,23 @@ The exact pinned compiled binary now independently verifies the represented Dart
 - non-speed active-overhang geometry and the support/unsupported split boundary;
 - partial `Alltop` first-wall/remainder recombination and placement;
 - through-hole contour/hole wall geometry, including the outer contour pair `18.886/19.600mm` and hole pair `11.114/10.400mm`;
-- speed-graded active overhang before downstream speed policy: both inner/external supported walls return the same 39 exact role/degree buckets as compiled `detect_overhang_degree()`, with XY differing by no more than source `SCALED_EPSILON` after one global closed-loop reflection normalization.
+- speed-graded active overhang before downstream speed policy: both inner/external supported walls return the same 39 exact role/degree buckets as compiled `detect_overhang_degree()`, with XY differing by no more than source `SCALED_EPSILON` after one global closed-loop reflection normalization;
+- QIDI Arachne `LoopNode`: normal two-wall returns `loop_node_range=[0,1)`, `node_id=0`, `loop_id=1`; topmost one-wall returns the same range/node ID with `loop_id=0`; raw 6-junction order, six widths of `35707`, loop flag and empty upper/lower relationships match the compiled producer.
 
 These exact fixture scopes may be treated as **scoped `parity_verified` evidence**. The containing `process_arachne()` boundary remains **`implemented_unverified`** because the remaining process-level outputs below do not yet have independent pinned-binary/oracle coverage.
 
 ## Fuzzy / Arachne scope retained
 
-The 688-test suite re-runs all previously verified fuzzy/Arachne evidence, including seeded C++ fuzzy goldens, source ZAttributes / LineSegmentation behavior, direct Boost/Voronoi fixtures, both represented Arachne overhang branches, QIDI LoopNode production, the final composed surface path and compiled process-level differential fixtures.
+The 690-test suite re-runs all previously verified fuzzy/Arachne evidence, including seeded C++ fuzzy goldens, source ZAttributes / LineSegmentation behavior, direct Boost/Voronoi fixtures, both represented Arachne overhang branches, QIDI LoopNode production and compiled payload/range differential, the final composed surface path and compiled process-level differential fixtures.
 
 ## First unfinished priority
 
 Continue independent validation in source order rather than adding another already-represented helper:
 
-1. obtain independent evidence for Arachne QIDI `LoopNode` payload/ranges, which ordinary G-code does not expose directly;
-2. obtain independent circle-compensation metadata/geometry evidence; the through-hole CLI fixture verifies hole wall geometry only, not QIDI compensation flags;
-3. independently validate final `fill_surfaces` / `fill_no_overlap`, including no-wall and mixed-spacing cases that are not directly observable from normal G-code;
-4. expand to additional pathological/production geometries and resolve every differential mismatch without weakening literal source quirks;
-5. only after those gates are green consider promoting the represented `process_arachne()` boundary as a whole to scoped `parity_verified`, then continue later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths and downstream product systems.
+1. obtain independent circle-compensation metadata/geometry evidence; the through-hole CLI fixture verifies hole wall geometry only, not QIDI compensation flags;
+2. independently validate final `fill_surfaces` / `fill_no_overlap`, including no-wall and mixed-spacing cases that are not directly observable from normal G-code;
+3. expand to additional pathological/production geometries and resolve every differential mismatch without weakening literal source quirks;
+4. only after those gates are green consider promoting the represented `process_arachne()` boundary as a whole to scoped `parity_verified`, then continue later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths and downstream product systems.
 
 ## Numeric/source invariants
 
