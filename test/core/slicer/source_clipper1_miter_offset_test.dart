@@ -44,6 +44,57 @@ void main() {
     );
   });
 
+  test('raw Clipper1 stage emits pinned concave OffsetPoint triplet', () {
+    final concave = SourcePolygon2(const [
+      SourcePoint2(0, 0),
+      SourcePoint2(100000, 0),
+      SourcePoint2(100000, 40000),
+      SourcePoint2(40000, 40000),
+      SourcePoint2(40000, 100000),
+      SourcePoint2(0, 100000),
+    ]);
+
+    expect(
+      SourceClipper1MiterOffset2.supportsRawClosedPath(concave, 10000),
+      isTrue,
+    );
+    // Final concave cleanup is intentionally not claimed until Clipper1 union
+    // semantics are ported; only the raw DoOffset stage is exact here.
+    expect(SourceClipper1MiterOffset2.supports(concave, 10000), isFalse);
+
+    final raw = SourceClipper1MiterOffset2.rawOffsetPath(concave, 10000);
+    expect(
+      raw.points,
+      const [
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(110000, -10000),
+        SourcePoint2(110000, 50000),
+        SourcePoint2(40000, 50000),
+        SourcePoint2(40000, 40000),
+        SourcePoint2(50000, 40000),
+        SourcePoint2(50000, 110000),
+        SourcePoint2(-10000, 110000),
+      ],
+    );
+  });
+
+  test('raw negative convex stage preserves source concave triplets', () {
+    final raw = SourceClipper1MiterOffset2.rawOffsetPath(
+      _square(100000),
+      -10000,
+    );
+
+    expect(
+      raw.points.take(3).toList(),
+      const [
+        SourcePoint2(10000, 0),
+        SourcePoint2(0, 0),
+        SourcePoint2(0, 10000),
+      ],
+    );
+    expect(raw.points.length, 12);
+  });
+
   test('Clipper1 convex erosion intersects inward shifted half-planes', () {
     final result = SourceClipper1MiterOffset2.offset(_square(1000000), -10000);
 
