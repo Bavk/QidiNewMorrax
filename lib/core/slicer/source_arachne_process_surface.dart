@@ -8,6 +8,7 @@ import 'source_arachne_wall_tool_paths.dart';
 import 'source_arachne_wall_tool_paths_facade.dart';
 import 'source_arachne_wall_tool_paths_generate.dart';
 import 'source_arachne_wall_tool_paths_prepare.dart';
+import 'source_arachne_wall_tool_paths_prepare_exact.dart';
 import 'surface.dart';
 
 class SourceArachneSurfaceProcessSettings2 {
@@ -89,7 +90,7 @@ class SourceArachneProcessSurface2 {
       surface.expolygon,
       settings.surfaceSimplifyResolutionSource,
     );
-    final last = SourceArachneWallToolPathsPrepare2.offsetPolygons(
+    final last = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
       simplified,
       plan.outerOffsetDelta,
     );
