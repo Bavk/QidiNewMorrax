@@ -21,15 +21,15 @@ class SourceArachneWallToolPathsPrepareExact2 {
     final originalOutlineSize = state.outline.length;
     var outlineSizeChange = false;
 
-    var prepared = _offset(
+    var prepared = offsetPolygons(
       state.outline,
       -SourceArachneWallToolPathsPreprocess2.epsilonOffset.toDouble(),
     );
-    prepared = _offset(
+    prepared = offsetPolygons(
       prepared,
       (SourceArachneWallToolPathsPreprocess2.epsilonOffset * 2).toDouble(),
     );
-    prepared = _offset(
+    prepared = offsetPolygons(
       prepared,
       -SourceArachneWallToolPathsPreprocess2.epsilonOffset.toDouble(),
     );
@@ -99,7 +99,10 @@ class SourceArachneWallToolPathsPrepareExact2 {
     );
   }
 
-  static List<SourcePolygon2> _offset(
+  /// Pinned Clipper1 miter arithmetic for the simple-convex subset, with the
+  /// legacy compatibility implementation retained for every case that needs
+  /// Clipper1 boolean cleanup or multi-path orientation handling.
+  static List<SourcePolygon2> offsetPolygons(
     Iterable<SourcePolygon2> polygons,
     double delta,
   ) {
