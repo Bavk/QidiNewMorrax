@@ -4,11 +4,11 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger re
 
 ## Current validation checkpoint
 
-- code: `d718ff276028ee525739475d0858f4e43c9673dc`;
-- workflow: `.github/workflows/flutter-parity.yml` run `34839681185` (#493), job `103961480006`;
+- code: `34f3ef832b77057dc026b81f07ff5896fd1bada0`;
+- workflow: `.github/workflows/flutter-parity.yml` run `34844487290` (#501), job `103976992231`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
-- tests: **760/760 passed**;
+- tests: **768/768 passed**;
 - conclusion: **success**.
 
 Recent milestone chain:
@@ -17,7 +17,8 @@ Recent milestone chain:
 - #394–#402: first exact pinned compiled BambuStudio CLI process fixtures for normal/one-wall, overhang, partial `Alltop` and through-hole behavior;
 - later retained compiled-oracle fixtures add speed overhang, QIDI LoopNode, circle-copy metadata, final fill boundaries and narrow-wedge coverage;
 - #488 / `3f22e86...`: exact Clipper1 partial/T/point rectangle-contact final unions, 751/751;
-- #493 / `d718ff2...`: exact two-positive strict-convex proper-crossing final union, 760/760.
+- #493 / `d718ff2...`: exact two-positive strict-convex proper-crossing final union, 760/760;
+- #501 / `34f3ef8...`: exact represented non-rectangular strict-convex zero-area contacts, 768/768.
 
 All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures are re-executed by the current suite.
 
@@ -31,8 +32,9 @@ All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures
 | modified Clipper1 offset input/arithmetic and represented per-path `Execute()` subsets | `SourceClipper1MiterOffset2`, orthogonal/positive-concave/negative-concave executors | source formulas and direct pinned ELF oracles | `parity_verified` (scoped) | Multi-reflex/non-local cleanup, general negative cleanup and hole-producing non-orthogonal results remain open. |
 | Clipper1 final `ctUnion` + `pftNonZero`, noninteracting paths | `SourceClipper1NonInteractingUnion2` | direct pinned ELF ordering/winding oracles | `parity_verified` (scoped) | Interacting topology handled by separate subsets below. |
 | Clipper1 final union, two positive axis-aligned rectangles | `SourceClipper1TwoRectangleUnion2` | pinned ELF same-span/diagonal/partial/T/point-contact oracles through #488 | `parity_verified` (scoped) | Non-rectangular cases not implied. |
-| Clipper1 final union, two positive strict-convex paths with only proper crossings | `SourceClipper1TwoConvexUnion2` | 7 hand-selected + 32 deterministic random direct pinned ELF pairs; exact 39/39, committed regression tests, #493 | `parity_verified` (scoped) | General convex edge/point touch, collinear overlap and rounded degeneracies remain open. |
-| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + #493 route test | `parity_verified` for represented branches | Interacting holes, >2 interacting paths and other generic boolean cases still fall back. |
+| Clipper1 final union, two positive strict-convex paths with only proper crossings | `SourceClipper1TwoConvexUnion2` | 7 hand-selected + 32 deterministic random direct pinned ELF pairs; exact 39/39, committed regression tests, #493 | `parity_verified` (scoped) | Touch/collinear and rounded degeneracies are separate. |
+| Clipper1 final union, two positive strict-convex paths with represented zero-area contact | `SourceClipper1TwoConvexContactUnion2` | raw pinned ELF point-contact, full shared-edge and strict-contained shared-edge oracles; reversed-order assertions; 8 committed tests; #501 | `parity_verified` (scoped) | Endpoint-aligned/staggered partial collinear joins and mixed crossing/contact cases remain open. |
+| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + #493/#501 route tests | `parity_verified` for represented branches | Interacting holes, >2 interacting paths and other generic boolean cases still fall back. |
 | BridgeDetector / LineSegmentation / QIDI loop-node geometry represented subsets | source-shaped Dart helpers | translated/source-shaped fixtures | `parity_verified` (scoped) | Broader consumers/topologies remain open. |
 
 ## Slicer semantic model / Arachne dependencies
@@ -65,7 +67,7 @@ An earlier local audit recorded 3,657/3,657 copied runtime entries matching sour
 
 ## Immediate open Clipper1 trace
 
-1. non-rectangular two-convex edge/point touching and collinear-overlap degeneracies;
+1. endpoint-aligned/staggered non-rectangular partial collinear joins and mixed crossing/contact degeneracies;
 2. interacting holes and surviving hole hierarchy;
 3. more than two interacting paths;
 4. generic final union and broader per-path `Execute()` topology;
