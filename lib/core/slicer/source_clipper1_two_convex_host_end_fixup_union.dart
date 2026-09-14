@@ -1,41 +1,46 @@
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
+import 'source_clipper1_two_convex_host_start_fixup_union.dart';
 
-/// Exact pinned Clipper1 `ctUnion` + `pftNonZero` subset for two positive
-/// strict-convex triangles whose endpoint-aligned partial shared edge creates
-/// exactly one new collinear vertex that `FixupOutPolygon()` removes.
+/// Exact pinned Clipper1 `ctUnion` + `pftNonZero` gateway for endpoint-aligned
+/// two-triangle joins where `FixupOutPolygon()` removes exactly one shared host
+/// endpoint.
 ///
-/// The shorter guest edge reaches the *end* of a longer host edge. The shared
-/// host endpoint lies strictly between the two triangle third vertices, so the
-/// post-join cycle contains `guestThird -> hostEnd -> hostThird` on one straight
-/// line. Pinned Clipper1 removes `hostEnd` during `FixupOutPolygon()`.
+/// This class owns the host-*end* state directly and delegates the independently
+/// proved symmetric host-*start* state to
+/// [SourceClipper1TwoConvexHostStartFixupUnion2]. Keeping the predicates split
+/// avoids generalizing either raw `OutRec`/pointer-state proof.
 ///
-/// Direct raw-ELF matrices matched 145800/145800 full result paths across both
-/// non-horizontal Y directions, vertical edges, both horizontal directions,
-/// integer shears, all 3x3 cyclic source rotations and both input orders. The
-/// exact post-fixup `BuildResult()` start is:
+/// Host-end direct raw-ELF matrices matched 145800/145800 full result paths
+/// across both non-horizontal Y directions, vertical edges, both horizontal
+/// directions, integer shears, all 3x3 cyclic source rotations and both input
+/// orders. The exact post-fixup `BuildResult()` start is:
 ///
 /// - non-horizontal host edge: the opposite host endpoint (`hostStart`);
 /// - horizontal host edge directed left: `hostStart`;
 /// - horizontal host edge directed right: `guestThird`.
 ///
-/// Only the one-removed-endpoint state above is represented. Other fixup-
-/// mutated contacts, wider convex paths and mixed crossing/contact topologies
-/// remain on the compatibility seam.
+/// Other fixup-mutated contacts, wider convex paths and mixed crossing/contact
+/// topologies remain on the compatibility seam.
 class SourceClipper1TwoConvexHostEndFixupUnion2 {
   const SourceClipper1TwoConvexHostEndFixupUnion2._();
 
-  static bool supports(Iterable<SourcePolygon2> polygons) =>
-      _resultOrNull(List<SourcePolygon2>.of(polygons)) != null;
+  static bool supports(Iterable<SourcePolygon2> polygons) {
+    final values = List<SourcePolygon2>.of(polygons);
+    return _resultOrNull(values) != null ||
+        SourceClipper1TwoConvexHostStartFixupUnion2.supports(values);
+  }
 
   static SourcePolygon2 union(Iterable<SourcePolygon2> polygons) {
-    final result = _resultOrNull(List<SourcePolygon2>.of(polygons));
-    if (result == null) {
-      throw ArgumentError(
-        'Pinned host-end fixup two-triangle Clipper1 subset does not apply',
-      );
+    final values = List<SourcePolygon2>.of(polygons);
+    final result = _resultOrNull(values);
+    if (result != null) return result;
+    if (SourceClipper1TwoConvexHostStartFixupUnion2.supports(values)) {
+      return SourceClipper1TwoConvexHostStartFixupUnion2.union(values);
     }
-    return result;
+    throw ArgumentError(
+      'Pinned endpoint-fixup two-triangle Clipper1 subset does not apply',
+    );
   }
 
   static SourcePolygon2? _resultOrNull(List<SourcePolygon2> polygons) {
@@ -109,9 +114,6 @@ class SourceClipper1TwoConvexHostEndFixupUnion2 {
           continue;
         }
 
-        // The short shared edge must traverse the host edge in the opposite
-        // direction. Strict containment of its other endpoint already proves
-        // it is shorter than the host edge.
         final hostDx = hostEnd.x - hostStart.x;
         final hostDy = hostEnd.y - hostStart.y;
         final guestDx = guestEnd.x - guestStart.x;
@@ -120,15 +122,11 @@ class SourceClipper1TwoConvexHostEndFixupUnion2 {
             BigInt.from(hostDy) * BigInt.from(guestDy);
         if (directionDot >= BigInt.zero) continue;
 
-        // Positive strict triangles must occupy opposite sides of the shared
-        // support line for this zero-area contact join.
         if (_orientation(hostStart, hostEnd, hostThird) <= 0 ||
             _orientation(hostStart, hostEnd, guestThird) >= 0) {
           continue;
         }
 
-        // Do not accept an additional proper crossing or touch away from the
-        // represented shared interval.
         if (_hasUnexpectedInteraction(
           host,
           guest,
@@ -176,7 +174,6 @@ class SourceClipper1TwoConvexHostEndFixupUnion2 {
     }
     if (touches.any((point) => !allowed.contains(point))) return true;
 
-    // Both shared points have to lie on the same represented host edge.
     if (!_onSegment(hostStart, hostEnd, interiorOverlap)) return true;
     return _hasStrictInteriorVertex(host, guest) ||
         _hasStrictInteriorVertex(guest, host);
