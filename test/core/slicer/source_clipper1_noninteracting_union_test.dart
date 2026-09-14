@@ -29,30 +29,64 @@ SourcePolygon2 _cwSquare(int minX, int minY, int maxX, int maxY) =>
     _ccwSquare(minX, minY, maxX, maxY).reversed();
 
 void main() {
-  test('NonZero subset preserves one contour with one direct hole', () {
+  test('NonZero subset rebases one contour plus direct hole like Clipper1', () {
     final outer = _ccwSquare(0, 0, 200000, 200000);
     final hole = _cwSquare(50000, 50000, 150000, 150000);
 
     expect(SourceClipper1NonInteractingUnion2.supports([outer, hole]), isTrue);
     final result = SourceClipper1NonInteractingUnion2.union([outer, hole]);
 
+    // Exact pinned ELF union oracle: positive BuildResult starts at max-Y/max-X
+    // and the direct CW hole starts at min-Y/min-X.
     expect(result, hasLength(2));
-    expect(result[0].points, outer.points);
-    expect(result[1].points, hole.points);
+    expect(
+      result[0].points,
+      const [
+        SourcePoint2(200000, 200000),
+        SourcePoint2(0, 200000),
+        SourcePoint2(0, 0),
+        SourcePoint2(200000, 0),
+      ],
+    );
+    expect(
+      result[1].points,
+      const [
+        SourcePoint2(50000, 50000),
+        SourcePoint2(50000, 150000),
+        SourcePoint2(150000, 150000),
+        SourcePoint2(150000, 50000),
+      ],
+    );
     expect(result[0].signedArea, greaterThan(0));
     expect(result[1].signedArea, lessThan(0));
   });
 
-  test('NonZero subset preserves disconnected positive islands', () {
+  test('disconnected positive roots follow pinned bottom-point result order', () {
     final left = _ccwSquare(0, 0, 50000, 50000);
     final right = _ccwSquare(100000, 0, 150000, 50000);
 
     expect(SourceClipper1NonInteractingUnion2.supports([left, right]), isTrue);
+    final result = SourceClipper1NonInteractingUnion2.union([left, right]);
+
+    // Exact pinned ELF union oracle emits the right root before the left one.
+    expect(result, hasLength(2));
     expect(
-      SourceClipper1NonInteractingUnion2.union([left, right])
-          .map((polygon) => polygon.points)
-          .toList(),
-      [left.points, right.points],
+      result[0].points,
+      const [
+        SourcePoint2(150000, 50000),
+        SourcePoint2(100000, 50000),
+        SourcePoint2(100000, 0),
+        SourcePoint2(150000, 0),
+      ],
+    );
+    expect(
+      result[1].points,
+      const [
+        SourcePoint2(50000, 50000),
+        SourcePoint2(0, 50000),
+        SourcePoint2(0, 0),
+        SourcePoint2(50000, 0),
+      ],
     );
   });
 
@@ -80,7 +114,7 @@ void main() {
     );
   });
 
-  test('Arachne exact offset suppresses nested positive offset boundary', () {
+  test('Arachne exact offset matches pinned nested-positive offset result', () {
     final outer = _ccwSquare(0, 0, 200000, 200000);
     final nested = _ccwSquare(50000, 50000, 150000, 150000);
 
@@ -89,6 +123,8 @@ void main() {
       10000,
     );
 
+    // Exact direct pinned `Slic3r::offset(Polygons, 10000.f, jtMiter, 3.)`
+    // oracle: one survivor, rebased by Clipper1 BuildResult.
     expect(result, hasLength(1));
     expect(
       result.single.points,
