@@ -10,8 +10,10 @@ import '../geometry/source_polygon.dart';
 /// - endpoint-aligned partial overlap whose short edge reaches the *start* of
 ///   the longer host edge, for any host-edge slope;
 /// - endpoint-aligned partial overlap whose short edge reaches the *end* of a
-///   horizontal host edge, or a non-horizontal host edge running toward
-///   increasing Y;
+///   horizontal host edge;
+/// - endpoint-aligned host-end overlap on a non-horizontal edge running toward
+///   increasing Y, or toward decreasing Y when the guest triangle's standalone
+///   Clipper1 result start is that shared host endpoint;
 /// - staggered horizontal overlap where neither source edge contains the other
 ///   and the merged contour has one unique minimum-Y vertex;
 /// - staggered non-horizontal negative-slope overlap when the source edge that
@@ -19,10 +21,10 @@ import '../geometry/source_polygon.dart';
 ///
 /// Both inputs are required to be triangles because the exact `BuildResult()`
 /// start for wider convex polygons depends on additional Clipper output-list
-/// state. Non-horizontal host-end joins running toward decreasing Y, other
-/// non-horizontal staggered states, mixed proper-crossing/contact cases,
-/// fixup-created collinearity and wider convex polygons stay on the full
-/// compatibility seam rather than extrapolating the oracle.
+/// state. Other decreasing-Y host-end joins, other non-horizontal staggered
+/// states, mixed proper-crossing/contact cases, fixup-created collinearity and
+/// wider convex polygons stay on the full compatibility seam rather than
+/// extrapolating the oracle.
 class SourceClipper1TwoConvexPartialCollinearUnion2 {
   const SourceClipper1TwoConvexPartialCollinearUnion2._();
 
@@ -206,6 +208,8 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
           buildStart = _horizontalHostEndBuildStart(host);
         } else if (dy > 0) {
           buildStart = host.edgeStart;
+        } else if (_triangleBuildStart(host.guestPolygon) == host.edgeEnd) {
+          buildStart = host.edgeEnd;
         } else {
           return null;
         }
