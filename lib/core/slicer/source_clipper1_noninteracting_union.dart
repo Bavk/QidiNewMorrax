@@ -15,35 +15,32 @@ import '../geometry/source_polygon.dart';
 /// - any boundary with nonzero winding on both sides is suppressed, including
 ///   nested same-sign positive contours (`+1 -> +2`).
 ///
-/// This also handles deeper noninteracting alternating nesting when each
-/// surviving boundary still has one of the two canonical transitions above.
-/// Orphan-negative/reversed surviving boundaries and intersecting/touching paths
-/// are deliberately rejected for the full Clipper1 boolean executor.
+/// Result rebasing/order is also source-shaped for the independently captured
+/// noninteracting scopes: positive contours start at max-Y/max-X, a direct hole
+/// starts at min-Y/min-X, disconnected positive roots are emitted by descending
+/// positive start point, and a single direct hole follows its parent. Multiple
+/// holes, deeper alternating surviving boundaries, orphan-negative/reversed
+/// survivors and intersecting/touching paths remain on the full Clipper1 boolean
+/// executor seam.
 class SourceClipper1NonInteractingUnion2 {
   const SourceClipper1NonInteractingUnion2._();
 
   static bool supports(Iterable<SourcePolygon2> polygons) =>
-      _survivorsOrNull(List<SourcePolygon2>.of(polygons)) != null;
+      _resultOrNull(List<SourcePolygon2>.of(polygons)) != null;
 
-  /// Returns the exact surviving geometry for [supports] inputs.
-  ///
-  /// Input paths are already the source-shaped outputs of the represented
-  /// per-path Clipper1 offsetters, including their source start vertex and
-  /// orientation. With no boundary intersections, the NonZero union only
-  /// removes boundaries whose filled state is unchanged; surviving coordinates
-  /// and source order are retained literally.
+  /// Returns the exact represented Clipper1 NonZero result.
   static List<SourcePolygon2> union(Iterable<SourcePolygon2> polygons) {
     final values = List<SourcePolygon2>.of(polygons);
-    final survivors = _survivorsOrNull(values);
-    if (survivors == null) {
+    final result = _resultOrNull(values);
+    if (result == null) {
       throw ArgumentError(
         'Pinned noninteracting Clipper1 NonZero union subset does not apply',
       );
     }
-    return List<SourcePolygon2>.unmodifiable(survivors);
+    return List<SourcePolygon2>.unmodifiable(result);
   }
 
-  static List<SourcePolygon2>? _survivorsOrNull(
+  static List<SourcePolygon2>? _resultOrNull(
     List<SourcePolygon2> values,
   ) {
     if (values.isEmpty) return const <SourcePolygon2>[];
@@ -76,27 +73,76 @@ class SourceClipper1NonInteractingUnion2 {
       final insideFilled = insideWinding != 0;
 
       if (outsideFilled == insideFilled) {
-        // The NonZero fill state does not change across this boundary. Pinned
-        // Clipper1 therefore removes it from the union result. This is the
-        // independently captured nested-positive `+1 -> +2` oracle seam.
+        // Exact pinned nested-positive oracle: +1 -> +2 does not change NonZero
+        // fill state, so the inner boundary disappears from the result.
         continue;
       }
 
       if (!outsideFilled && insideFilled) {
-        // The only source-shaped outer transition represented here is 0 -> +1.
-        // An orphan CW path would be 0 -> -1 and Clipper1 would have to rewrite
-        // result orientation, which belongs to the general boolean executor.
         if (sign != 1 || outsideWinding != 0 || insideWinding != 1) return null;
-        survivors.add(polygon);
+        survivors.add(_rebasePositive(polygon));
         continue;
       }
 
-      // Filled -> empty is represented only by a direct canonical hole 1 -> 0.
       if (sign != -1 || outsideWinding != 1 || insideWinding != 0) return null;
-      survivors.add(polygon);
+      survivors.add(_rebaseNegative(polygon));
     }
-    return survivors;
+
+    final positives = survivors.where((polygon) => polygon.signedArea > 0).toList();
+    final negatives = survivors.where((polygon) => polygon.signedArea < 0).toList();
+    if (positives.isEmpty && survivors.isNotEmpty) return null;
+
+    // Keep the exact order scope narrow. The pinned direct-hole oracle proves
+    // parent then hole for one root/one hole. Multiple roots are independently
+    // captured only when they have no surviving holes and are emitted by
+    // descending positive BuildResult start point.
+    if (negatives.isNotEmpty) {
+      if (positives.length != 1 || negatives.length != 1) return null;
+      final parent = positives.single;
+      final hole = negatives.single;
+      if (!parent.contains(hole.points.first, borderResult: false)) return null;
+      return [parent, hole];
+    }
+
+    positives.sort((first, second) {
+      final a = first.points.first;
+      final b = second.points.first;
+      final byY = b.y.compareTo(a.y);
+      return byY != 0 ? byY : b.x.compareTo(a.x);
+    });
+    return positives;
   }
+
+  static SourcePolygon2 _rebasePositive(SourcePolygon2 polygon) {
+    var start = 0;
+    for (var index = 1; index < polygon.points.length; index++) {
+      final point = polygon.points[index];
+      final best = polygon.points[start];
+      if (point.y > best.y || (point.y == best.y && point.x > best.x)) {
+        start = index;
+      }
+    }
+    return SourcePolygon2(_rotated(polygon.points, start));
+  }
+
+  static SourcePolygon2 _rebaseNegative(SourcePolygon2 polygon) {
+    var start = 0;
+    for (var index = 1; index < polygon.points.length; index++) {
+      final point = polygon.points[index];
+      final best = polygon.points[start];
+      if (point.y < best.y || (point.y == best.y && point.x < best.x)) {
+        start = index;
+      }
+    }
+    return SourcePolygon2(_rotated(polygon.points, start));
+  }
+
+  static List<SourcePoint2> _rotated(List<SourcePoint2> points, int start) =>
+      List<SourcePoint2>.generate(
+        points.length,
+        (index) => points[(start + index) % points.length],
+        growable: false,
+      );
 
   static bool _boundariesIntersect(SourcePolygon2 first, SourcePolygon2 second) {
     final firstPoints = first.points;
