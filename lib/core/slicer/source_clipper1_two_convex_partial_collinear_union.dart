@@ -10,16 +10,19 @@ import '../geometry/source_polygon.dart';
 /// - endpoint-aligned partial overlap whose short edge reaches the *start* of
 ///   the longer host edge, for any host-edge slope;
 /// - endpoint-aligned partial overlap whose short edge reaches the *end* of a
-///   horizontal host edge;
+///   horizontal host edge, or a non-horizontal host edge running toward
+///   increasing Y;
 /// - staggered horizontal overlap where neither source edge contains the other
-///   and the merged contour has one unique minimum-Y vertex.
+///   and the merged contour has one unique minimum-Y vertex;
+/// - staggered non-horizontal negative-slope overlap when the source edge that
+///   runs down-left starts at that triangle's standalone Clipper1 result start.
 ///
 /// Both inputs are required to be triangles because the exact `BuildResult()`
 /// start for wider convex polygons depends on additional Clipper output-list
-/// state. Non-horizontal host-end joins, non-horizontal staggered joins, mixed
-/// proper-crossing/contact cases, fixup-created collinearity and wider convex
-/// polygons stay on the full compatibility seam rather than extrapolating the
-/// oracle.
+/// state. Non-horizontal host-end joins running toward decreasing Y, other
+/// non-horizontal staggered states, mixed proper-crossing/contact cases,
+/// fixup-created collinearity and wider convex polygons stay on the full
+/// compatibility seam rather than extrapolating the oracle.
 class SourceClipper1TwoConvexPartialCollinearUnion2 {
   const SourceClipper1TwoConvexPartialCollinearUnion2._();
 
@@ -191,25 +194,35 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
           return null;
         }
         buildStart = _hostStartAlignedBuildStart(host, other);
-      } else if (guestTouchesEnd &&
-          !guestTouchesStart &&
-          host.edgeStart.y == host.edgeEnd.y) {
+      } else if (guestTouchesEnd && !guestTouchesStart) {
         final other = host.guestStart == host.edgeEnd
             ? host.guestEnd
             : host.guestStart;
         if (!_strictlyInsideSegment(host.edgeStart, host.edgeEnd, other)) {
           return null;
         }
-        buildStart = _horizontalHostEndBuildStart(host);
+        final dy = host.edgeEnd.y - host.edgeStart.y;
+        if (dy == 0) {
+          buildStart = _horizontalHostEndBuildStart(host);
+        } else if (dy > 0) {
+          buildStart = host.edgeStart;
+        } else {
+          return null;
+        }
       } else {
         return null;
       }
     } else {
-      if (contact.firstStart.y != contact.firstEnd.y ||
-          contact.secondStart.y != contact.secondEnd.y) {
-        return null;
+      if (contact.firstStart.y == contact.firstEnd.y &&
+          contact.secondStart.y == contact.secondEnd.y) {
+        buildStart = _uniqueMinimumY(cycle);
+      } else {
+        buildStart = _nonHorizontalStaggeredBuildStart(
+          contact,
+          first,
+          second,
+        );
       }
-      buildStart = _uniqueMinimumY(cycle);
       if (buildStart == null) return null;
     }
 
@@ -241,6 +254,61 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
     }
     return host.edgeStart;
   }
+
+  static SourcePoint2? _nonHorizontalStaggeredBuildStart(
+    _SharedEdgeContact2 contact,
+    SourcePolygon2 first,
+    SourcePolygon2 second,
+  ) {
+    final candidates = [
+      (
+        polygon: first,
+        start: contact.firstStart,
+        end: contact.firstEnd,
+      ),
+      (
+        polygon: second,
+        start: contact.secondStart,
+        end: contact.secondEnd,
+      ),
+    ];
+
+    for (final candidate in candidates) {
+      final dx = candidate.end.x - candidate.start.x;
+      final dy = candidate.end.y - candidate.start.y;
+      if (dx >= 0 || dy <= 0) continue;
+      if (_triangleBuildStart(candidate.polygon) != candidate.start) {
+        return null;
+      }
+      return candidate.start;
+    }
+    return null;
+  }
+
+  static SourcePoint2 _triangleBuildStart(SourcePolygon2 polygon) {
+    final maxY = _maximumY(polygon);
+    final bottoms = polygon.points.where((point) => point.y == maxY).toList();
+    if (bottoms.length >= 2) {
+      return bottoms.reduce((a, b) => a.x >= b.x ? a : b);
+    }
+
+    final bottom = bottoms.single;
+    final minY = polygon.points
+        .map((point) => point.y)
+        .reduce((a, b) => a < b ? a : b);
+    final tops = polygon.points.where((point) => point.y == minY).toList();
+    if (tops.length >= 2) return bottom;
+
+    final top = tops.single;
+    final middle = polygon.points.singleWhere(
+      (point) => point != bottom && point != top,
+    );
+    return _orientation(bottom, top, middle) > 0 ? middle : bottom;
+  }
+
+  static int _maximumY(SourcePolygon2 polygon) => polygon.points
+      .map((point) => point.y)
+      .reduce((a, b) => a > b ? a : b);
 
   static SourcePoint2? _uniqueMinimumY(List<SourcePoint2> points) {
     var minimumY = points.first.y;
