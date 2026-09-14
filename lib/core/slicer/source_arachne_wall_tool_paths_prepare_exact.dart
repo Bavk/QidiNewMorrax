@@ -11,6 +11,7 @@ import 'source_clipper1_two_convex_decreasing_host_end_union.dart';
 import 'source_clipper1_two_convex_decreasing_strict_contained_union.dart';
 import 'source_clipper1_two_convex_equal_bottom_contact_union.dart';
 import 'source_clipper1_two_convex_host_end_fixup_union.dart';
+import 'source_clipper1_two_convex_mixed_point_union.dart';
 import 'source_clipper1_two_convex_nonhorizontal_staggered_union.dart';
 import 'source_clipper1_two_convex_partial_collinear_union.dart';
 import 'source_clipper1_two_convex_union.dart';
@@ -31,13 +32,11 @@ import 'source_clipper1_two_rectangle_union.dart';
 /// boundaries do not interact. Exact interacting two-positive subsets cover
 /// axis-aligned rectangle contacts/overlaps, proper-crossing strict convex
 /// pairs, the pinned two-triangle zero-area contact subset including equal-
-/// bottom point-contact ties and decreasing-Y strict-contained contacts, and
-/// represented partial-collinear joins including one exact host-end
-/// `FixupOutPolygon()` state, decreasing-Y host-end and all non-horizontal
-/// staggered non-fixup states, with exact `BuildResult()` starts/order for their
-/// asserted contracts. Interacting holes, >2 interacting paths, remaining
-/// fixup-mutated contact/partial states, mixed crossing/contact cases, wider-
-/// convex contact output state, multi-reflex/nonlocal non-orthogonal cleanup and
+/// bottom point-contact ties and decreasing-Y strict-contained contacts,
+/// represented partial-collinear/fixup joins, and one raw-proven mixed
+/// proper-crossing plus point-touch triangle state. Interacting holes, >2
+/// interacting paths, remaining mixed crossing/contact states, wider-convex
+/// contact/fixup output state, multi-reflex/nonlocal non-orthogonal cleanup and
 /// orthogonal hole/point-touch ambiguity remain explicit compatibility seams.
 /// All post-offset cleanup stages are the direct ports already hosted by
 /// [SourceArachneWallToolPathsPrepare2].
@@ -150,11 +149,12 @@ class SourceArachneWallToolPathsPrepareExact2 {
   ///   decreasing-Y strict-contained states; non-horizontal staggered triangle
   ///   joins use the all-slope exact staggered helper; represented endpoint-
   ///   aligned or horizontal joins use the partial-collinear helper; remaining
-  ///   decreasing-Y host-end joins use their exact helper; the represented
-  ///   one-removed-endpoint fixup state uses the exact host-end fixup helper;
-  ///   and exactly two strict positive convex paths with only proper crossings
-  ///   use the exact scanline-rounded convex union subset. Other interacting
-  ///   sets fall back only at the final union;
+  ///   decreasing-Y host-end joins use their exact helper; represented
+  ///   one-point cleanup uses the exact fixup gateway; one mixed proper-
+  ///   crossing plus point-touch triangle event class uses its independently
+  ///   proved helper; and exactly two strict positive convex paths with only
+  ///   proper crossings use the exact scanline-rounded convex union subset.
+  ///   Other interacting sets fall back only at the final union;
   /// - multi-reflex/nonlocal non-orthogonal cleanup and orthogonal hole/point-
   ///   touch ambiguity stay on the compatibility path until independently
   ///   represented.
@@ -279,6 +279,11 @@ class SourceArachneWallToolPathsPrepareExact2 {
       if (SourceClipper1TwoConvexHostEndFixupUnion2.supports(perPath)) {
         return List.unmodifiable([
           SourceClipper1TwoConvexHostEndFixupUnion2.union(perPath),
+        ]);
+      }
+      if (SourceClipper1TwoConvexMixedPointUnion2.supports(perPath)) {
+        return List.unmodifiable([
+          SourceClipper1TwoConvexMixedPointUnion2.union(perPath),
         ]);
       }
       if (SourceClipper1TwoConvexUnion2.supports(perPath)) {
