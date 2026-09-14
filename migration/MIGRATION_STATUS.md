@@ -15,12 +15,12 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-14
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `7ad184aa99f19d492765a6fb9afbe540ff9f1a70` (`test: lock all-slope staggered Clipper1 unions`);
-- workflow `34883978610` (#532), job `104109901824`, conclusion **success**;
+- validated code `1299cb5999f31b5c1659e1796d6d462fafa5d9f1` (`test: lock decreasing strict-contained contacts`);
+- workflow `34896399166` (#542), job `104151463543`, conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **802/802 passing**.
+- `flutter test --reporter expanded` — **816/816 passing**.
 
-The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds ten tests beyond #525 for all non-horizontal staggered two-triangle states, exact Arachne routing and ownership/rejection boundaries.
+The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds fourteen tests beyond #532: seven for equal-bottom point-contact source ordering and seven for decreasing-Y strict-contained triangle contacts, including exact Arachne routing and ownership/rejection boundaries.
 
 ## Top-level gates
 
@@ -46,16 +46,18 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. The represented exact subs
 - conservative noninteracting NonZero cross-path behavior for direct holes, disconnected positive roots and nested same-sign suppression, including pinned `BuildResult()` starts/order;
 - exact interacting two-positive axis-aligned rectangles for same-span touch, diagonal area overlap, partial unequal edge/T contacts and point-only contacts;
 - exactly two positive strictly convex contours with only proper boundary crossings, preserving the pinned modified-Clipper scanline intersection arithmetic and exact `BuildResult()` vertex order/start;
-- exactly two positive strict-convex **triangles** for the raw-ELF-proven zero-area contact states: supported single point contacts with distinct bottom scanlines, complete shared edge and represented strict-contained shared-edge directions;
-- exactly two positive strict-convex triangles with one represented partial collinear contact. #510 host-start/horizontal states, #518 guarded non-horizontal states and #525 remaining non-fixup decreasing-Y host-end states remain exact. **New #532 scope** adds all non-horizontal staggered non-fixup triangle states through `SourceClipper1TwoConvexNonHorizontalStaggeredUnion2`.
+- exactly two positive strict-convex **triangles** for the raw-ELF-proven zero-area contact states: distinct-bottom point contacts, **equal-bottom point contacts**, complete shared edge and represented strict-contained shared-edge directions including **decreasing-Y strict-contained contacts**;
+- exactly two positive strict-convex triangles with one represented partial collinear contact. #510 host-start/horizontal states, #518 guarded non-horizontal states, #525 remaining non-fixup decreasing-Y host-end states and #532 all non-horizontal staggered non-fixup states remain exact.
 
 The exact pinned artifact remains Actions artifact `10085378329`, with downloaded SHA-256 `912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8` and AppImage SHA-256 `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`.
 
-Retained direct raw-ELF evidence includes standalone triangle starts **1100/1100**, complete shared-edge triangle starts **1000/1000**, supported contact source-list/start/order predicates **4600/4600**, the #510 represented partial-collinear matrix **4392/4392 exact raw paths**, the #518 guarded extension **36000/36000**, and the #525 decreasing-Y host-end extension **23400/23400**.
+Retained direct raw-ELF evidence includes standalone triangle starts **1100/1100**, complete shared-edge triangle starts **1000/1000**, supported older contact source-list/start/order predicates **4600/4600**, the #510 represented partial-collinear matrix **4392/4392 exact raw paths**, #518 guarded extension **36000/36000**, #525 decreasing-Y host-end extension **23400/23400**, and #532 all-slope non-horizontal staggered extension **145800/145800**.
 
-The #532 extension adds **145800/145800 exact raw result paths** for all non-horizontal staggered non-fixup triangle joins: **48600/48600** positive-slope, **48600/48600** negative-slope and **48600/48600** vertical support-line states. Each family covers strict end-overlap, start-overlap, equal-Y ties and the equality boundary, across all 3×3 cyclic rotations and both polygon input orders. The exact source-state rule canonicalizes to the shared source edge whose `dy > 0`; start selection then depends on which canonical endpoint lies inside the opposite edge and on the two third-vertex Y relationships. Horizontal staggered states remain represented by the older exact helper. Cycles requiring `FixupOutPolygon()` remain fallback.
+The #539 equal-bottom point-contact extension adds **41400/41400 exact raw result paths**: **21600/21600** broad vertex↔vertex / vertex↔edge tied-bottom cases, **9000/9000** shared/flat-bottom cases and **10800/10800** sheared nonvertical vertex↔edge cases. Each contour keeps its standalone positive-triangle `BuildResult()` start, while tied-bottom result contour order is exactly the reverse of `AddPath()` / input order. All matrices include all 3×3 cyclic source rotations and both polygon input orders.
 
-Still **not** general Clipper1 parity: wider-convex contact output-list state, equal-bottom point-contact ties, strict-contained decreasing-Y contact joins, fixup-mutated contact/partial joins, mixed crossing/contact cases, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those remain explicit compatibility seams and must not be promoted from Clipper2 fallback without independent source evidence.
+The #542 decreasing-Y strict-contained extension adds **30600/30600 exact full raw result paths**: **25200/25200** broad cases plus **5400/5400** targeted vertical/equal-Y/slope-boundary cases. For host edge `H0→H1` with `dy < 0`, overlap endpoint `qStart` nearer `H0`, overlap endpoint `qEnd` nearer `H1`, host third `H` and guest third `G`, raw start is `qEnd` when `G.y < qStart.y`, `H` when `G.y > qStart.y`, and the standalone host-triangle Clipper1 start when Y is equal. All matrices include all 3×3 cyclic rotations and both input orders.
+
+Still **not** general Clipper1 parity: wider-convex contact output-list state, **fixup-mutated contact/partial joins**, mixed crossing/contact cases, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those remain explicit compatibility seams and must not be promoted from Clipper2 fallback without independent source evidence.
 
 ## Traceability summary
 
@@ -64,7 +66,7 @@ Still **not** general Clipper1 parity: wider-convex contact output-list state, e
 | represented integer geometry / Polyline / ArcFitter / Circle / ThickPolyline / Boost-Voronoi / MedialAxis | `lib/core/geometry` source-shaped ports | translated and direct C++/Boost fixtures in current suite | `parity_verified` (scoped) | broader source APIs/pathologies |
 | Classic perimeter represented surface path | classic source pipeline modules | translated/source-shaped process fixtures | `parity_verified` (scoped) | later toolpath families and wider production matrix |
 | Arachne wall-generation dependency chain | `lib/core/slicer/source_arachne_*` | direct/source-shaped plus compiled process fixtures | `parity_verified` (scoped dependencies) | broader production/pathological matrix |
-| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #532 CI | `parity_verified` (exact fixture scopes) | remaining contact/fixup states, interacting holes, >2 paths and broader Execute cleanup |
+| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #542 CI | `parity_verified` (exact fixture scopes) | fixup/mixed contact states, interacting holes, >2 paths and broader Execute cleanup |
 | represented `process_arachne()` boundary | `SourceArachneProcessPipeline2` + dependencies | common/hole/Alltop/overhang/fill/LoopNode/wedge exact fixtures | `implemented_unverified` | general Clipper1 seams + wider process differentials |
 | full slicer/toolpath product | multiple foundations | partial | `port_started` | fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft/full G-code etc. |
 | formats/profiles/scene/Preview/Device/UI | Flutter/Dart foundations | partial | `port_started` | complete 1:1 behavior and integrations |
@@ -72,7 +74,7 @@ Still **not** general Clipper1 parity: wider-convex contact output-list state, e
 
 ## Immediate next dependency order
 
-1. Finish the remaining two-path convex boundary-degeneracy/contact seam with direct pinned evidence: **equal-bottom point-contact ties, strict-contained decreasing-Y contact states, fixup-mutated contact/partial joins, then mixed proper-crossing + touch/collinear cases**. Widen beyond triangles only where raw `OutRec`/`BuildResult()` state is proved.
+1. Finish the remaining two-path convex boundary-degeneracy/contact seam with direct pinned evidence: **fixup-mutated contact/partial joins, then mixed proper-crossing + touch/collinear cases**. Widen beyond triangles only where raw `OutRec`/`BuildResult()` state is proved.
 2. Continue the same Clipper1 final cross-path priority with **interacting holes**, then **more than two interacting paths**.
 3. Extend per-path Clipper1 `Execute()` beyond current orthogonal/V-notch subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup.
 4. Validate remaining prepared-outline final `unionNonZero()` cases so a later Clipper2 call cannot silently reintroduce source-order/rounding drift after exact pre-offset work.
