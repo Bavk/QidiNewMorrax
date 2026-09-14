@@ -6,33 +6,54 @@ import '../geometry/source_polygon.dart';
 ///
 /// The resulting boundary is evaluated in the source integer domain. More
 /// importantly, this helper preserves the topology-specific `BuildResult()`
-/// start point captured from the exact pinned BambuStudio ELF:
+/// order/start captured from the exact pinned BambuStudio ELF:
 ///
 /// - horizontal same-span merge/touch -> lower-left;
 /// - vertical same-span merge/touch -> lower-right;
+/// - partial unequal edge contacts -> source scanline start for the exact
+///   left/right or bottom/top interval topology;
 /// - diagonal area overlap -> one of the four source scanline starts, selected
-///   from the relative north/south and east/west rectangle positions.
+///   from the relative north/south and east/west rectangle positions;
+/// - point-only contact -> two separate contours, north first, each rebased to
+///   its top-right source `BuildResult()` start.
 ///
-/// Input order does not affect these pinned results. Point-only contact, partial
-/// edge contact with unequal orthogonal spans, containment, holes and general
-/// polygons remain on the full Clipper1 boolean seam.
+/// Input order does not affect these pinned results. Containment remains on the
+/// represented noninteracting winding helper. General convex intersections,
+/// holes and more than two interacting paths remain on the full Clipper1
+/// boolean seam.
 class SourceClipper1TwoRectangleUnion2 {
   const SourceClipper1TwoRectangleUnion2._();
 
   static bool supports(Iterable<SourcePolygon2> polygons) =>
       _unionOrNull(List<SourcePolygon2>.of(polygons)) != null;
 
-  static SourcePolygon2 union(Iterable<SourcePolygon2> polygons) {
+  /// Returns every exact source result contour for the represented subset.
+  ///
+  /// Most represented interactions return one contour. Point-only contact is
+  /// source-significant: Clipper1 keeps two separate positive contours.
+  static List<SourcePolygon2> unionAll(Iterable<SourcePolygon2> polygons) {
     final result = _unionOrNull(List<SourcePolygon2>.of(polygons));
     if (result == null) {
       throw ArgumentError(
         'Pinned two-rectangle Clipper1 union subset does not apply',
       );
     }
-    return result;
+    return List.unmodifiable(result);
   }
 
-  static SourcePolygon2? _unionOrNull(List<SourcePolygon2> polygons) {
+  /// Convenience accessor for represented interactions with exactly one result.
+  static SourcePolygon2 union(Iterable<SourcePolygon2> polygons) {
+    final result = unionAll(polygons);
+    if (result.length != 1) {
+      throw ArgumentError(
+        'Pinned two-rectangle Clipper1 union produces multiple contours; '
+        'use unionAll()',
+      );
+    }
+    return result.single;
+  }
+
+  static List<SourcePolygon2>? _unionOrNull(List<SourcePolygon2> polygons) {
     if (polygons.length != 2) return null;
     final first = _Rect2.fromPolygon(polygons[0]);
     final second = _Rect2.fromPolygon(polygons[1]);
@@ -49,11 +70,13 @@ class SourceClipper1TwoRectangleUnion2 {
     final overlapMaxY = first.maxY < second.maxY ? first.maxY : second.maxY;
     final overlapX = overlapMaxX - overlapMinX;
     final overlapY = overlapMaxY - overlapMinY;
-    if (overlapX < 0 || overlapY < 0 || (overlapX == 0 && overlapY == 0)) {
-      return null;
+    if (overlapX < 0 || overlapY < 0) return null;
+
+    if (overlapX == 0 && overlapY == 0) {
+      return _pointContactResult(first, second);
     }
 
-    SourcePoint2 sourceStart;
+    SourcePoint2? sourceStart;
     if (first.minY == second.minY && first.maxY == second.maxY) {
       // Exact horizontal touch/overlap oracle.
       final minX = first.minX < second.minX ? first.minX : second.minX;
@@ -62,9 +85,13 @@ class SourceClipper1TwoRectangleUnion2 {
       // Exact vertical touch/overlap oracle.
       final minY = first.minY < second.minY ? first.minY : second.minY;
       sourceStart = SourcePoint2(first.maxX, minY);
+    } else if (overlapX == 0 && overlapY > 0) {
+      sourceStart = _partialVerticalContactStart(first, second);
+    } else if (overlapY == 0 && overlapX > 0) {
+      sourceStart = _partialHorizontalContactStart(first, second);
     } else {
-      // The four diagonal oracles are area-overlap cases. Partial edge-only
-      // contact with unequal spans has not yet been promoted to exact parity.
+      // The represented diagonal oracles are area-overlap cases. Center-aligned
+      // unequal-span intersections still remain on the general boolean seam.
       if (overlapX <= 0 || overlapY <= 0) return null;
       final firstCenterX2 = first.minX + first.maxX;
       final secondCenterX2 = second.minX + second.maxX;
@@ -88,6 +115,7 @@ class SourceClipper1TwoRectangleUnion2 {
         sourceStart = SourcePoint2(south.maxX, south.maxY);
       }
     }
+    if (sourceStart == null) return null;
 
     final xs = <int>{first.minX, first.maxX, second.minX, second.maxX}.toList()
       ..sort();
@@ -156,8 +184,107 @@ class SourceClipper1TwoRectangleUnion2 {
     final simplified = _removeCollinearKeepingStart(output);
     if (simplified.length < 4 || simplified.first != sourceStart) return null;
     final result = SourcePolygon2(simplified);
-    return result.signedArea > 0 ? result : null;
+    return result.signedArea > 0 ? <SourcePolygon2>[result] : null;
   }
+
+  static SourcePoint2? _partialVerticalContactStart(
+    _Rect2 first,
+    _Rect2 second,
+  ) {
+    late final _Rect2 left;
+    late final _Rect2 right;
+    if (first.maxX == second.minX) {
+      left = first;
+      right = second;
+    } else if (second.maxX == first.minX) {
+      left = second;
+      right = first;
+    } else {
+      return null;
+    }
+
+    final overlapMinY = left.minY > right.minY ? left.minY : right.minY;
+    final overlapMaxY = left.maxY < right.maxY ? left.maxY : right.maxY;
+    if (overlapMaxY <= overlapMinY) return null;
+
+    // Exact pinned scanline starts for unequal vertical edge contacts. These
+    // three branches cover strict partial overlaps, interval containment and
+    // one-endpoint-aligned T contacts.
+    if (right.maxY == left.maxY) {
+      return SourcePoint2(left.minX, left.minY);
+    }
+    if (right.maxY > left.maxY) {
+      if (right.minY <= left.minY) {
+        return SourcePoint2(right.maxX, right.maxY);
+      }
+      return SourcePoint2(left.maxX, right.minY);
+    }
+    return SourcePoint2(left.minX, left.maxY);
+  }
+
+  static SourcePoint2? _partialHorizontalContactStart(
+    _Rect2 first,
+    _Rect2 second,
+  ) {
+    late final _Rect2 bottom;
+    late final _Rect2 top;
+    if (first.maxY == second.minY) {
+      bottom = first;
+      top = second;
+    } else if (second.maxY == first.minY) {
+      bottom = second;
+      top = first;
+    } else {
+      return null;
+    }
+
+    final overlapMinX = bottom.minX > top.minX ? bottom.minX : top.minX;
+    final overlapMaxX = bottom.maxX < top.maxX ? bottom.maxX : top.maxX;
+    if (overlapMaxX <= overlapMinX) return null;
+
+    // Exact pinned scanline starts. A shared left edge or strict containment of
+    // the bottom interval by the top interval starts at bottom-right; all other
+    // unequal horizontal contacts start at bottom-left.
+    final bottomInsideTop =
+        top.minX < bottom.minX && bottom.maxX < top.maxX;
+    if (bottom.minX == top.minX || bottomInsideTop) {
+      return SourcePoint2(bottom.maxX, bottom.minY);
+    }
+    return SourcePoint2(bottom.minX, bottom.minY);
+  }
+
+  static List<SourcePolygon2>? _pointContactResult(
+    _Rect2 first,
+    _Rect2 second,
+  ) {
+    late final _Rect2 north;
+    late final _Rect2 south;
+    if (first.maxY == second.minY) {
+      south = first;
+      north = second;
+    } else if (second.maxY == first.minY) {
+      south = second;
+      north = first;
+    } else {
+      return null;
+    }
+
+    final xTouches =
+        south.maxX == north.minX || north.maxX == south.minX;
+    if (!xTouches) return null;
+
+    return <SourcePolygon2>[
+      _buildResultRectangle(north),
+      _buildResultRectangle(south),
+    ];
+  }
+
+  static SourcePolygon2 _buildResultRectangle(_Rect2 rect) => SourcePolygon2([
+        SourcePoint2(rect.maxX, rect.maxY),
+        SourcePoint2(rect.minX, rect.maxY),
+        SourcePoint2(rect.minX, rect.minY),
+        SourcePoint2(rect.maxX, rect.minY),
+      ]);
 
   static bool _insideEither(
     _Rect2 first,
