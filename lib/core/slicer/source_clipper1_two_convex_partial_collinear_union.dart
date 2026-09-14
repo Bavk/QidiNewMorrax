@@ -17,8 +17,9 @@ import '../geometry/source_polygon.dart';
 /// Both inputs are required to be triangles because the exact `BuildResult()`
 /// start for wider convex polygons depends on additional Clipper output-list
 /// state. Non-horizontal host-end joins, non-horizontal staggered joins, mixed
-/// proper-crossing/contact cases and wider convex polygons stay on the full
-/// compatibility seam rather than extrapolating the oracle.
+/// proper-crossing/contact cases, fixup-created collinearity and wider convex
+/// polygons stay on the full compatibility seam rather than extrapolating the
+/// oracle.
 class SourceClipper1TwoConvexPartialCollinearUnion2 {
   const SourceClipper1TwoConvexPartialCollinearUnion2._();
 
@@ -106,8 +107,6 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
       return null;
     }
 
-    // With no proper crossings, a strict interior vertex would mean material
-    // overlap or containment rather than the represented zero-area join.
     if (_hasStrictInteriorVertex(first, second) ||
         _hasStrictInteriorVertex(second, first)) {
       return null;
@@ -137,7 +136,6 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
               contact.firstEnd,
             );
 
-    // A complete common edge is owned by the earlier contact helper.
     if (firstContainsSecond && secondContainsFirst) return null;
 
     final boundary = <_DirectedEdge2>[];
@@ -154,7 +152,7 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
       boundary,
     );
     final cycle = _buildSingleCycle(boundary);
-    if (cycle == null || cycle.length < 3) return null;
+    if (cycle == null || cycle.length < 3 || _needsFixup(cycle)) return null;
 
     SourcePoint2? buildStart;
     if (firstContainsSecond || secondContainsFirst) {
@@ -204,14 +202,9 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
         }
         buildStart = _horizontalHostEndBuildStart(host);
       } else {
-        // Strict-contained joins are owned by the earlier contact helper;
-        // non-horizontal host-end joins remain unrepresented.
         return null;
       }
     } else {
-      // Staggered overlap: only the directly probed horizontal state is
-      // represented. The unique minimum-Y condition intentionally excludes
-      // tie cases whose BuildResult rotation has not been derived yet.
       if (contact.firstStart.y != contact.firstEnd.y ||
           contact.secondStart.y != contact.secondEnd.y) {
         return null;
@@ -233,11 +226,6 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
   ) {
     final dx = host.edgeEnd.x - host.edgeStart.x;
     final dy = host.edgeEnd.y - host.edgeStart.y;
-
-    // Direct ELF audit: 80/80 deterministic random triangle cases across all
-    // edge quadrants matched this exact source-list branch. Downward host edges
-    // and horizontal left-to-right keep the interior overlap endpoint; the
-    // opposite scan direction keeps the host vertex preceding the shared edge.
     if (dy < 0 || (dy == 0 && dx > 0)) return interiorOverlapEnd;
     return host.polygon.points[
         (host.edgeIndex - 1 + host.polygon.points.length) %
@@ -332,13 +320,23 @@ class SourceClipper1TwoConvexPartialCollinearUnion2 {
     return output;
   }
 
+  static bool _needsFixup(List<SourcePoint2> cycle) {
+    for (var index = 0; index < cycle.length; index++) {
+      final previous = cycle[(index - 1 + cycle.length) % cycle.length];
+      final point = cycle[index];
+      final next = cycle[(index + 1) % cycle.length];
+      if (point == previous || point == next) return true;
+      if (_orientation(previous, point, next) == 0) return true;
+    }
+    return false;
+  }
+
   static bool _hasStrictInteriorVertex(
     SourcePolygon2 source,
     SourcePolygon2 other,
   ) =>
       source.points.any((point) => _locateInConvex(point, other) == 1);
 
-  /// -1 outside, 0 boundary, +1 strict interior.
   static int _locateInConvex(SourcePoint2 point, SourcePolygon2 polygon) {
     var boundary = false;
     for (var index = 0; index < polygon.points.length; index++) {
