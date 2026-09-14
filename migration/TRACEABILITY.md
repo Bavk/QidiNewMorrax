@@ -4,11 +4,11 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger re
 
 ## Current validation checkpoint
 
-- code: `3be152aa74f3c555423a39d1b2ab36b63f959343`;
-- workflow: `.github/workflows/flutter-parity.yml` run `34897876786` (#552), job `104156397361`;
+- code: `8f9b8f0fbdea9c476ad9fd5b46161e5aaf76b5c1`;
+- workflow: `.github/workflows/flutter-parity.yml` run `34909811431` (#562), job `104194568959`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
-- tests: **832/832 passed**;
+- tests: **840/840 passed**;
 - conclusion: **success**.
 
 Recent milestone chain:
@@ -26,7 +26,8 @@ Recent milestone chain:
 - #539 / `c95cdaad...`: equal-bottom point-contact triangle ordering, 809/809;
 - #542 / `1299cb59...`: decreasing-Y strict-contained triangle contacts, 816/816;
 - #549 / `7c5e6ea5...`: endpoint-aligned host-end one-point fixup joins, 824/824;
-- **#552 / `3be152aa...`: symmetric host-start one-point fixup joins, 832/832.**
+- #552 / `3be152aa...`: symmetric host-start one-point fixup joins, 832/832;
+- **#562 / `8f9b8f0f...`: full-shared-edge one-point fixup joins including removed-start pointer state, 840/840.**
 
 All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures are re-executed by the current suite.
 
@@ -44,12 +45,13 @@ All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures
 | older represented two-triangle zero-area contacts | `SourceClipper1TwoConvexContactUnion2` | standalone starts 1100/1100, full shared-edge starts 1000/1000, older predicates 4600/4600 | `parity_verified` (scoped) | Newer special states live in separate helpers; wider-convex/fixup state not implied. |
 | equal-bottom two-triangle point contact | `SourceClipper1TwoConvexEqualBottomContactUnion2` | #539 raw matrices: **41400/41400** exact raw paths, all cyclic rotations/input orders | `parity_verified` (scoped) | Wider-convex/non-point tie state not implied. |
 | decreasing-Y strict-contained two-triangle contact | `SourceClipper1TwoConvexDecreasingStrictContainedUnion2` | #542 raw matrices: **30600/30600** exact full raw paths, all cyclic rotations/input orders | `parity_verified` (scoped) | Wider-convex/fixup state not implied. |
-| represented endpoint/horizontal/guarded partial-collinear triangle contact | `SourceClipper1TwoConvexPartialCollinearUnion2` | #510 **4392/4392** + #518 **36000/36000** exact raw paths | `parity_verified` (scoped) | Other fixup and mixed crossing/contact are separate. |
-| remaining non-fixup decreasing-Y host-end partial collinear contact | `SourceClipper1TwoConvexDecreasingHostEndUnion2` | #525 **23400/23400** exact raw paths | `parity_verified` (scoped) | Fixup/wider-convex state is separate. |
-| non-horizontal staggered collinear triangle contact | `SourceClipper1TwoConvexNonHorizontalStaggeredUnion2` | #532 **145800/145800** exact raw paths across positive/negative/vertical support lines | `parity_verified` (scoped) | Other fixup and mixed crossing/contact not implied. |
-| endpoint-aligned host-end join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexHostEndFixupUnion2` | #549 **145800/145800** exact full raw paths across Y directions, vertical, horizontal, shears, rotations/orders; eight tests | `parity_verified` (scoped) | Non-endpoint/full-edge/staggered/wider-convex fixup states remain open. |
-| symmetric endpoint-aligned host-start one-point fixup join | `SourceClipper1TwoConvexHostStartFixupUnion2` via fixup gateway | #552 **145800/145800** exact full raw paths across same direction/shear/rotation/order families; eight tests | `parity_verified` (scoped) | Other fixup states remain open. |
-| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + route tests through #552 | `parity_verified` for represented branches | Other fixup/mixed cases, interacting holes, >2 paths and generic boolean cases still fall back. |
+| represented endpoint/horizontal/guarded partial-collinear triangle contact | `SourceClipper1TwoConvexPartialCollinearUnion2` | #510 **4392/4392** + #518 **36000/36000** exact raw paths | `parity_verified` (scoped) | Mixed crossing/contact is separate. |
+| remaining non-fixup decreasing-Y host-end partial collinear contact | `SourceClipper1TwoConvexDecreasingHostEndUnion2` | #525 **23400/23400** exact raw paths | `parity_verified` (scoped) | Wider-convex state is separate. |
+| non-horizontal staggered collinear triangle contact | `SourceClipper1TwoConvexNonHorizontalStaggeredUnion2` | #532 **145800/145800** exact raw paths across positive/negative/vertical support lines | `parity_verified` (scoped) | Mixed crossing/contact not implied. |
+| endpoint-aligned host-end join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexHostEndFixupUnion2` | #549 **145800/145800** exact full raw paths across Y directions, vertical, horizontal, shears, rotations/orders; eight tests | `parity_verified` (scoped) | Wider/multi-point/mixed fixup states remain open. |
+| symmetric endpoint-aligned host-start one-point fixup join | `SourceClipper1TwoConvexHostStartFixupUnion2` via fixup gateway | #552 **145800/145800** exact full raw paths across same direction/shear/rotation/order families; eight tests | `parity_verified` (scoped) | Wider/multi-point/mixed fixup states remain open. |
+| full-shared-edge strict-triangle join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexFullSharedEdgeFixupUnion2` via fixup gateway | #562 **226908/226908** exact raw paths: 64800 non-start removal + 64800 removed-start classification + 97200 independent unequal-distance + 108 equal-Y; eight tests | `parity_verified` (scoped) | Wider-convex, multi-point and mixed-crossing cleanup not implied. |
+| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + route tests through #562 | `parity_verified` for represented branches | Mixed contact cases, interacting holes, >2 paths and generic boolean cases still fall back. |
 | BridgeDetector / LineSegmentation / QIDI loop-node geometry represented subsets | source-shaped Dart helpers | translated/source-shaped fixtures | `parity_verified` (scoped) | Broader consumers/topologies remain open. |
 
 The prior contact helper was deliberately narrowed in `bf3610af5327a82e43469d31d4fd825128635c23`: a direct wider-convex audit showed **0/40** random full-shared-edge quadrilateral cases matched the old raw-start heuristic. Triangle exactness must not be extrapolated to wider convex paths.
@@ -58,7 +60,13 @@ The #539 tied-bottom helper preserves standalone triangle starts but reverses in
 
 The #542 decreasing-Y strict-contained helper uses source-state start selection from guest-third Y relative to the overlap endpoint nearer host start; broad plus targeted matrices matched **30600/30600** full raw paths.
 
-The #549/#552 endpoint-fixup pair closes only the source state where an endpoint-aligned partial join creates one shared host endpoint collinear between the two third vertices and `FixupOutPolygon()` removes that single point. Host-end and host-start matrices each matched **145800/145800**, for **291600/291600 combined**. The gateway keeps their raw-state predicates separate; this evidence does not generalize to other fixup mutations.
+The #549/#552 endpoint-fixup pair closes only the source state where an endpoint-aligned partial join creates one shared host endpoint collinear between the two third vertices and `FixupOutPolygon()` removes that single point. Host-end and host-start matrices each matched **145800/145800**, for **291600/291600 combined**.
+
+The #562 full-shared-edge helper adds the other strict-triangle one-point collinearity geometry. Its **226908/226908** raw matrix explicitly includes the state where `FixupOutPolygon()` removes the ordinary pre-fixup `BuildResult()` start; that branch depends on the source triangle whose directed shared edge ends at the removed endpoint and on AddPath/input order. The implementation preserves that source-state asymmetry rather than canonicalizing the contour.
+
+For strict triangles with a single collinear shared interval, endpoint-aligned and full-shared-edge cases are the one-point cleanup geometries where the two off-support-line third edges become adjacent at a shared endpoint. Strict-contained/staggered overlap keeps a support-line boundary fragment at the relevant endpoint and does not create that same collinearity. Wider-convex, multi-point and mixed-crossing fixups remain unproved.
+
+A post-#562 exploratory mixed proper-crossing + point-touch matrix provides a negative boundary: a candidate that reused the existing proper-crossing geometry plus “successor of rightmost minimum-Y” rebasing matched raw start in **35874/37008** cases but failed **1134**. This is not implemented scope; it proves the mixed seam needs its own `OutRec`/scanline-state model.
 
 ## Slicer semantic model / Arachne dependencies
 
@@ -90,11 +98,12 @@ An earlier local audit recorded 3,657/3,657 copied runtime entries matching sour
 
 ## Immediate open Clipper1 trace
 
-1. **other non-endpoint fixup-mutated contact/partial joins**, then mixed proper-crossing + touch/collinear degeneracies; widen contact routing beyond triangles only with direct raw-state evidence;
-2. interacting holes and surviving hole hierarchy;
-3. more than two interacting paths;
-4. generic final union and broader per-path `Execute()` topology;
-5. remove remaining Clipper2 compatibility seams only after independent pinned evidence.
+1. **mixed proper-crossing + point-touch/collinear degeneracies**, beginning with the raw-start state behind the 1134/37008 exploratory counterexamples; do not reuse the proper-crossing rebase heuristic without proof;
+2. wider-convex and multi-point/non-triangle fixup state only with direct raw evidence;
+3. interacting holes and surviving hole hierarchy;
+4. more than two interacting paths;
+5. generic final union and broader per-path `Execute()` topology;
+6. remove remaining Clipper2 compatibility seams only after independent pinned evidence.
 
 ## Mandatory update rule
 
