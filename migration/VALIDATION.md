@@ -17,14 +17,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34839681185` (#493), job `103961480006`, executed code commit `d718ff276028ee525739475d0858f4e43c9673dc` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34844487290` (#501), job `103976992231`, executed code commit `34f3ef832b77057dc026b81f07ff5896fd1bada0` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+760: All tests passed!`**;
+- `flutter test --reporter expanded` — **`+768: All tests passed!`**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and includes the new exact Clipper1 proper-convex final-union tests described below.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and includes the new exact Clipper1 strict-convex contact-union tests described below.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -38,44 +38,60 @@ Reference evidence comes from the **actual upstream compiled BambuStudio artifac
 - extracted AppImage SHA-256: `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`;
 - CLI version: `02.08.03.66`.
 
-The debug-symbol ELF exposes the pinned modified Clipper 6.2.9 implementation. Direct probes call the exact `clipper_union(Paths&, pftNonZero)` path before application startup and dump raw result paths without normalizing rotation/order.
+The debug-symbol ELF exposes the pinned modified Clipper 6.2.9 implementation. Direct probes call the exact `clipper_union(Paths&, pftNonZero)` path before application startup and dump raw result paths without normalizing rotation/order. The exact template entry remains at PIE offset `0x10b54d0`; the probe exits from a preload constructor before GUI startup.
 
-## #493 Clipper1 two-positive strict-convex proper-crossing oracle
+## #501 Clipper1 two-positive strict-convex contact oracle
 
-The first non-rectangular interacting convex subset is now independently validated.
+The first non-rectangular zero-area contact subset is now independently validated.
 
 Represented contract:
 
 - exactly two positive, strictly convex closed paths;
-- boundaries cross only through proper segment intersections;
-- no edge/point touching or collinear overlap;
-- no containment-only case;
-- no duplicate/endpoint rounded intersection degeneracy;
-- output is one positive contour;
-- intersection coordinates use the pinned Clipper scanline `TopX()` / `IntersectPoint()` double arithmetic and half-away-from-zero `Round()`;
-- result vertex order/start preserves the observed pinned `FixupOutPolygon()` / `BuildResult()` behavior, not merely equivalent geometry.
+- interiors are disjoint;
+- no proper segment crossing;
+- contact is exactly one represented form: a single point, one complete shared edge, or one shorter shared edge whose two endpoints lie strictly inside the other edge;
+- single-point contact may be vertex↔vertex or vertex↔edge and remains two positive result contours;
+- represented shared-edge contact removes the internal common interval and emits one positive contour;
+- result contour count, exact vertex sequence and `BuildResult()` start/order are preserved, not merely equivalent geometry;
+- endpoint-aligned/staggered partial shared-edge cases, containment, multiple contact intervals and mixed proper-crossing + touch/collinear cases are rejected to the compatibility seam.
 
-Direct ELF evidence executed during this batch:
+Direct raw ELF evidence executed during this batch includes:
 
-- 7 hand-selected cases: two- and six-crossing triangles, diamond pair, four-crossing trapezoids, pentagon/quadrilateral, thin slanted quadrilaterals and a mixed five-sided six-crossing case;
-- 32 deterministic random strict-convex pairs with 2 or 4 proper crossings;
-- reversed input order checked against the same exact result;
-- **39/39 exact matches** between the derived Dart algorithm and raw pinned ELF result paths, including every integer coordinate and output start/order.
+- vertex↔vertex single-point contact;
+- vertex↔edge single-point contact;
+- complete non-horizontal shared edge;
+- strict-contained slanted shared-edge interval;
+- strict-contained horizontal shared-edge interval;
+- reversed input order checks for the represented cases;
+- additional endpoint-aligned, staggered, horizontal/vertical and opposite-scan-direction probes used to delimit the unsupported join-state boundary rather than generalize it without evidence.
 
-Committed regression coverage in `test/core/slicer/source_clipper1_two_convex_union_test.dart` asserts representative 2/4/6-crossing outputs, source rounding, non-horizontal `BuildResult()` start, Arachne exact routing, and rejection of touching/containment cases. These tests are included in #493's 760/760 green suite.
+Committed regression coverage in `test/core/slicer/source_clipper1_two_convex_contact_union_test.dart` contains eight tests: five exact contact outputs, an Arachne zero-offset route assertion, an endpoint-aligned rejection assertion and a proper-crossing ownership assertion. The first CI attempt (#500) exposed an implementation bug where a bounding-box-only segment predicate could split an adjacent non-collinear edge in the horizontal fixture. Commit `34f3ef832b77057dc026b81f07ff5896fd1bada0` corrected the predicate to require collinearity; #501 then passed all 768 tests and analyzer cleanly.
 
-This establishes scoped `parity_verified` evidence only for the contract above. It does **not** prove general Clipper1 boolean parity.
+This establishes scoped `parity_verified` evidence only for the contract above. It does **not** prove general Clipper1 touching/collinear boolean parity.
+
+## Retained #493 proper-crossing convex evidence
+
+The earlier first non-rectangular interacting convex subset remains independently validated:
+
+- exactly two positive, strictly convex closed paths with only proper segment intersections;
+- no edge/point touching, collinear overlap or containment-only case;
+- exact pinned scanline `TopX()` / `IntersectPoint()` rounding and exact `BuildResult()` order/start;
+- 7 hand-selected cases plus 32 deterministic random pairs;
+- **39/39 exact** raw ELF matches, including reversed input order and 2/4/6 crossing topologies.
+
+Committed coverage remains in `test/core/slicer/source_clipper1_two_convex_union_test.dart` and is re-executed by #501.
 
 ## Retained Clipper1 evidence
 
-Earlier direct compiled-oracle batches remain re-executed by #493, including:
+Earlier direct compiled-oracle batches remain re-executed by #501, including:
 
 - `ClipperOffset::AddPath()` pruning, float caller delta, normals, miter/square/concave raw arithmetic;
 - convex positive expansion/erosion and CW-hole sign/orientation semantics;
 - orthogonal concave `Execute()` including topology-changing positive results;
 - isolated positive V-notch and one-reflex negative `pftNegative` cleanup;
 - noninteracting NonZero cross-path result ordering/winding;
-- two-positive axis-aligned rectangle union for same-span touch, diagonal area overlap, strict unequal/T edge contacts and point-only contacts (#488).
+- two-positive axis-aligned rectangle union for same-span touch, diagonal area overlap, strict unequal/T edge contacts and point-only contacts (#488);
+- two-positive strict-convex proper-crossing union (#493).
 
 ## Retained compiled Arachne process evidence
 
@@ -85,7 +101,7 @@ The suite also retains independent pinned compiled-BambuStudio process fixtures 
 
 For the current Clipper1/Arachne priority, independent or complete representation is still missing for:
 
-- non-rectangular convex edge/point touching and collinear overlap outside the rectangle helper;
+- endpoint-aligned/staggered non-rectangular partial collinear joins and mixed proper-crossing + touch/collinear cases;
 - interacting positive/negative hole boundaries and deeper/multiple surviving hole hierarchy;
 - more than two interacting final-union paths;
 - multi-reflex/non-local non-orthogonal per-path cleanup, split/hole-producing non-orthogonal results and broader negative `pftNegative` execution;
@@ -96,7 +112,7 @@ Product-wide work also remains for later fill/support/seam/bridge/adaptive/ironi
 
 ## Next validation boundary
 
-1. Derive direct pinned ELF oracles for **non-rectangular convex edge/point touching and collinear overlap**, then port only the proven exact subset.
+1. Derive direct pinned ELF oracles for **endpoint-aligned/staggered non-rectangular partial collinear joins and mixed crossing/contact cases**, then port only the proven exact subset.
 2. Extend the final-union oracle matrix to **interacting holes**, then **more than two interacting paths**.
 3. Continue generic/per-path Clipper1 execution only with exact source-order/rounding evidence.
 4. Expand whole `process_arachne()` differentials after the remaining final-union seams are reduced.
