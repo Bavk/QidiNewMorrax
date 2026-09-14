@@ -4,11 +4,11 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger re
 
 ## Current validation checkpoint
 
-- code: `7ad184aa99f19d492765a6fb9afbe540ff9f1a70`;
-- workflow: `.github/workflows/flutter-parity.yml` run `34883978610` (#532), job `104109901824`;
+- code: `1299cb5999f31b5c1659e1796d6d462fafa5d9f1`;
+- workflow: `.github/workflows/flutter-parity.yml` run `34896399166` (#542), job `104151463543`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
-- tests: **802/802 passed**;
+- tests: **816/816 passed**;
 - conclusion: **success**.
 
 Recent milestone chain:
@@ -22,7 +22,9 @@ Recent milestone chain:
 - #510 / `d1731f1...`: bounded triangle-contact correction plus exact represented partial-collinear triangle joins, 781/781;
 - #518 / `fc088335...`: guarded non-horizontal host-end/staggered partial-collinear triangle joins, 786/786;
 - #525 / `d528f8f...`: remaining non-fixup decreasing-Y host-end triangle joins, 792/792;
-- **#532 / `7ad184aa...`: all non-horizontal staggered non-fixup triangle joins, 802/802.**
+- #532 / `7ad184aa...`: all non-horizontal staggered non-fixup triangle joins, 802/802;
+- #539 / `c95cdaad...`: equal-bottom point-contact triangle ordering, 809/809;
+- **#542 / `1299cb59...`: decreasing-Y strict-contained triangle contacts, 816/816.**
 
 All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures are re-executed by the current suite.
 
@@ -37,18 +39,22 @@ All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures
 | Clipper1 final `ctUnion` + `pftNonZero`, noninteracting paths | `SourceClipper1NonInteractingUnion2` | direct pinned ELF ordering/winding oracles | `parity_verified` (scoped) | Interacting topology handled by separate subsets below. |
 | Clipper1 final union, two positive axis-aligned rectangles | `SourceClipper1TwoRectangleUnion2` | pinned ELF same-span/diagonal/partial/T/point-contact oracles through #488 | `parity_verified` (scoped) | Non-rectangular cases not implied. |
 | Clipper1 final union, two positive strict-convex paths with only proper crossings | `SourceClipper1TwoConvexUnion2` | 7 hand-selected + 32 deterministic random direct pinned ELF pairs; exact 39/39, committed regression tests, #493 | `parity_verified` (scoped) | Touch/collinear and rounded degeneracies are separate. |
-| Clipper1 final union, two positive strict-convex triangles with represented zero-area contact | `SourceClipper1TwoConvexContactUnion2` | raw pinned ELF triangle-start/contact audits; standalone starts 1100/1100, full shared-edge starts 1000/1000, supported source-list/start/order predicates 4600/4600; re-executed through #532 | `parity_verified` (scoped) | Wider convex state, equal-bottom ties, decreasing-Y strict-contained and fixup states remain open. |
-| Clipper1 final union, two positive strict-convex triangles with represented endpoint/horizontal/guarded partial-collinear contact | `SourceClipper1TwoConvexPartialCollinearUnion2` | #510 baseline 4392/4392 exact raw paths plus #518 **36000/36000** guarded non-horizontal raw paths; committed regression tests | `parity_verified` (scoped) | Fixup collinearity and mixed crossing/contact are separate; generic staggered states are now owned below. |
+| Clipper1 final union, two positive strict-convex triangles with older represented zero-area contact | `SourceClipper1TwoConvexContactUnion2` | standalone starts 1100/1100, full shared-edge starts 1000/1000, older supported source-list/start/order predicates 4600/4600; re-executed through #542 | `parity_verified` (scoped) | Equal-bottom/decreasing-Y states are now owned by separate exact helpers; wider-convex/fixup state remains open. |
+| Clipper1 final union, two positive strict-convex triangles with equal-bottom point-only contact | `SourceClipper1TwoConvexEqualBottomContactUnion2` | #539 raw ELF matrices: 21600 broad + 9000 shared/flat-bottom + 10800 sheared vertex-edge = **41400/41400 exact raw paths**, all cyclic rotations/input orders; seven committed tests | `parity_verified` (scoped) | Wider-convex and non-point contact output-list state not implied. |
+| Clipper1 final union, two positive strict-convex triangles with decreasing-Y strict-contained shared-edge contact | `SourceClipper1TwoConvexDecreasingStrictContainedUnion2` | #542 raw ELF matrices: 25200 broad + 5400 targeted vertical/equal-Y = **30600/30600 exact raw paths**, all cyclic rotations/input orders; seven committed tests | `parity_verified` (scoped) | Fixup-mutated contacts and wider-convex state remain open. |
+| Clipper1 final union, two positive strict-convex triangles with represented endpoint/horizontal/guarded partial-collinear contact | `SourceClipper1TwoConvexPartialCollinearUnion2` | #510 baseline 4392/4392 exact raw paths plus #518 **36000/36000** guarded non-horizontal raw paths; committed regression tests | `parity_verified` (scoped) | Fixup collinearity and mixed crossing/contact are separate; generic staggered states are owned below. |
 | Clipper1 final union, two positive strict-convex triangles with remaining non-fixup decreasing-Y host-end partial collinear contact | `SourceClipper1TwoConvexDecreasingHostEndUnion2` | #525 raw ELF matrix: 14400 broad + 9000 equal-Y tie cases = **23400/23400 exact raw paths**, all cyclic rotations/input orders; six committed tests | `parity_verified` (scoped) | Post-join fixup and wider-convex output-list state remain open. |
 | Clipper1 final union, two positive strict-convex triangles with non-horizontal staggered collinear contact | `SourceClipper1TwoConvexNonHorizontalStaggeredUnion2` | #532 raw ELF matrices: **48600/48600** positive-slope + **48600/48600** negative-slope + **48600/48600** vertical = **145800/145800 exact raw paths**; all cyclic rotations/input orders; ten committed tests | `parity_verified` (scoped) | Fixup-mutated joins, wider-convex state and mixed crossing/contact are not implied. |
-| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + #493/#510/#518/#525/#532 route tests | `parity_verified` for represented branches | Interacting holes, >2 interacting paths and other generic boolean cases still fall back. |
+| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + #493/#510/#518/#525/#532/#539/#542 route tests | `parity_verified` for represented branches | Fixup/mixed contact cases, interacting holes, >2 interacting paths and generic boolean cases still fall back. |
 | BridgeDetector / LineSegmentation / QIDI loop-node geometry represented subsets | source-shaped Dart helpers | translated/source-shaped fixtures | `parity_verified` (scoped) | Broader consumers/topologies remain open. |
 
-The prior contact helper was deliberately narrowed in `bf3610af5327a82e43469d31d4fd825128635c23`: a direct wider-convex audit showed **0/40** random full-shared-edge quadrilateral cases matched the old raw-start heuristic. The current `parity_verified` contact row therefore applies only to explicitly proven triangle states.
+The prior contact helper was deliberately narrowed in `bf3610af5327a82e43469d31d4fd825128635c23`: a direct wider-convex audit showed **0/40** random full-shared-edge quadrilateral cases matched the old raw-start heuristic. Triangle exactness must not be extrapolated to wider convex paths.
 
-The #518 partial-collinear extension remained state-bounded rather than slope-bounded because cyclic source-list rotation can change raw result start for geometrically similar joins. #525 then independently closed the remaining non-fixup decreasing-Y host-end triangle state with a separate helper; its broad/equal-Y matrices matched **23400/23400**.
+The #539 equal-bottom follow-up closes the point-only tie state without widening the older helper. Each triangle keeps its standalone positive-triangle `BuildResult()` start, but when both bottom scanlines are equal the two result contours appear in the **reverse of `AddPath()` / input order**. Independent broad, shared/flat-bottom and sheared vertex-edge matrices matched **41400/41400 exact raw paths**, including all 3×3 cyclic source rotations and both input orders.
 
-The #532 follow-up closes the remaining **non-horizontal staggered non-fixup triangle** state with `SourceClipper1TwoConvexNonHorizontalStaggeredUnion2`. The helper canonicalizes to the shared source edge whose `dy > 0`: if its start lies inside the opposite edge, the canonical third vertex is the raw start; otherwise its end lies inside the opposite edge and start follows the canonical-third versus edge-end Y comparison, with a separate equal-Y endpoint rule based on canonical-start versus opposite-third Y. Independent positive-slope, negative-slope and vertical matrices each matched **48600/48600**, for **145800/145800 exact raw paths** total, including equal-Y/equality boundaries, all 3×3 cyclic rotations and both input orders. Horizontal staggered states remain owned by the earlier exact helper.
+The #542 follow-up independently closes the remaining non-fixup **decreasing-Y strict-contained triangle** contact with `SourceClipper1TwoConvexDecreasingStrictContainedUnion2`. For host edge `H0→H1` (`dy < 0`), overlap endpoint `qStart` nearer `H0`, `qEnd` nearer `H1`, host third `H` and guest third `G`, raw start is `qEnd` for `G.y < qStart.y`, `H` for `G.y > qStart.y`, and the standalone host-triangle Clipper1 start on equality. Broad plus targeted matrices matched **30600/30600 exact full raw paths** across slopes including vertical, translations, overlap ratios, cyclic rotations and both path orders.
+
+The #518/#525/#532 partial-collinear helpers remain state-bounded. #532 closes all non-horizontal staggered non-fixup triangle states with **145800/145800** direct raw paths; cycles requiring `FixupOutPolygon()` remain a separate pointer-state seam.
 
 ## Slicer semantic model / Arachne dependencies
 
@@ -80,7 +86,7 @@ An earlier local audit recorded 3,657/3,657 copied runtime entries matching sour
 
 ## Immediate open Clipper1 trace
 
-1. equal-bottom point-contact ties, strict-contained decreasing-Y contact states, fixup-mutated contact/partial joins and mixed crossing/contact degeneracies; widen contact routing beyond triangles only with direct raw-state evidence;
+1. **fixup-mutated contact/partial joins**, then mixed proper-crossing + touch/collinear degeneracies; widen contact routing beyond triangles only with direct raw-state evidence;
 2. interacting holes and surviving hole hierarchy;
 3. more than two interacting paths;
 4. generic final union and broader per-path `Execute()` topology;
