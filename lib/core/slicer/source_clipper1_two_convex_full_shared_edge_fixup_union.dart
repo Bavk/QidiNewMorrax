@@ -5,17 +5,19 @@ import '../geometry/source_polygon.dart';
 /// strict-convex triangles that share one complete edge and where
 /// `FixupOutPolygon()` removes exactly one shared endpoint.
 ///
-/// This helper deliberately represents only the raw-state branch where the
-/// removed endpoint is *not* the ordinary full-shared-edge `BuildResult()`
-/// start. Direct pinned-ELF differentials matched 64800/64800 raw paths across
-/// 3600 randomized base geometries, all 3x3 cyclic source rotations and both
-/// polygon input orders. In this branch the post-fixup raw start remains the
-/// ordinary full-edge start: lower Y endpoint, or the greater X endpoint on a
-/// horizontal tie.
+/// Direct pinned-ELF differentials cover both pointer-state branches:
 ///
-/// When cleanup removes that ordinary start itself, Clipper's `OutRec::Pts`
-/// pointer state becomes acceptance-relevant and is intentionally left on the
-/// compatibility seam until independently proved.
+/// - removed endpoint is not the ordinary full-edge `BuildResult()` start:
+///   64800/64800 raw paths;
+/// - removed endpoint is that ordinary start: 64800/64800 classification paths,
+///   97200/97200 independent unequal-third-distance paths and 108/108 targeted
+///   equal-Y boundaries.
+///
+/// Every matrix includes all 3x3 cyclic source rotations and both polygon input
+/// orders. The removed-start branch intentionally preserves the observed
+/// `OutRec::Pts`/AddPath-order rule rather than canonicalizing the output.
+/// Wider convex paths and any cleanup that removes more than one point remain
+/// outside this helper.
 class SourceClipper1TwoConvexFullSharedEdgeFixupUnion2 {
   const SourceClipper1TwoConvexFullSharedEdgeFixupUnion2._();
 
@@ -84,16 +86,16 @@ class SourceClipper1TwoConvexFullSharedEdgeFixupUnion2 {
     }
     if (removable.length != 1) return null;
 
-    final buildStart = _fullSharedEdgeBuildStart(
+    final ordinaryBuildStart = _fullSharedEdgeBuildStart(
       shared.firstStart,
       shared.firstEnd,
     );
     final removed = removable.single;
-    if (removed == buildStart) return null;
 
     // Following the first positive triangle after dropping the shared edge
     // gives the positive merged boundary. Reversing polygon input order only
-    // cyclically rotates this same boundary.
+    // cyclically rotates this same boundary before the source start rule is
+    // applied.
     final cycle = <SourcePoint2>[
       shared.firstEnd,
       shared.firstThird,
@@ -102,11 +104,53 @@ class SourceClipper1TwoConvexFullSharedEdgeFixupUnion2 {
     ]..remove(removed);
     if (cycle.length != 3 || _needsFixup(cycle)) return null;
 
+    final buildStart = removed == ordinaryBuildStart
+        ? _removedOrdinaryStartBuildStart(shared, removed)
+        : ordinaryBuildStart;
     final startIndex = cycle.indexOf(buildStart);
     if (startIndex < 0) return null;
+
     final result = SourcePolygon2(_rotated(cycle, startIndex));
     if (result.signedArea <= 0) return null;
     return result;
+  }
+
+  /// Pinned `FixupOutPolygon()` / `OutRec::Pts` rule when the point removed by
+  /// cleanup was itself the ordinary full-shared-edge `BuildResult()` start.
+  ///
+  /// `endThird` belongs to the source triangle whose directed shared edge ends
+  /// at [removed]. `otherThird` belongs to the other triangle. If [removed] is
+  /// `firstEnd`, that end-triangle is the first AddPath input; otherwise it is
+  /// the second input. The asymmetric equal-Y comparisons are source-state
+  /// behavior and are intentionally preserved literally.
+  static SourcePoint2 _removedOrdinaryStartBuildStart(
+    _FullSharedEdge2 shared,
+    SourcePoint2 removed,
+  ) {
+    final removedIsFirstEnd = removed == shared.firstEnd;
+    final surviving = removedIsFirstEnd
+        ? shared.firstStart
+        : shared.firstEnd;
+    final endThird = removedIsFirstEnd
+        ? shared.firstThird
+        : shared.secondThird;
+    final otherThird = removedIsFirstEnd
+        ? shared.secondThird
+        : shared.firstThird;
+    final endTriangleIsFirstInput = removedIsFirstEnd;
+
+    final dy = shared.firstEnd.y - shared.firstStart.y;
+    if (dy == 0) return endThird;
+
+    if (endTriangleIsFirstInput) {
+      return endThird.y > surviving.y ? surviving : endThird;
+    }
+
+    if (endThird.y >= surviving.y) return surviving;
+    if (otherThird.y < surviving.y && endThird.y > otherThird.y) {
+      return surviving;
+    }
+    return endThird;
   }
 
   static SourcePoint2 _fullSharedEdgeBuildStart(
