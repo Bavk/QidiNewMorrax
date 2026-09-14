@@ -29,6 +29,26 @@ void _expectUnion(
   );
 }
 
+void _expectUnionAll(
+  SourcePolygon2 first,
+  SourcePolygon2 second,
+  List<List<SourcePoint2>> expected,
+) {
+  expect(SourceClipper1TwoRectangleUnion2.supports([first, second]), isTrue);
+  expect(
+    SourceClipper1TwoRectangleUnion2.unionAll([first, second])
+        .map((polygon) => polygon.points)
+        .toList(),
+    expected,
+  );
+  expect(
+    SourceClipper1TwoRectangleUnion2.unionAll([second, first])
+        .map((polygon) => polygon.points)
+        .toList(),
+    expected,
+  );
+}
+
 void main() {
   test('horizontal touching rectangles match pinned BuildResult start', () {
     _expectUnion(
@@ -124,6 +144,97 @@ void main() {
     );
   });
 
+  test('unequal east edge contact preserves pinned BuildResult start', () {
+    _expectUnion(
+      _rect(0, 0, 100000, 100000),
+      _rect(100000, 25000, 200000, 75000),
+      const [
+        SourcePoint2(0, 100000),
+        SourcePoint2(0, 0),
+        SourcePoint2(100000, 0),
+        SourcePoint2(100000, 25000),
+        SourcePoint2(200000, 25000),
+        SourcePoint2(200000, 75000),
+        SourcePoint2(100000, 75000),
+        SourcePoint2(100000, 100000),
+      ],
+    );
+  });
+
+  test('unequal north edge contact preserves pinned BuildResult start', () {
+    _expectUnion(
+      _rect(0, 0, 100000, 100000),
+      _rect(25000, 100000, 75000, 200000),
+      const [
+        SourcePoint2(0, 0),
+        SourcePoint2(100000, 0),
+        SourcePoint2(100000, 100000),
+        SourcePoint2(75000, 100000),
+        SourcePoint2(75000, 200000),
+        SourcePoint2(25000, 200000),
+        SourcePoint2(25000, 100000),
+        SourcePoint2(0, 100000),
+      ],
+    );
+  });
+
+  test('endpoint-aligned east edge contact matches pinned six-point result', () {
+    _expectUnion(
+      _rect(0, 0, 100000, 100000),
+      _rect(100000, 0, 200000, 50000),
+      const [
+        SourcePoint2(0, 100000),
+        SourcePoint2(0, 0),
+        SourcePoint2(200000, 0),
+        SourcePoint2(200000, 50000),
+        SourcePoint2(100000, 50000),
+        SourcePoint2(100000, 100000),
+      ],
+    );
+  });
+
+  test('endpoint-aligned north edge contact matches pinned six-point result', () {
+    _expectUnion(
+      _rect(0, 0, 100000, 100000),
+      _rect(0, 100000, 50000, 200000),
+      const [
+        SourcePoint2(100000, 0),
+        SourcePoint2(100000, 100000),
+        SourcePoint2(50000, 100000),
+        SourcePoint2(50000, 200000),
+        SourcePoint2(0, 200000),
+        SourcePoint2(0, 0),
+      ],
+    );
+  });
+
+  test('point-only contact preserves two pinned BuildResult contours', () {
+    final first = _rect(0, 0, 100000, 100000);
+    final second = _rect(100000, 100000, 200000, 200000);
+    _expectUnionAll(
+      first,
+      second,
+      const [
+        [
+          SourcePoint2(200000, 200000),
+          SourcePoint2(100000, 200000),
+          SourcePoint2(100000, 100000),
+          SourcePoint2(200000, 100000),
+        ],
+        [
+          SourcePoint2(100000, 100000),
+          SourcePoint2(0, 100000),
+          SourcePoint2(0, 0),
+          SourcePoint2(100000, 0),
+        ],
+      ],
+    );
+    expect(
+      () => SourceClipper1TwoRectangleUnion2.union([first, second]),
+      throwsArgumentError,
+    );
+  });
+
   test('Arachne exact offset merges touching rectangles with pinned start', () {
     final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
       [
@@ -146,11 +257,11 @@ void main() {
     );
   });
 
-  test('point-only contact stays outside represented interacting subset', () {
+  test('separated rectangles stay outside represented interacting subset', () {
     expect(
       SourceClipper1TwoRectangleUnion2.supports([
         _rect(0, 0, 100000, 100000),
-        _rect(100000, 100000, 200000, 200000),
+        _rect(100001, 100001, 200000, 200000),
       ]),
       isFalse,
     );
