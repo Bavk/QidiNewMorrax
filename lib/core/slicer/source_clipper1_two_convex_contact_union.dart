@@ -443,6 +443,7 @@ class SourceClipper1TwoConvexContactUnion2 {
   }
 
   static bool _onSegment(SourcePoint2 a, SourcePoint2 b, SourcePoint2 point) {
+    if (_orientation(a, b, point) != 0) return false;
     final minX = a.x < b.x ? a.x : b.x;
     final maxX = a.x > b.x ? a.x : b.x;
     final minY = a.y < b.y ? a.y : b.y;
