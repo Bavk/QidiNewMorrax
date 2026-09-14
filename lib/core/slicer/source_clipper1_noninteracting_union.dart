@@ -4,34 +4,62 @@ import '../geometry/source_polygon.dart';
 /// Exact conservative subset of pinned Clipper1 `ctUnion` + `pftNonZero` for
 /// already-offset closed paths whose boundaries do not intersect.
 ///
-/// When boundaries are pairwise disjoint, a path survives the NonZero union iff
-/// crossing that boundary changes the accumulated winding from zero to nonzero
-/// (outer contour) or nonzero to zero (hole). This helper accepts only the
-/// unambiguous one-level cases used by current Arachne consumers:
+/// For pairwise-disjoint boundaries the NonZero result is determined entirely
+/// by the winding number on both sides of each boundary. A boundary survives
+/// iff crossing it changes filled state (`winding != 0`). The represented
+/// subset keeps only source-shaped surviving transitions whose orientation is
+/// already known exactly:
 ///
-/// - disconnected positive contours (`0 -> +1`), and
-/// - clockwise holes directly inside positive material (`+1 -> 0`).
+/// - positive material boundaries: `0 -> +1`;
+/// - clockwise holes: `+1 -> 0`;
+/// - any boundary with nonzero winding on both sides is suppressed, including
+///   nested same-sign positive contours (`+1 -> +2`).
 ///
-/// Nested same-sign paths, orphan negative paths, intersecting/touching paths,
-/// and deeper alternating nesting are deliberately rejected so callers can keep
-/// the compatibility boolean executor until those Clipper1 cases have their own
-/// oracle coverage.
+/// This also handles deeper noninteracting alternating nesting when each
+/// surviving boundary still has one of the two canonical transitions above.
+/// Orphan-negative/reversed surviving boundaries and intersecting/touching paths
+/// are deliberately rejected for the full Clipper1 boolean executor.
 class SourceClipper1NonInteractingUnion2 {
   const SourceClipper1NonInteractingUnion2._();
 
-  static bool supports(Iterable<SourcePolygon2> polygons) {
+  static bool supports(Iterable<SourcePolygon2> polygons) =>
+      _survivorsOrNull(List<SourcePolygon2>.of(polygons)) != null;
+
+  /// Returns the exact surviving geometry for [supports] inputs.
+  ///
+  /// Input paths are already the source-shaped outputs of the represented
+  /// per-path Clipper1 offsetters, including their source start vertex and
+  /// orientation. With no boundary intersections, the NonZero union only
+  /// removes boundaries whose filled state is unchanged; surviving coordinates
+  /// and source order are retained literally.
+  static List<SourcePolygon2> union(Iterable<SourcePolygon2> polygons) {
     final values = List<SourcePolygon2>.of(polygons);
-    if (values.isEmpty) return true;
-    if (values.any((polygon) => polygon.points.length < 3 || polygon.signedArea == 0)) {
-      return false;
+    final survivors = _survivorsOrNull(values);
+    if (survivors == null) {
+      throw ArgumentError(
+        'Pinned noninteracting Clipper1 NonZero union subset does not apply',
+      );
+    }
+    return List<SourcePolygon2>.unmodifiable(survivors);
+  }
+
+  static List<SourcePolygon2>? _survivorsOrNull(
+    List<SourcePolygon2> values,
+  ) {
+    if (values.isEmpty) return const <SourcePolygon2>[];
+    if (values.any(
+      (polygon) => polygon.points.length < 3 || polygon.signedArea == 0,
+    )) {
+      return null;
     }
 
     for (var first = 0; first < values.length; first++) {
       for (var second = first + 1; second < values.length; second++) {
-        if (_boundariesIntersect(values[first], values[second])) return false;
+        if (_boundariesIntersect(values[first], values[second])) return null;
       }
     }
 
+    final survivors = <SourcePolygon2>[];
     for (var index = 0; index < values.length; index++) {
       final polygon = values[index];
       final sign = polygon.signedArea > 0 ? 1 : -1;
@@ -44,33 +72,30 @@ class SourceClipper1NonInteractingUnion2 {
         outsideWinding += other.signedArea > 0 ? 1 : -1;
       }
       final insideWinding = outsideWinding + sign;
+      final outsideFilled = outsideWinding != 0;
+      final insideFilled = insideWinding != 0;
 
-      if (sign > 0) {
-        // A represented material island must be entered from zero winding.
-        if (outsideWinding != 0 || insideWinding != 1) return false;
-      } else {
-        // A represented hole must directly cancel exactly one positive contour.
-        if (outsideWinding != 1 || insideWinding != 0) return false;
+      if (outsideFilled == insideFilled) {
+        // The NonZero fill state does not change across this boundary. Pinned
+        // Clipper1 therefore removes it from the union result. This is the
+        // independently captured nested-positive `+1 -> +2` oracle seam.
+        continue;
       }
-    }
-    return true;
-  }
 
-  /// Returns the exact surviving geometry for [supports] inputs.
-  ///
-  /// The source union does not alter coordinates when no boundaries interact.
-  /// Keeping the per-path order is intentional: the current Arachne caller feeds
-  /// the already-source-shaped per-path results in source input order, and the
-  /// independent through-hole process oracle verifies the resulting downstream
-  /// wall geometry after this seam.
-  static List<SourcePolygon2> union(Iterable<SourcePolygon2> polygons) {
-    final values = List<SourcePolygon2>.of(polygons);
-    if (!supports(values)) {
-      throw ArgumentError(
-        'Pinned noninteracting Clipper1 NonZero union subset does not apply',
-      );
+      if (!outsideFilled && insideFilled) {
+        // The only source-shaped outer transition represented here is 0 -> +1.
+        // An orphan CW path would be 0 -> -1 and Clipper1 would have to rewrite
+        // result orientation, which belongs to the general boolean executor.
+        if (sign != 1 || outsideWinding != 0 || insideWinding != 1) return null;
+        survivors.add(polygon);
+        continue;
+      }
+
+      // Filled -> empty is represented only by a direct canonical hole 1 -> 0.
+      if (sign != -1 || outsideWinding != 1 || insideWinding != 0) return null;
+      survivors.add(polygon);
     }
-    return List<SourcePolygon2>.unmodifiable(values);
+    return survivors;
   }
 
   static bool _boundariesIntersect(SourcePolygon2 first, SourcePolygon2 second) {
