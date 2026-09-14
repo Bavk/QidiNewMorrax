@@ -15,10 +15,10 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-14
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `fdcbbf1d75171ae8f0877e1cfb19207127cad196`;
-- workflow `34790107796` (#450), conclusion **success**;
+- validated code `af49053c1dec88f6a666c07939fd9bfe0a7a73ca`;
+- workflow `34792959794` (#466), conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **709/709 passing**.
+- `flutter test --reporter expanded` — **729/729 passing**.
 
 Milestones in the current source path:
 
@@ -43,7 +43,9 @@ Milestones in the current source path:
 - #421 / `c1ef43d...` + `4455fb1...`: Arachne high-level source `Surface` copy quirk resets QIDI circle metadata, independently confirmed against an exact compiled ring probe, 692/692;
 - #423 / `bf8e661...` + `0ebb25a...`: exact compiled `add_infill_contour_for_arachne()` call/output state verifies no-wall, one-wall mixed-spacing and two-wall final fill boundaries, 695/695;
 - #438 / `7fe568c...` + `e726950...`: exact compiled pathological narrow-wedge walls expose and verify the Clipper1 pre-wall offset seam; simple-convex Clipper1 miter/erosion plus exhausted-inset cleanup is source-shaped, 699/699;
-- #450 / `2a80fc4...` + `403cf2f...` + `510b0d4...` + `51ca143...` + `fdcbbf1...`: Clipper1 raw closed-path `OffsetPoint()`/concave triplets, literal `AddPath()` shortest-edge pruning, convex CW-hole sign/orientation semantics and exact per-path convex contour/hole offsets are represented; only final cross-path union remains on the compatibility path for those convex multipaths, while the compiled wedge and pinned through-hole oracle stay green, 709/709.
+- #450 / `2a80fc4...` + `403cf2f...` + `510b0d4...` + `51ca143...` + `fdcbbf1...`: Clipper1 raw closed-path `OffsetPoint()`/concave triplets, literal `AddPath()` shortest-edge pruning, convex CW-hole sign/orientation semantics and exact per-path convex contour/hole offsets are represented, 709/709;
+- #463 / `8585dcb...` + `3913a04...` + `8ac1935...`: exact single-result orthogonal `Execute()` cleanup matches pinned narrow-L expansion and topology-changing erosion and removes that case from the Clipper2 fallback, 724/724;
+- #466 / `3df4434...` + `4df1e8f...` + `af49053...`: exact convex per-path outputs bypass Clipper2 for conservative noninteracting NonZero unions (direct holes and disconnected positive islands), while interacting/nested/touching cases remain explicit fallbacks; pinned through-hole process evidence remains green, 729/729.
 
 ## Top-level gates
 
@@ -51,7 +53,7 @@ All remain **OPEN**: formats/project persistence; scene/editor; slicer/toolpath;
 
 ## Verified foundations retained
 
-The current green suite retains scoped `parity_verified` coverage for represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter preprocessing/shell/traversal/metadata pipeline, fuzzy/Arachne subsets, Arachne beading strategies, real-polygon Voronoi-to-skeletal construction fixtures, the represented skeletal runtime, `WallToolPaths::generate()`, Alltop wall generation, Arachne extrusion ordering, both represented Arachne overhang branches, QIDI LoopNode generation, the represented final fill-boundary path, exact Clipper1 miter/erosion arithmetic for simple convex positive contours, and exact Clipper1 per-path arithmetic/sign/orientation handling for represented convex contour/hole paths before final union.
+The current green suite retains scoped `parity_verified` coverage for represented source integer geometry, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon 1.83 robust predicates/Fortune/Voronoi fixtures, MedialAxis, translated Clipper/ClipperUtils behavior used by current consumers, Flow, Extruder/QIDI config subset, Surface, ExtrusionEntity/variable-width/covered-width subset, source-style G-code formatter/path emitter subset, classic perimeter preprocessing/shell/traversal/metadata pipeline, fuzzy/Arachne subsets, Arachne beading strategies, real-polygon Voronoi-to-skeletal construction fixtures, represented skeletal runtime, `WallToolPaths::generate()`, Alltop wall generation, Arachne extrusion ordering, both represented Arachne overhang branches, QIDI LoopNode generation, represented final fill-boundary path, exact Clipper1 miter/erosion arithmetic for simple convex positive contours, exact per-path convex contour/hole arithmetic/sign/orientation, exact single-result orthogonal concave cleanup for validated fixtures, and the conservative noninteracting one-level NonZero cross-path subset.
 
 The broader containing product modules remain incomplete.
 
@@ -61,7 +63,7 @@ Pinned source: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
 
 `SourceClassicPerimeterIslandProcess2` plus `SourceClassicPerimeterOrderedPipeline2` cover the represented source path through source `Surface` vector-copy behavior; `BridgeDetector` and `process_no_bridge()`; conditional simplification / `chain_expolygons`; extra-perimeter accounting; one-wall gates; onion shell / Alltop / thin-wall / gap-fill / final fill boundaries; recursive fuzzy/overhang traversal; shared fuzzy RNG; per-island wall sequence; nested collection shape; and global gap-fill accumulation.
 
-Important source quirk: the supplied `Surface` copy constructor omits QIDI `counter_circle_compensation` and `holes_circle_compensation`, so the high-level source copy resets these members before the later lookup. Both represented classic and Arachne high-level boundaries now preserve that quirk.
+Important source quirk: the supplied `Surface` copy constructor omits QIDI `counter_circle_compensation` and `holes_circle_compensation`, so the high-level source copy resets these members before the later lookup. Both represented classic and Arachne high-level boundaries preserve that quirk.
 
 ### QIDI outwall / loop-node metadata
 
@@ -72,7 +74,7 @@ Classic and Arachne producer paths are represented separately. The Arachne produ
 The represented Arachne chain includes:
 
 - source float-backed `WallToolPathsParams`, prepared-outline repair/cleanup, exact scalar casts and beading strategies;
-- modified-Clipper-6.2.9 closed-path arithmetic for represented convex paths: float32 caller delta/shortest-edge setup, literal `AddPath()` pruning, double unit normals, half-away `Round`, near-collinear/concave/miter/square raw `OffsetPoint()` construction, convex negative cleanup, and CW-hole sign/orientation restoration. Convex contour+hole inputs use exact per-path Clipper1 arithmetic before the still-compatible final NonZero union. Concave per-path `Execute()` boolean cleanup and exact final cross-path union are **not yet** claimed as Clipper1 parity;
+- modified-Clipper-6.2.9 closed-path arithmetic: float32 caller delta/shortest-edge setup, literal `AddPath()` pruning, double unit normals, half-away `Round`, near-collinear/concave/miter/square raw `OffsetPoint()` construction, convex negative cleanup and CW-hole sign/orientation restoration; represented exact execution now covers convex paths plus validated orthogonal concave single-result cleanup, including topology-changing narrow-L erosion; represented cross-path union now bypasses Clipper2 for pairwise noninteracting direct-hole/disconnected-positive NonZero cases. Non-orthogonal concave cleanup, multi-result rectilinear cleanup and interacting/deeper cross-path boolean union are **not yet** claimed as Clipper1 parity;
 - source-shaped skeletal graph, source-index transfer and direct Boost/Voronoi topology through `constructFromPolygons()`;
 - central classification/filtering, bead-count propagation, transitions, nonlinear ribs, `generateSegments()`, `generateToolpaths()` and top-level `WallToolPaths::generate()`;
 - one-wall planning plus `should_enable_top_one_wall()`, upper/lower clipping and full `Alltop` first-wall/top/remainder/second-wall recombination;
@@ -103,30 +105,31 @@ The following exact fixture scopes are independently **scoped `parity_verified`*
 - first-layer one-wall square;
 - non-speed active-overhang stepped wall: supported/unsupported role bands, wall spans and support boundary at model `x=20.2mm`;
 - partial `Alltop`: full first external wall plus clipped remainder inner wall and its placement;
-- square through-hole: four closed Arachne walls, outer-contour spans `18.886/19.600mm` and hole spans `11.114/10.400mm`; this remains green after convex contour/hole per-path offsets moved onto Clipper1 arithmetic/sign/orientation semantics;
+- square through-hole: four closed Arachne walls, outer-contour spans `18.886/19.600mm` and hole spans `11.114/10.400mm`; this remains green after convex contour/hole per-path offsets and their conservative noninteracting NonZero union moved onto represented Clipper1 semantics;
 - speed-graded active-overhang `detect_overhang_degree()` output before downstream speed policy: both inner and external supported walls match the compiled 39-path role/quarter-degree sequence exactly, with integer XY within the pinned source `SCALED_EPSILON=10` after one global reflection normalization for the symmetric closed loop;
 - Arachne QIDI `LoopNode` producer state: normal two-wall `loop_node_range=[0,1)`, `node_id=0`, `loop_id=1`; topmost one-wall same range/node ID with `loop_id=0`; raw six-junction order, six widths `35707`, `is_loop=true`, empty upper/lower relations and bbox span match compiled process state;
-- QIDI circle-compensation process metadata: an enabled exact compiled ring changes wall centerline radii before the process copy, while all four Arachne lines reach `shouldApplyHoleCompensation()` with zero marked junctions after the source `Surface` copy; the Dart high-level boundary now reproduces that omission and final no-customize state;
+- QIDI circle-compensation process metadata: an enabled exact compiled ring changes wall centerline radii before the process copy, while all four Arachne lines reach `shouldApplyHoleCompensation()` with zero marked junctions after the source `Surface` copy; the Dart high-level boundary reproduces that omission and final no-customize state;
 - final Arachne fill boundaries: exact compiled helper args and output spans match for no-wall, one-wall mixed-spacing and two-wall cases. The mixed case independently captures external spacing `37707`, perimeter spacing `40707`, caller spacing `39207`; output XY removes only plate translation and uses `SCALED_EPSILON=10`;
-- pathological narrow wedge: exact compiled `process_arachne()` returns three variable-width lines whose junction XY/width/perimeter-index payload exposed a systematic 2→39 source-unit X drift under the old Clipper2 pre-wall offset. The source-shaped Clipper1 adapter removes that mismatch within `SCALED_EPSILON=10`, while separate regressions now lock raw concave `OffsetPoint()` construction, source shortest-edge pruning, convex erosion, CW-hole sign reversal and convex multipath per-path arithmetic.
+- pathological narrow wedge: exact compiled `process_arachne()` returns three variable-width lines whose junction XY/width/perimeter-index payload exposed a systematic 2→39 source-unit X drift under the old Clipper2 pre-wall offset; represented Clipper1 arithmetic removes that mismatch within `SCALED_EPSILON=10`;
+- orthogonal concave narrow-L: exact compiled positive expansion and topology-changing negative erosion now match the represented single-result rectilinear cleanup without invoking the old per-path fallback.
 
 For G-code-derived fixtures only downstream/global arrange translation and closed-loop seam rebasing are normalized where necessary. The speed-graded, LoopNode, circle-metadata, final-fill and narrow-wedge fixtures read compiled process state before downstream G-code generation.
 
 ## `PerimeterGenerator::process_arachne()` represented surface boundary — `implemented_unverified`
 
-The represented boundary has independent evidence across common, hole, Alltop, overhang, LoopNode, fill and pathological variable-width wedge scopes. It remains **`implemented_unverified` as a whole** because the wedge differential identified a lower dependency that square fixtures had masked: pinned Arachne offsets use modified Clipper 6.2.9. The simple-convex and convex contour/hole per-path arithmetic are now source-shaped, but exact Clipper1 concave per-path `Execute()` boolean cleanup and the final cross-path union are still unresolved. Existing Clipper2 use at those two seams is compatibility behavior, not 1:1 evidence.
+The represented boundary has independent evidence across common, hole, Alltop, overhang, LoopNode, fill, pathological variable-width wedge and orthogonal concave scopes. It remains **`implemented_unverified` as a whole** because the remaining modified-Clipper-6.2.9 boolean surface is not yet exhaustively represented: non-orthogonal concave per-path cleanup, multi-result rectilinear cleanup, and interacting/deep-nesting cross-path union still use compatibility behavior. The current exact subsets are intentionally conservative rather than pretending those general cases are solved.
 
 The broader slicer/toolpath subsystem remains `port_started`. The full upstream QIDI auto circle-compensation geometry producer in `LayerRegion` is also a separate preprocessing dependency and is not proven complete merely because `process_arachne()` reproduces the later `Surface` copy quirk.
 
 ## Fuzzy skin / Arachne retained
 
-The 709-test suite re-executes the scoped fuzzy/Arachne evidence: exact fuzzy policy and slowdown gates; shared Classic RNG and MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline/Arachne LineSegmentation and ZAttributes behavior; seeded C++ fuzzy modes; direct Boost/Voronoi and skeletal fixtures; both represented Arachne overhang paths; QIDI LoopNode compiled payload/range oracle; source Surface-copy circle quirk; final fill-boundary compiled evidence; narrow-wedge Clipper1 differential; convex contour/hole Clipper1 per-path regression plus pinned through-hole process oracle; and the composed final per-surface process boundary.
+The 729-test suite re-executes the scoped fuzzy/Arachne evidence: exact fuzzy policy and slowdown gates; shared Classic RNG and MT19937/libstdc++ oracles; pinned libnoise modes; Polygon/Polyline/Arachne LineSegmentation and ZAttributes behavior; seeded C++ fuzzy modes; direct Boost/Voronoi and skeletal fixtures; both represented Arachne overhang paths; QIDI LoopNode compiled payload/range oracle; source Surface-copy circle quirk; final fill-boundary compiled evidence; narrow-wedge Clipper1 differential; orthogonal concave compiled fixtures; convex contour/hole exact per-path regression plus noninteracting NonZero subset and pinned through-hole process oracle; and the composed final per-surface process boundary.
 
 ## Immediate next dependency order
 
-1. Port/validate exact modified Clipper 6.2.9 per-path `Execute(ctUnion, ...)` cleanup for **concave closed paths**, including positive `pftPositive` semantics and negative-offset outer-rectangle / `pftNegative` cleanup. Do not promote the current concave Clipper2 fallback as 1:1 without an oracle.
-2. Port/validate the final cross-path `clipper_union(raw_offset(...))` step so represented convex contour+hole and disconnected multipath offsets no longer depend on Clipper2 for the final union.
-3. Expand `process_arachne()` differential coverage to additional pathological/production geometry: concave notches, disconnected islands, small/narrow holes, variable-width/open-line cases and combinations with one-wall/overhang/fuzzy policies.
+1. Port/validate the remaining modified Clipper 6.2.9 per-path `Execute(ctUnion, ...)` cleanup for **non-orthogonal concave closed paths** and **multi-result rectilinear results**, including positive `pftPositive` and negative-offset outer-rectangle / `pftNegative` semantics. Do not promote compatibility fallback behavior as 1:1 without an oracle.
+2. Port/validate remaining final cross-path `clipper_union(raw_offset(...))` cases where boundaries interact/touch, same-sign nesting suppresses a boundary, or winding nesting is deeper than the represented direct-hole subset.
+3. Expand `process_arachne()` differential coverage to additional pathological/production geometry: disconnected islands, small/narrow holes, non-orthogonal concave notches, variable-width/open-line cases and combinations with one-wall/overhang/fuzzy policies.
 4. Resolve every differential mismatch without weakening literal source quirks; only after broader coverage is green consider promoting the represented `process_arachne()` boundary as a whole to scoped `parity_verified`.
 5. Continue separate upstream preprocessing dependencies not proven by the boundary evidence, including the full QIDI auto circle-compensation geometry producer where still unrepresented.
 6. Continue later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths in dependency order.
@@ -135,7 +138,7 @@ The 709-test suite re-executes the scoped fuzzy/Arachne evidence: exact fuzzy po
 
 ## Other major open areas
 
-- exact Clipper1 concave per-path cleanup and final cross-path union for Arachne offset consumers;
+- general Clipper1 non-orthogonal/multi-result/interacting boolean execution for Arachne offset consumers;
 - broader Arachne process production/pathological differential coverage;
 - upstream preprocessing gaps such as full QIDI auto circle-compensation geometry where still unrepresented;
 - later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths;
