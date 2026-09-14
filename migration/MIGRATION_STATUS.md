@@ -15,12 +15,12 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-14
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `3f22e86e437e87201282c07d95a103b38b9b7dc7` (`test: lock Clipper1 rectangle contact oracles`);
-- workflow `34828496375` (#488), job `103926026097`, conclusion **success**;
+- validated code `d718ff276028ee525739475d0858f4e43c9673dc` (`feat: route proper convex Clipper1 unions`);
+- workflow `34839681185` (#493), job `103961480006`, conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **751/751 passing**.
+- `flutter test --reporter expanded` — **760/760 passing**.
 
-The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds exact pinned Clipper1 rectangle-contact evidence described below.
+The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds nine committed exact tests for the new two-positive strict-convex proper-crossing Clipper1 union subset.
 
 ## Top-level gates
 
@@ -44,13 +44,12 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. The represented exact subs
 - exact orthogonal concave cleanup, including topology-changing single-result and multi-result positive contours;
 - isolated positive non-orthogonal V-notch cleanup and matching one-reflex negative `pftNegative` cleanup;
 - conservative noninteracting NonZero cross-path behavior for direct holes, disconnected positive roots and nested same-sign suppression, including pinned `BuildResult()` starts/order;
-- exact interacting two-positive axis-aligned rectangles for same-span horizontal/vertical touch and all four diagonal area-overlap orientations;
-- **new #488 scope:** partial unequal edge contacts, including strict interval overlap and endpoint-aligned T contacts, with exact pinned scanline/`BuildResult()` starts;
-- **new #488 scope:** point-only rectangle contact, preserving the exact two-result contour order and each contour's pinned `BuildResult()` start instead of geometrically merging or rebasing it.
+- exact interacting two-positive axis-aligned rectangles for same-span touch, diagonal area overlap, partial unequal edge/T contacts and point-only contacts;
+- **new #493 scope:** exactly two positive strictly convex contours with only proper boundary crossings, preserving the pinned modified-Clipping scanline intersection arithmetic and exact `BuildResult()` vertex order/start.
 
-The #488 contact fixtures were obtained by direct calls into the exact pinned upstream ELF from Actions artifact `10085378329`. The downloaded artifact SHA-256 is `912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8`; extracted AppImage SHA-256 is `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`, matching the previously recorded provenance. Input-order reversal produced the same pinned results for every newly asserted fixture.
+The #493 convex evidence came from direct calls into the exact pinned upstream ELF from Actions artifact `10085378329`. The downloaded artifact SHA-256 is `912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8`; extracted AppImage SHA-256 is `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`. Seven hand-selected triangle/diamond/trapezoid/pentagon/mixed cases plus 32 deterministic random strict-convex pairs matched the Dart derivation **39/39 exactly**, including 2/4/6 proper crossings, rounded intersection coordinates, output start/order and reversed input order.
 
-Still **not** general Clipper1 parity: arbitrary convex intersections, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those remain explicit compatibility seams and must not be promoted from Clipper2 fallback without independent source evidence.
+Still **not** general Clipper1 parity: non-rectangular convex edge/point touching and collinear overlaps, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those remain explicit compatibility seams and must not be promoted from Clipper2 fallback without independent source evidence.
 
 ## Traceability summary
 
@@ -59,7 +58,7 @@ Still **not** general Clipper1 parity: arbitrary convex intersections, interacti
 | represented integer geometry / Polyline / ArcFitter / Circle / ThickPolyline / Boost-Voronoi / MedialAxis | `lib/core/geometry` source-shaped ports | translated and direct C++/Boost fixtures in current suite | `parity_verified` (scoped) | broader source APIs/pathologies |
 | Classic perimeter represented surface path | classic source pipeline modules | translated/source-shaped process fixtures | `parity_verified` (scoped) | later toolpath families and wider production matrix |
 | Arachne wall-generation dependency chain | `lib/core/slicer/source_arachne_*` | direct/source-shaped plus compiled process fixtures | `parity_verified` (scoped dependencies) | broader production/pathological matrix |
-| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #488 CI | `parity_verified` (exact fixture scopes) | arbitrary interacting polygons/holes and broader Execute cleanup |
+| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #493 CI | `parity_verified` (exact fixture scopes) | general convex boundary degeneracies, interacting holes, >2 paths and broader Execute cleanup |
 | represented `process_arachne()` boundary | `SourceArachneProcessPipeline2` + dependencies | common/hole/Alltop/overhang/fill/LoopNode/wedge exact fixtures | `implemented_unverified` | general Clipper1 seams + wider process differentials |
 | full slicer/toolpath product | multiple foundations | partial | `port_started` | fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft/full G-code etc. |
 | formats/profiles/scene/Preview/Device/UI | Flutter/Dart foundations | partial | `port_started` | complete 1:1 behavior and integrations |
@@ -67,13 +66,14 @@ Still **not** general Clipper1 parity: arbitrary convex intersections, interacti
 
 ## Immediate next dependency order
 
-1. Continue the first unfinished Clipper1 cross-path priority beyond rectangle contacts: obtain pinned oracles and port **arbitrary convex intersections**, then **interacting holes** and **more than two interacting paths**, preserving exact result order/start rather than only geometric equivalence.
-2. Extend per-path Clipper1 `Execute()` beyond current orthogonal/V-notch subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup.
-3. Validate remaining prepared-outline final `unionNonZero()` cases so a later Clipper2 call cannot silently reintroduce source-order/rounding drift after exact pre-offset work.
-4. Expand whole `process_arachne()` differentials to disconnected islands, small/narrow holes, non-orthogonal concave notches, variable-width/open-line cases and one-wall/overhang/fuzzy combinations.
-5. Only after broader green evidence consider promoting represented `process_arachne()` as a whole to scoped `parity_verified`.
-6. Continue the separate QIDI auto circle-compensation geometry producer and later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, then full G-code, persistence/profiles, scene/Preview, Device/cloud, calibration, desktop and UI parity.
-7. Publish and SHA-verify real runtime assets before any release-complete claim.
+1. Finish the remaining two-convex boundary-degeneracy seam: derive pinned oracles and port **non-rectangular edge/point touching and collinear overlap** while preserving exact result order/start.
+2. Continue the same Clipper1 final cross-path priority with **interacting holes**, then **more than two interacting paths**.
+3. Extend per-path Clipper1 `Execute()` beyond current orthogonal/V-notch subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup.
+4. Validate remaining prepared-outline final `unionNonZero()` cases so a later Clipper2 call cannot silently reintroduce source-order/rounding drift after exact pre-offset work.
+5. Expand whole `process_arachne()` differentials to disconnected islands, small/narrow holes, non-orthogonal concave notches, variable-width/open-line cases and one-wall/overhang/fuzzy combinations.
+6. Only after broader green evidence consider promoting represented `process_arachne()` as a whole to scoped `parity_verified`.
+7. Continue the separate QIDI auto circle-compensation geometry producer and later fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft toolpaths, then full G-code, persistence/profiles, scene/Preview, Device/cloud, calibration, desktop and UI parity.
+8. Publish and SHA-verify real runtime assets before any release-complete claim.
 
 ## Completion truth
 
