@@ -41,6 +41,39 @@ void _expectExact(
   }
 }
 
+void _expectExactByInputOrder(
+  SourcePolygon2 first,
+  SourcePolygon2 second,
+  List<SourcePoint2> expectedForward,
+  List<SourcePoint2> expectedReverse,
+) {
+  for (var firstRotation = 0; firstRotation < 3; firstRotation++) {
+    for (var secondRotation = 0; secondRotation < 3; secondRotation++) {
+      final rotatedFirst = _rotated(first, firstRotation);
+      final rotatedSecond = _rotated(second, secondRotation);
+      final forward = [rotatedFirst, rotatedSecond];
+      final reverse = [rotatedSecond, rotatedFirst];
+
+      expect(
+        SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.supports(forward),
+        isTrue,
+      );
+      expect(
+        SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.union(forward).points,
+        expectedForward,
+      );
+      expect(
+        SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.supports(reverse),
+        isTrue,
+      );
+      expect(
+        SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.union(reverse).points,
+        expectedReverse,
+      );
+    }
+  }
+}
+
 void main() {
   test('vertical full edge removes non-start shared endpoint exactly', () {
     _expectExact(
@@ -155,8 +188,8 @@ void main() {
     );
   });
 
-  test('cleanup that removes ordinary full-edge start remains unproved', () {
-    final values = [
+  test('removed ordinary start preserves pinned AddPath pointer state', () {
+    _expectExactByInputOrder(
       _poly([
         (0, 100),
         (0, 0),
@@ -167,13 +200,42 @@ void main() {
         (0, 100),
         (-40, -50),
       ]),
-    ];
-
-    expect(
-      SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.supports(values),
-      isFalse,
+      const [
+        SourcePoint2(40, 50),
+        SourcePoint2(0, 100),
+        SourcePoint2(-40, -50),
+      ],
+      const [
+        SourcePoint2(0, 100),
+        SourcePoint2(-40, -50),
+        SourcePoint2(40, 50),
+      ],
     );
-    expect(SourceClipper1TwoConvexHostEndFixupUnion2.supports(values), isFalse);
+  });
+
+  test('removed-start equal-Y boundary keeps source pointer asymmetry', () {
+    _expectExactByInputOrder(
+      _poly([
+        (-400, -400),
+        (0, 0),
+        (-840, -800),
+      ]),
+      _poly([
+        (0, 0),
+        (-400, -400),
+        (40, 0),
+      ]),
+      const [
+        SourcePoint2(0, 0),
+        SourcePoint2(-840, -800),
+        SourcePoint2(40, 0),
+      ],
+      const [
+        SourcePoint2(40, 0),
+        SourcePoint2(0, 0),
+        SourcePoint2(-840, -800),
+      ],
+    );
   });
 
   test('ordinary non-fixup full edge stays owned by contact helper', () {
