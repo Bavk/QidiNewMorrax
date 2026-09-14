@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
 import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
+import 'package:qidi_flow_flutter/core/slicer/source_arachne_wall_tool_paths_prepare_exact.dart';
 import 'package:qidi_flow_flutter/core/slicer/source_clipper1_noninteracting_union.dart';
 
 SourcePolygon2 _ccwSquare(int minX, int minY, int maxX, int maxY) =>
@@ -9,6 +10,19 @@ SourcePolygon2 _ccwSquare(int minX, int minY, int maxX, int maxY) =>
       SourcePoint2(maxX, minY),
       SourcePoint2(maxX, maxY),
       SourcePoint2(minX, maxY),
+    ]);
+
+SourcePolygon2 _sourceStartedCcwSquare(
+  int minX,
+  int minY,
+  int maxX,
+  int maxY,
+) =>
+    SourcePolygon2([
+      SourcePoint2(maxX, maxY),
+      SourcePoint2(minX, maxY),
+      SourcePoint2(minX, minY),
+      SourcePoint2(maxX, minY),
     ]);
 
 SourcePolygon2 _cwSquare(int minX, int minY, int maxX, int maxY) =>
@@ -42,13 +56,48 @@ void main() {
     );
   });
 
-  test('nested same-sign contour is rejected because union removes boundary', () {
-    final outer = _ccwSquare(0, 0, 200000, 200000);
-    final nested = _ccwSquare(50000, 50000, 150000, 150000);
+  test('nested same-sign boundary is suppressed like pinned NonZero union', () {
+    final outer = _sourceStartedCcwSquare(0, 0, 200000, 200000);
+    final nested = _sourceStartedCcwSquare(50000, 50000, 150000, 150000);
 
     expect(
       SourceClipper1NonInteractingUnion2.supports([outer, nested]),
-      isFalse,
+      isTrue,
+    );
+    final result = SourceClipper1NonInteractingUnion2.union([outer, nested]);
+
+    // Exact pinned ELF `Slic3r::union_(..., pftNonZero)` oracle for these two
+    // nested CCW squares returns one polygon and drops the +1 -> +2 boundary.
+    expect(result, hasLength(1));
+    expect(
+      result.single.points,
+      const [
+        SourcePoint2(200000, 200000),
+        SourcePoint2(0, 200000),
+        SourcePoint2(0, 0),
+        SourcePoint2(200000, 0),
+      ],
+    );
+  });
+
+  test('Arachne exact offset suppresses nested positive offset boundary', () {
+    final outer = _ccwSquare(0, 0, 200000, 200000);
+    final nested = _ccwSquare(50000, 50000, 150000, 150000);
+
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [outer, nested],
+      10000,
+    );
+
+    expect(result, hasLength(1));
+    expect(
+      result.single.points,
+      const [
+        SourcePoint2(210000, 210000),
+        SourcePoint2(-10000, 210000),
+        SourcePoint2(-10000, -10000),
+        SourcePoint2(210000, -10000),
+      ],
     );
   });
 
