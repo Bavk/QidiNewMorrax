@@ -123,11 +123,11 @@ Decreasing-Y strict-contained contacts:
 
 Endpoint-aligned one-point fixup contacts:
 
-- `95bff65f41cf25c92465d2e48e71cca37e5320fb` — `feat: port host-end fixup triangle joins`;
-- `2815d153f7ffeec84a9cce71af074487ede4a9f0` — `feat: route host-end fixup triangle joins`;
+- `812325797141ebc93c60a64d30df36b89af419e1` — `feat: port host-end fixup triangle joins`;
+- `f6c86e37d4f8c624180f032eed2e217f1157ce7a` — `feat: route host-end fixup triangle joins`;
 - `7c5e6ea5abc19281c0c8b46ef414a921da40db9d` — `test: lock host-end fixup triangle joins` (#549, 824/824);
-- `902d8ec1de7bde47c9bfb954056aabbcd348fabd` — `feat: port host-start fixup triangle joins`;
-- `767b861f9c118ef1039398648dd8a14afe9c7b5b` — `feat: route host-start fixup triangle joins`;
+- `902d8ec10bc1b8bdef31ea73c2a85b97752a9d81` — `feat: port host-start fixup triangle joins`;
+- `767b861f1a9ff19cfa310dbb3ea3ce10cdbc26a9` — `feat: route host-start fixup triangle joins`;
 - `3be152aa74f3c555423a39d1b2ab36b63f959343` — `test: lock host-start fixup triangle joins` (#552, 832/832).
 
 ## Numeric/source invariants
