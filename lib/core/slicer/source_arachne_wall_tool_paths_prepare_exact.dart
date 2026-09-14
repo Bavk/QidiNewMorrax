@@ -2,6 +2,7 @@ import '../geometry/source_polygon.dart';
 import 'source_arachne_wall_tool_paths.dart';
 import 'source_arachne_wall_tool_paths_prepare.dart';
 import 'source_clipper1_miter_offset.dart';
+import 'source_clipper1_noninteracting_union.dart';
 import 'source_clipper1_orthogonal_execute.dart';
 
 /// Source-order `WallToolPaths::generate()` preparation with the pinned
@@ -10,13 +11,13 @@ import 'source_clipper1_orthogonal_execute.dart';
 /// One positive convex contour is fully handled without Clipper2. A validated
 /// safe orthogonal concave positive-contour subset uses direct compiled-oracle
 /// Clipper1 positive/negative cleanup, and the represented rectilinear executor
-/// now also covers single-result topology-changing orthogonal contours.
-/// Multiple convex paths, including CW holes, use exact Clipper1 per-path
-/// `raw_offset()` arithmetic and cleanup; only the final cross-path NonZero
-/// union still delegates to the existing Clipper2 compatibility adapter.
-/// Non-orthogonal concave execution and multi-result rectilinear cleanup remain
-/// explicit differential validation seams. All post-offset cleanup stages are
-/// the direct ports already hosted by [SourceArachneWallToolPathsPrepare2].
+/// also covers single-result topology-changing orthogonal contours. Multiple
+/// convex paths, including CW holes, use exact Clipper1 per-path arithmetic; a
+/// conservative NonZero-union subset now also bypasses Clipper2 when those
+/// offset boundaries do not interact. Intersecting/deeper-nested cross-path
+/// unions, non-orthogonal concave execution and multi-result rectilinear cleanup
+/// remain explicit compatibility seams. All post-offset cleanup stages are the
+/// direct ports already hosted by [SourceArachneWallToolPathsPrepare2].
 class SourceArachneWallToolPathsPrepareExact2 {
   const SourceArachneWallToolPathsPrepareExact2._();
 
@@ -114,8 +115,9 @@ class SourceArachneWallToolPathsPrepareExact2 {
   /// - one single-result topology-changing orthogonal contour uses the exact
   ///   rectilinear `Execute()` cleanup rather than the Clipper2 fallback;
   /// - several convex paths (CCW contours and/or CW holes) execute exact
-  ///   per-path Clipper1 offset/sign/orientation semantics, then use Clipper2
-  ///   only for the still-open final `clipper_union(raw_offset(...))` seam;
+  ///   per-path Clipper1 offset/sign/orientation semantics. If their resulting
+  ///   boundaries remain noninteracting, the represented NonZero winding subset
+  ///   returns them without Clipper2; otherwise only the final union falls back;
   /// - non-orthogonal concave and multi-result rectilinear paths fall back to
   ///   the prior compatibility implementation until the remaining Clipper1
   ///   boolean executor is represented.
@@ -183,6 +185,9 @@ class SourceArachneWallToolPathsPrepareExact2 {
         }
       }
       if (perPath.isEmpty) return const <SourcePolygon2>[];
+      if (SourceClipper1NonInteractingUnion2.supports(perPath)) {
+        return SourceClipper1NonInteractingUnion2.union(perPath);
+      }
       return SourceArachneWallToolPathsPrepare2.unionNonZero(perPath);
     }
 
