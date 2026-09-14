@@ -2,25 +2,26 @@ import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 
 /// Exact pinned Clipper1 `ctUnion` + `pftNonZero` subset for two positive,
-/// strictly convex paths whose interiors are disjoint and whose boundaries
+/// strictly convex triangles whose interiors are disjoint and whose boundaries
 /// meet only through a represented zero-area contact.
 ///
-/// Represented contacts are deliberately narrow and independently probed from
-/// the pinned BambuStudio ELF:
+/// The triangle restriction is intentional. Direct raw-ELF audits found that
+/// wider convex polygons can reach different `OutRec::Pts` states even for the
+/// same geometric contact, so they stay on the compatibility seam.
 ///
-/// - exactly one point contact (vertex/vertex or vertex/edge): Clipper1 keeps
-///   two positive result contours, each with its standalone `BuildResult()`
-///   start, ordered by descending start Y/X;
-/// - one whole shared edge with opposite traversal: Clipper1 removes the
-///   internal shared edge and emits one contour starting at the shared endpoint
-///   with minimum Y (maximum X for a horizontal tie);
-/// - one shorter shared edge strictly inside a longer edge: the same geometric
-///   merge is represented with the pinned non-horizontal/horizontal join start
-///   rule observed for both scan directions.
+/// Represented contacts are:
 ///
-/// Endpoint-aligned partial overlaps, staggered partial overlaps, proper
-/// crossings mixed with touching/collinearity, containment and multiple contact
-/// intervals remain outside this helper instead of guessing Clipper1 join state.
+/// - exactly one point contact (vertex/vertex or vertex/edge), provided the two
+///   source triangles have different bottom scanlines; Clipper1 keeps two
+///   positive result contours in local-minimum creation order;
+/// - one complete shared edge with opposite traversal;
+/// - one shorter shared edge strictly inside a longer host edge when the host
+///   edge runs toward increasing Y, or is horizontal.
+///
+/// Partial endpoint/staggered collinear joins are owned by the separate partial
+/// helper. Host edges running toward decreasing Y for strict-contained joins,
+/// mixed crossing/contact cases, fixup-created collinearity and wider convex
+/// polygons remain outside this helper rather than extrapolating Clipper state.
 class SourceClipper1TwoConvexContactUnion2 {
   const SourceClipper1TwoConvexContactUnion2._();
 
@@ -31,7 +32,7 @@ class SourceClipper1TwoConvexContactUnion2 {
     final result = _resultOrNull(List<SourcePolygon2>.of(polygons));
     if (result == null) {
       throw ArgumentError(
-        'Pinned two-convex contact Clipper1 union subset does not apply',
+        'Pinned two-triangle contact Clipper1 union subset does not apply',
       );
     }
     return List<SourcePolygon2>.unmodifiable(result);
@@ -43,6 +44,7 @@ class SourceClipper1TwoConvexContactUnion2 {
     if (polygons.length != 2) return null;
     final first = polygons[0];
     final second = polygons[1];
+    if (first.points.length != 3 || second.points.length != 3) return null;
     if (!_isStrictPositiveConvex(first) ||
         !_isStrictPositiveConvex(second)) {
       return null;
@@ -68,17 +70,18 @@ class SourceClipper1TwoConvexContactUnion2 {
             _orientation(a, b, d) == 0) {
           final common = _commonCollinearPoints(a, b, c, d);
           if (common.length >= 2 && common.first != common.last) {
-            final overlap = _SharedEdgeContact2(
-              firstEdgeIndex: firstIndex,
-              secondEdgeIndex: secondIndex,
-              firstStart: a,
-              firstEnd: b,
-              secondStart: c,
-              secondEnd: d,
-              overlapStart: common.first,
-              overlapEnd: common.last,
+            overlaps.add(
+              _SharedEdgeContact2(
+                firstEdgeIndex: firstIndex,
+                secondEdgeIndex: secondIndex,
+                firstStart: a,
+                firstEnd: b,
+                secondStart: c,
+                secondEnd: d,
+                overlapStart: common.first,
+                overlapEnd: common.last,
+              ),
             );
-            overlaps.add(overlap);
             touchPoints.add(common.first);
             touchPoints.add(common.last);
           } else if (common.isNotEmpty) {
@@ -96,9 +99,6 @@ class SourceClipper1TwoConvexContactUnion2 {
 
     if (touchPoints.isEmpty) return null;
 
-    // No represented zero-area contact may hide actual material overlap or a
-    // containment case. With no proper crossings, a strict interior vertex is
-    // sufficient to reject those topologies for convex inputs.
     if (_hasStrictInteriorVertex(first, second) ||
         _hasStrictInteriorVertex(second, first)) {
       return null;
@@ -106,13 +106,16 @@ class SourceClipper1TwoConvexContactUnion2 {
 
     if (overlaps.isEmpty) {
       if (touchPoints.length != 1) return null;
-      final result = [_rebasePositive(first), _rebasePositive(second)];
-      result.sort((a, b) {
-        final firstStart = a.points.first;
-        final secondStart = b.points.first;
-        final byY = secondStart.y.compareTo(firstStart.y);
-        return byY != 0 ? byY : secondStart.x.compareTo(firstStart.x);
-      });
+      final firstBottomY = _maximumY(first);
+      final secondBottomY = _maximumY(second);
+      if (firstBottomY == secondBottomY) return null;
+      final result = [
+        _rebasePositiveTriangle(first),
+        _rebasePositiveTriangle(second),
+      ];
+      result.sort(
+        (a, b) => _maximumY(b).compareTo(_maximumY(a)),
+      );
       return result;
     }
 
@@ -201,6 +204,9 @@ class SourceClipper1TwoConvexContactUnion2 {
       } else {
         return null;
       }
+
+      final dy = host.edgeEnd.y - host.edgeStart.y;
+      if (dy < 0) return null;
       buildStart = _strictContainedBuildStart(host);
     }
 
@@ -218,13 +224,71 @@ class SourceClipper1TwoConvexContactUnion2 {
       boundary,
     );
     final cycle = _buildSingleCycle(boundary);
-    if (cycle == null || cycle.length < 3) return null;
+    if (cycle == null || cycle.length < 3 || _needsFixup(cycle)) return null;
     final startIndex = cycle.indexOf(buildStart);
     if (startIndex < 0) return null;
-    final rebased = _rotated(cycle, startIndex);
-    final result = SourcePolygon2(rebased);
+    final result = SourcePolygon2(_rotated(cycle, startIndex));
     if (result.signedArea <= 0) return null;
     return [result];
+  }
+
+  static int _maximumY(SourcePolygon2 polygon) => polygon.points
+      .map((point) => point.y)
+      .reduce((a, b) => a > b ? a : b);
+
+  static SourcePolygon2 _rebasePositiveTriangle(SourcePolygon2 polygon) {
+    final start = _triangleBuildStart(polygon);
+    return SourcePolygon2(
+      _rotated(polygon.points, polygon.points.indexOf(start)),
+    );
+  }
+
+  /// Exact standalone positive-triangle `BuildResult()` start derived from the
+  /// pinned Clipper edge-list state and checked against 1100 raw ELF triangles.
+  static SourcePoint2 _triangleBuildStart(SourcePolygon2 polygon) {
+    final maxY = _maximumY(polygon);
+    final bottoms = polygon.points.where((point) => point.y == maxY).toList();
+    if (bottoms.length >= 2) {
+      return bottoms.reduce((a, b) => a.x >= b.x ? a : b);
+    }
+
+    final bottom = bottoms.single;
+    final minY = polygon.points
+        .map((point) => point.y)
+        .reduce((a, b) => a < b ? a : b);
+    final tops = polygon.points.where((point) => point.y == minY).toList();
+    if (tops.length >= 2) return bottom;
+
+    final top = tops.single;
+    final middle = polygon.points.singleWhere(
+      (point) => point != bottom && point != top,
+    );
+    return _orientation(bottom, top, middle) > 0 ? middle : bottom;
+  }
+
+  static SourcePoint2 _strictContainedBuildStart(_HostSharedEdge2 host) {
+    final ordered = _sortAlongEdge(
+      [host.guestStart, host.guestEnd],
+      host.edgeStart,
+      host.edgeEnd,
+    );
+    final towardEnd = ordered.last;
+    final dx = host.edgeEnd.x - host.edgeStart.x;
+    final dy = host.edgeEnd.y - host.edgeStart.y;
+
+    if (dy == 0 && dx > 0) return towardEnd;
+    return host.polygon.points[
+        (host.edgeIndex - 1 + host.polygon.points.length) %
+            host.polygon.points.length];
+  }
+
+  static SourcePoint2 _fullSharedEdgeBuildStart(
+    SourcePoint2 first,
+    SourcePoint2 second,
+  ) {
+    if (first.y < second.y) return first;
+    if (second.y < first.y) return second;
+    return first.x >= second.x ? first : second;
   }
 
   static void _appendBoundaryWithoutSharedInterval(
@@ -258,9 +322,7 @@ class SourceClipper1TwoConvexContactUnion2 {
     }
   }
 
-  static List<SourcePoint2>? _buildSingleCycle(
-    List<_DirectedEdge2> edges,
-  ) {
+  static List<SourcePoint2>? _buildSingleCycle(List<_DirectedEdge2> edges) {
     if (edges.length < 3) return null;
     final byStart = <SourcePoint2, SourcePoint2>{};
     final incoming = <SourcePoint2, int>{};
@@ -293,45 +355,15 @@ class SourceClipper1TwoConvexContactUnion2 {
     return output;
   }
 
-  static SourcePoint2 _strictContainedBuildStart(_HostSharedEdge2 host) {
-    final ordered = _sortAlongEdge(
-      [host.guestStart, host.guestEnd],
-      host.edgeStart,
-      host.edgeEnd,
-    );
-    final towardEnd = ordered.last;
-    final dx = host.edgeEnd.x - host.edgeStart.x;
-    final dy = host.edgeEnd.y - host.edgeStart.y;
-
-    // Direct pinned ELF contacts show the non-horizontal join keeps the end of
-    // the overlap when the positive host edge runs toward lower Y. Horizontal
-    // left-to-right uses the same branch. The opposite scan direction keeps
-    // the host's preceding output point as `OutRec::Pts->Prev`.
-    if (dy < 0 || (dy == 0 && dx > 0)) return towardEnd;
-    return host.polygon.points[
-        (host.edgeIndex - 1 + host.polygon.points.length) %
-            host.polygon.points.length];
-  }
-
-  static SourcePoint2 _fullSharedEdgeBuildStart(
-    SourcePoint2 first,
-    SourcePoint2 second,
-  ) {
-    if (first.y < second.y) return first;
-    if (second.y < first.y) return second;
-    return first.x >= second.x ? first : second;
-  }
-
-  static SourcePolygon2 _rebasePositive(SourcePolygon2 polygon) {
-    var start = 0;
-    for (var index = 1; index < polygon.points.length; index++) {
-      final point = polygon.points[index];
-      final best = polygon.points[start];
-      if (point.y > best.y || (point.y == best.y && point.x > best.x)) {
-        start = index;
-      }
+  static bool _needsFixup(List<SourcePoint2> cycle) {
+    for (var index = 0; index < cycle.length; index++) {
+      final previous = cycle[(index - 1 + cycle.length) % cycle.length];
+      final point = cycle[index];
+      final next = cycle[(index + 1) % cycle.length];
+      if (point == previous || point == next) return true;
+      if (_orientation(previous, point, next) == 0) return true;
     }
-    return SourcePolygon2(_rotated(polygon.points, start));
+    return false;
   }
 
   static bool _hasStrictInteriorVertex(
