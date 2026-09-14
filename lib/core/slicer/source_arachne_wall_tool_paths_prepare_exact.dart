@@ -6,16 +6,17 @@ import 'source_clipper1_noninteracting_union.dart';
 import 'source_clipper1_orthogonal_execute.dart';
 
 /// Source-order `WallToolPaths::generate()` preparation with the pinned
-/// Clipper1 numerical path wherever the represented per-path executor is exact.
+/// Clipper1 numerical path wherever the represented executor is exact.
 ///
 /// One positive convex contour is fully handled without Clipper2. A validated
 /// safe orthogonal concave positive-contour subset uses direct compiled-oracle
-/// Clipper1 positive/negative cleanup, and the represented rectilinear executor
-/// also covers single-result topology-changing orthogonal contours. Multiple
+/// Clipper1 cleanup, and the represented rectilinear executor also covers
+/// topology-changing orthogonal results that stay within positive contours,
+/// including one input splitting into multiple disconnected contours. Multiple
 /// convex paths, including CW holes, use exact Clipper1 per-path arithmetic; a
-/// conservative NonZero-union subset now also bypasses Clipper2 when those
-/// offset boundaries do not interact. Intersecting/deeper-nested cross-path
-/// unions, non-orthogonal concave execution and multi-result rectilinear cleanup
+/// conservative NonZero-union subset bypasses Clipper2 when those offset
+/// boundaries do not interact. Intersecting/deeper-nested cross-path unions,
+/// non-orthogonal concave execution and orthogonal hole/point-touch ambiguity
 /// remain explicit compatibility seams. All post-offset cleanup stages are the
 /// direct ports already hosted by [SourceArachneWallToolPathsPrepare2].
 class SourceArachneWallToolPathsPrepareExact2 {
@@ -112,15 +113,15 @@ class SourceArachneWallToolPathsPrepareExact2 {
   /// - one positive convex contour returns the exact Clipper1 result directly;
   /// - one safe simple orthogonal concave positive contour uses the direct
   ///   compiled-oracle positive/negative Clipper1 cleanup subset;
-  /// - one single-result topology-changing orthogonal contour uses the exact
-  ///   rectilinear `Execute()` cleanup rather than the Clipper2 fallback;
+  /// - one orthogonal contour whose cleanup yields one or more disconnected
+  ///   positive contours uses the exact rectilinear `Execute()` subset;
   /// - several convex paths (CCW contours and/or CW holes) execute exact
   ///   per-path Clipper1 offset/sign/orientation semantics. If their resulting
   ///   boundaries remain noninteracting, the represented NonZero winding subset
   ///   returns them without Clipper2; otherwise only the final union falls back;
-  /// - non-orthogonal concave and multi-result rectilinear paths fall back to
-  ///   the prior compatibility implementation until the remaining Clipper1
-  ///   boolean executor is represented.
+  /// - non-orthogonal concave paths and orthogonal hole/point-touch ambiguity
+  ///   stay on the prior compatibility implementation until those remaining
+  ///   Clipper1 boolean cases are independently represented.
   static List<SourcePolygon2> offsetPolygons(
     Iterable<SourcePolygon2> polygons,
     double delta,
@@ -155,16 +156,14 @@ class SourceArachneWallToolPathsPrepareExact2 {
     }
 
     if (values.length == 1 &&
-        SourceClipper1OrthogonalExecute2.supportsSinglePositiveContour(
+        SourceClipper1OrthogonalExecute2.supportsPositiveContours(
           values.single,
           delta,
         )) {
-      final offset =
-          SourceClipper1OrthogonalExecute2.offsetSinglePositiveContour(
+      return SourceClipper1OrthogonalExecute2.offsetPositiveContours(
         values.single,
         delta,
       );
-      return List.unmodifiable([offset]);
     }
 
     if (values.length > 1 &&
