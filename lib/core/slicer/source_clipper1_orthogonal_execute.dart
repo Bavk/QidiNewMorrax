@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
 
-/// Exact single-result rectilinear subset of pinned Clipper 6.2.9
+/// Exact rectilinear subset of pinned Clipper 6.2.9
 /// `ClipperOffset::Execute()`.
 ///
 /// The historical offsetter builds mitered axis-aligned boundaries and then
@@ -15,58 +15,89 @@ import '../geometry/source_polygon.dart';
 /// preserving source `AddPath()` shortest-edge pruning, float32 delta and
 /// half-away coordinate boundaries.
 ///
-/// The subset is intentionally accepted only when the cleaned result is one
-/// positive contour. Multi-component output, holes and cross-path union remain
-/// separate Clipper1 seams.
+/// The represented subset accepts positive-contour results, including the
+/// source case where negative cleanup splits one input contour into multiple
+/// disconnected positive contours. Hole-producing/point-touch ambiguity and
+/// cross-path union remain separate Clipper1 seams.
 class SourceClipper1OrthogonalExecute2 {
   const SourceClipper1OrthogonalExecute2._();
 
   static const double shortestEdgeFactor = 0.005;
+
+  /// Whether [polygon] can use the exact represented positive-contour executor.
+  static bool supportsPositiveContours(
+    SourcePolygon2 polygon,
+    double delta,
+  ) {
+    final prepared = _prepareInput(polygon, delta);
+    if (prepared == null) return false;
+    final contours = _offsetContours(prepared.points, prepared.delta);
+    return contours.isNotEmpty &&
+        contours.every((polygon) => polygon.signedArea > 0);
+  }
+
+  /// Execute the represented orthogonal cleanup, preserving compiled Clipper1
+  /// result order for disconnected positive contours.
+  static List<SourcePolygon2> offsetPositiveContours(
+    SourcePolygon2 polygon,
+    double delta,
+  ) {
+    final prepared = _prepareInput(polygon, delta);
+    if (prepared == null) {
+      throw ArgumentError(
+        'Pinned positive orthogonal Clipper1 Execute subset does not apply',
+      );
+    }
+    final contours = _offsetContours(prepared.points, prepared.delta);
+    if (contours.isEmpty ||
+        contours.any((polygon) => polygon.signedArea <= 0)) {
+      throw ArgumentError(
+        'Pinned orthogonal Execute result is outside positive-contour subset',
+      );
+    }
+    return contours;
+  }
 
   /// Whether [polygon] can use the exact represented single-contour executor.
   static bool supportsSinglePositiveContour(
     SourcePolygon2 polygon,
     double delta,
   ) {
-    if (polygon.signedArea <= 0) return false;
-    final sourceDelta = _f32(delta);
-    if (!sourceDelta.isFinite || sourceDelta == 0) return false;
-    // Arachne offsets reach Clipper1 in integer source units. Keeping this
-    // boundary explicit avoids claiming parity for sub-coordinate level sets
-    // before their source rounding has an independent oracle.
-    if (sourceDelta != sourceDelta.truncateToDouble()) return false;
-
-    final points = _prepareClosedPath(polygon.points, sourceDelta);
-    if (points.length < 4 || !_isSimpleOrthogonal(points)) return false;
-    final contours = _offsetContours(points, sourceDelta.truncate());
+    final prepared = _prepareInput(polygon, delta);
+    if (prepared == null) return false;
+    final contours = _offsetContours(prepared.points, prepared.delta);
     return contours.length == 1 && contours.single.signedArea > 0;
   }
 
-  /// Execute the represented exact orthogonal per-path cleanup.
+  /// Execute the represented exact orthogonal cleanup when it stays connected.
   static SourcePolygon2 offsetSinglePositiveContour(
     SourcePolygon2 polygon,
     double delta,
   ) {
-    final sourceDelta = _f32(delta);
-    final points = _prepareClosedPath(polygon.points, sourceDelta);
-    if (polygon.signedArea <= 0 ||
-        !sourceDelta.isFinite ||
-        sourceDelta == 0 ||
-        sourceDelta != sourceDelta.truncateToDouble() ||
-        points.length < 4 ||
-        !_isSimpleOrthogonal(points)) {
-      throw ArgumentError(
-        'Pinned single orthogonal Clipper1 Execute subset does not apply',
-      );
-    }
-
-    final contours = _offsetContours(points, sourceDelta.truncate());
-    if (contours.length != 1 || contours.single.signedArea <= 0) {
+    final contours = offsetPositiveContours(polygon, delta);
+    if (contours.length != 1) {
       throw ArgumentError(
         'Pinned orthogonal Execute result is not one positive contour',
       );
     }
     return contours.single;
+  }
+
+  static _PreparedOrthogonalInput2? _prepareInput(
+    SourcePolygon2 polygon,
+    double delta,
+  ) {
+    if (polygon.signedArea <= 0) return null;
+    final sourceDelta = _f32(delta);
+    if (!sourceDelta.isFinite || sourceDelta == 0) return null;
+    // Arachne offsets reach Clipper1 in integer source units. Keeping this
+    // boundary explicit avoids claiming parity for sub-coordinate level sets
+    // before their source rounding has an independent oracle.
+    if (sourceDelta != sourceDelta.truncateToDouble()) return null;
+
+    final points = _prepareClosedPath(polygon.points, sourceDelta);
+    if (points.length < 4 || !_isSimpleOrthogonal(points)) return null;
+    return _PreparedOrthogonalInput2(points, sourceDelta.truncate());
   }
 
   static List<SourcePolygon2> _offsetContours(
@@ -151,7 +182,7 @@ class SourceClipper1OrthogonalExecute2 {
     }
     // A diagonal point-touch creates more than one outgoing contour edge. That
     // ordering is owned by the full Clipper1 boolean executor and is therefore
-    // kept outside this exact single-result subset.
+    // kept outside this exact subset.
     if (byStart.values.any((value) => value.length != 1)) {
       return const <SourcePolygon2>[];
     }
@@ -193,14 +224,9 @@ class SourceClipper1OrthogonalExecute2 {
       contours.add(SourcePolygon2(_rotateToClipperStart(polygon.points)));
     }
 
-    contours.sort((first, second) {
-      final byArea = second.signedArea.abs().compareTo(first.signedArea.abs());
-      if (byArea != 0) return byArea;
-      final a = first.points.first;
-      final b = second.points.first;
-      final byX = b.x.compareTo(a.x);
-      return byX != 0 ? byX : b.y.compareTo(a.y);
-    });
+    // Do not sort: the pinned Clipper1 multi-result oracle for a split
+    // orthogonal dumbbell returns the left component before the right component.
+    // The x-major/y-major arrangement scan above reproduces that source order.
     return List<SourcePolygon2>.unmodifiable(contours);
   }
 
@@ -401,6 +427,13 @@ class SourceClipper1OrthogonalExecute2 {
     final slot = Float32List(1)..[0] = value;
     return slot[0];
   }
+}
+
+class _PreparedOrthogonalInput2 {
+  const _PreparedOrthogonalInput2(this.points, this.delta);
+
+  final List<SourcePoint2> points;
+  final int delta;
 }
 
 class _DirectedEdge2 {
