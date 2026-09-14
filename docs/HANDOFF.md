@@ -16,15 +16,15 @@ Do not infer completion from visual similarity, compilation or common-case tests
 
 Latest validated code checkpoint:
 
-- code commit `34f3ef832b77057dc026b81f07ff5896fd1bada0` (`fix: require collinearity for convex contacts`);
-- `.github/workflows/flutter-parity.yml` run `34844487290` (#501), job `103976992231`;
+- code commit `d1731f14121c80af883e78204fdcd6bc3b41116d` (`feat: route exact partial collinear unions`);
+- `.github/workflows/flutter-parity.yml` run `34848910683` (#510), job `103991577409`;
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **768/768 passed**;
+- `flutter test --reporter expanded` → **781/781 passed**;
 - job conclusion → **success**.
 
-The suite retains every earlier represented Classic/Arachne/geometry fixture and adds eight committed tests for the new exact two-positive strict-convex zero-area contact Clipper1 union subset.
+The suite retains every earlier represented Classic/Arachne/geometry fixture and adds thirteen committed tests for partial-collinear triangle joins, exact triangle contact starts/order, routing and rejection of still-unproven Clipper1 join states.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -38,15 +38,23 @@ Process and Clipper1 evidence comes from the **actual upstream compiled binary a
 - extracted AppImage SHA-256: `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`;
 - CLI version: `02.08.03.66`.
 
-The earlier #493 convex proper-crossing batch remains backed by **39/39 exact ELF cases**: seven hand-selected cases plus 32 deterministic random strict-convex pairs with 2/4/6 proper crossings. Exact integer intersection rounding, result vertex order/start and reversed input order all matched.
+The raw preload probe calls the pinned modified Clipper1 `clipper_union(Paths&, pftNonZero)` template at PIE offset `0x10b54d0` and dumps result paths without rotating or reordering them. `BuildResult()` starts each path at `OutRec::Pts->Prev`, so exact parity depends on Clipper output-list state and later `FixupOutPolygon()`, not only on final geometry.
 
-For the new contact batch, the same raw `clipper_union(..., pftNonZero)` ELF probe established exact `BuildResult()` behavior for non-rectangular strict-convex vertex↔vertex and vertex↔edge single-point contacts, a full slanted shared edge, and strict-contained shared-edge intervals in both slanted and horizontal orientations. Reversed input order was checked for the represented cases. Single-point contact remains two result contours; represented shared-edge contacts merge to one contour with the pinned result start/order. Endpoint-aligned/staggered partial overlaps and mixed crossing/contact topologies are intentionally still rejected rather than guessed.
+The #493 proper-crossing convex batch remains backed by **39/39 exact ELF cases**: seven hand-selected cases plus 32 deterministic random strict-convex pairs with 2/4/6 proper crossings.
+
+For the current boundary-degeneracy batch, the exact artifact was downloaded and SHA-verified again. A batch ELF probe then established:
+
+- standalone positive-triangle `BuildResult()` start rule: **1100/1100** raw cases;
+- point-contact triangle scan/order evidence, including **999/999** vertex↔edge cases with distinct bottom scanlines and broader vertex↔vertex order probing;
+- complete shared-edge triangle start rule: **1000/1000** random cases;
+- safe represented point/full/strict-contained contact source-list/start/order predicates: **4600/4600** asserted cases including reversed input order;
+- represented endpoint-aligned/horizontal-staggered partial-collinear triangle unions: **4392/4392 exact raw result paths** after excluding cases that require an additional Clipper `FixupOutPolygon()` mutation.
+
+An important correction was made during that audit: the previous contact helper accepted arbitrary strict-convex polygons, while its fixtures only established triangle state. A direct wider-convex audit immediately disproved that extrapolation (for example, **0/40** random full-shared-edge quadrilateral cases matched the old raw start heuristic). Commit `bf3610af5327a82e43469d31d4fd825128635c23` therefore narrows the production exact route to the proven triangle states instead of silently claiming generic convex-contact parity.
 
 ## Current represented perimeter / Arachne path
 
-The represented `PerimeterGenerator::process_classic()` path remains scoped `parity_verified` for covered fixtures. It composes source `Surface` copy behavior, bridge/no-bridge preprocessing, simplification/island chaining, extra-perimeter accounting, one-wall gates, onion shell / `Alltop` / thin-wall / gap-fill / final fill boundaries, recursive fuzzy/overhang traversal, shared fuzzy RNG, wall sequence, nested island shape and QIDI outwall/loop-node producer semantics.
-
-The represented Arachne chain includes `WallToolPaths` numeric/config state and preparation, beading strategies, direct Boost/Voronoi topology → skeletal graph → generated variable-width toolpaths, one-wall and `Alltop` planning, region/extrusion ordering, fuzzy conversion, non-speed and speed-graded overhang traversal, QIDI `LoopNode` production and final `add_infill_contour_for_arachne()` composition.
+The represented `PerimeterGenerator::process_classic()` path remains scoped `parity_verified` for covered fixtures. The represented Arachne chain includes `WallToolPaths` numeric/config state and preparation, beading strategies, direct Boost/Voronoi topology → skeletal graph → generated variable-width toolpaths, one-wall and `Alltop` planning, region/extrusion ordering, fuzzy conversion, non-speed and speed-graded overhang traversal, QIDI `LoopNode` production and final `add_infill_contour_for_arachne()` composition.
 
 Independent compiled fixtures cover normal two-wall, topmost/first-layer one-wall, non-speed/speed overhang, partial `Alltop`, through-hole walls, QIDI `LoopNode`, QIDI circle-metadata copy behavior, final fill boundaries and the pathological narrow wedge. The represented `process_arachne()` boundary nevertheless remains **`implemented_unverified` as a whole** until broader production/pathological coverage and remaining general Clipper1 seams are closed.
 
@@ -64,15 +72,16 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. Exact represented subsets 
 - noninteracting NonZero cross-path behavior for direct holes, disconnected positive roots and nested same-sign suppression, including pinned `BuildResult()` starts/order;
 - interacting two-positive axis-aligned rectangles for same-span touch, diagonal area overlap, partial unequal edge/T contacts and point-only contacts;
 - exactly two positive strictly convex contours with only proper boundary crossings, preserving modified Clipper1 scanline intersection rounding and exact `BuildResult()` order/start;
-- **new #501 scope:** exactly two positive strictly convex contours with disjoint interiors and a represented zero-area contact: one single point (vertex↔vertex or vertex↔edge), one complete shared edge, or one shorter shared edge strictly inside the other edge. The helper preserves exact pinned contour count, vertex order/start and reversed input order for the asserted raw-ELF fixtures.
+- exactly two positive strict-convex **triangles** for the bounded zero-area contact states now proven by the batch oracle: supported single-point contacts with distinct bottom scanlines, complete shared edge, and the represented strict-contained edge directions;
+- **new #510 scope:** exactly two positive strict-convex triangles with one partial collinear contact for the proven states: endpoint-aligned overlap at the host-edge start for arbitrary slope, endpoint-aligned overlap at a horizontal host-edge end, and horizontal staggered overlap with a unique minimum-Y output vertex. Cases that would require post-join collinear fixup are rejected.
 
-Still **not** general Clipper1 parity: endpoint-aligned/staggered non-rectangular partial collinear joins, mixed proper-crossing + touch/collinear cases, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those continue to use explicit compatibility fallback where necessary.
+Still **not** general Clipper1 parity: wider-convex contact `OutRec` state, equal-bottom point-contact ties, strict-contained decreasing-Y joins, non-horizontal host-end partial joins, non-horizontal staggered joins, fixup-created collinearity, mixed proper-crossing + touch/collinear cases, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those continue to use explicit compatibility fallback where necessary.
 
 ## First unfinished priority
 
 Continue in source/dependency order:
 
-1. finish the remaining two-convex boundary-degeneracy seam beyond the new zero-area subset: derive exact pinned oracles and port **endpoint-aligned/staggered partial collinear joins and mixed crossing/contact cases**, preserving exact `BuildResult()` order/start;
+1. finish the remaining two-path convex boundary-degeneracy seam with exact pinned evidence: **non-horizontal host-end and non-horizontal staggered collinear joins, equal-bottom/fixup contact states, then mixed proper-crossing + touch/collinear cases**; widen beyond triangles only after raw `OutRec`/`BuildResult()` behavior is independently proved;
 2. continue the same Clipper1 final cross-path boolean priority with **interacting holes**, then **more than two interacting paths**;
 3. extend per-path Clipper1 `Execute()` beyond current V-notch/orthogonal subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup;
 4. validate remaining prepared-outline final `unionNonZero()` cases so that a later Clipper2 call cannot silently reintroduce source-order/rounding drift after exact pre-offset work;
@@ -84,10 +93,11 @@ Continue in source/dependency order:
 
 ## Latest implementation commits
 
-- `1a57e36526a7192bf04c0b96a82a0da46ee0d49a` — `feat: port convex Clipper1 contact unions`;
-- `850cebc509b1f194af4db2b0e1338a081add273f` — `feat: route exact convex contact unions`;
-- `efa82489c35d284b4f42a94208f95bec5d27f5be` — `test: lock convex Clipper1 contact oracles`;
-- `34f3ef832b77057dc026b81f07ff5896fd1bada0` — `fix: require collinearity for convex contacts`.
+- `1e4d9bcdb75bf975b48c54bd2b9d4b75a5637d70` — `feat: port partial collinear triangle unions`;
+- `bf3610af5327a82e43469d31d4fd825128635c23` — `fix: bound convex contact union to proven triangles`;
+- `949bca3d4f5f3495dcbb9f4571461fd9d9b552af` — `fix: reject partial joins needing Clipper fixup`;
+- `e47419459d52587a7af7d86a5d025fe30dd97a66` — `test: lock partial collinear Clipper1 unions`;
+- `d1731f14121c80af883e78204fdcd6bc3b41116d` — `feat: route exact partial collinear unions`.
 
 ## Numeric/source invariants
 
