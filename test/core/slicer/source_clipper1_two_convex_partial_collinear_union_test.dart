@@ -86,6 +86,20 @@ void main() {
     );
   });
 
+  test('increasing-Y non-horizontal host-end overlap is exact', () {
+    _expectPartialUnion(
+      _poly([(0, 0), (80000, 120000), (-20000, 100000)]),
+      _poly([(80000, 120000), (40000, 60000), (120000, 50000)]),
+      const [
+        SourcePoint2(0, 0),
+        SourcePoint2(40000, 60000),
+        SourcePoint2(120000, 50000),
+        SourcePoint2(80000, 120000),
+        SourcePoint2(-20000, 100000),
+      ],
+    );
+  });
+
   test('rightward horizontal staggered overlap is exact', () {
     _expectPartialUnion(
       _poly([(0, 0), (120000, 0), (60000, 60000)]),
@@ -116,6 +130,21 @@ void main() {
     );
   });
 
+  test('negative-slope non-horizontal staggered overlap is exact', () {
+    _expectPartialUnion(
+      _poly([(0, 0), (-80000, 120000), (-140000, -20000)]),
+      _poly([(-120000, 180000), (-40000, 60000), (60000, 140000)]),
+      const [
+        SourcePoint2(0, 0),
+        SourcePoint2(-40000, 60000),
+        SourcePoint2(60000, 140000),
+        SourcePoint2(-120000, 180000),
+        SourcePoint2(-80000, 120000),
+        SourcePoint2(-140000, -20000),
+      ],
+    );
+  });
+
   test('Arachne zero offset routes partial collinear triangles off fallback', () {
     final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
       [
@@ -138,21 +167,53 @@ void main() {
     );
   });
 
-  test('non-horizontal host-end overlap stays on compatibility seam', () {
-    expect(
-      SourceClipper1TwoConvexPartialCollinearUnion2.supports([
+  test('Arachne routes increasing-Y host-end join off fallback', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
         _poly([(0, 0), (80000, 120000), (-20000, 100000)]),
         _poly([(80000, 120000), (40000, 60000), (120000, 50000)]),
+      ],
+      0,
+    );
+
+    expect(result, hasLength(1));
+    expect(
+      result.single.points,
+      const [
+        SourcePoint2(0, 0),
+        SourcePoint2(40000, 60000),
+        SourcePoint2(120000, 50000),
+        SourcePoint2(80000, 120000),
+        SourcePoint2(-20000, 100000),
+      ],
+    );
+  });
+
+  test('decreasing-Y non-horizontal host-end stays on compatibility seam', () {
+    expect(
+      SourceClipper1TwoConvexPartialCollinearUnion2.supports([
+        _poly([(56000, 107000), (104000, 113000), (56000, 119000)]),
+        _poly([(20000, 115000), (56000, 107000), (56000, 113000)]),
       ]),
       isFalse,
     );
   });
 
-  test('non-horizontal staggered overlap stays on compatibility seam', () {
+  test('other non-horizontal staggered overlap stays on compatibility seam', () {
     expect(
       SourceClipper1TwoConvexPartialCollinearUnion2.supports([
         _poly([(0, 0), (80000, 120000), (-20000, 100000)]),
         _poly([(120000, 180000), (40000, 60000), (140000, 80000)]),
+      ]),
+      isFalse,
+    );
+  });
+
+  test('negative-slope staggered state requires pinned triangle start', () {
+    expect(
+      SourceClipper1TwoConvexPartialCollinearUnion2.supports([
+        _poly([(-63000, -14000), (-75000, 70000), (-162000, 79000)]),
+        _poly([(-79000, 98000), (-69000, 28000), (102000, 31000)]),
       ]),
       isFalse,
     );
