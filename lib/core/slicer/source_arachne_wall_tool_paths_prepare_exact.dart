@@ -6,6 +6,7 @@ import 'source_clipper1_negative_concave_execute.dart';
 import 'source_clipper1_noninteracting_union.dart';
 import 'source_clipper1_orthogonal_execute.dart';
 import 'source_clipper1_positive_concave_execute.dart';
+import 'source_clipper1_two_convex_contact_union.dart';
 import 'source_clipper1_two_convex_union.dart';
 import 'source_clipper1_two_rectangle_union.dart';
 
@@ -22,12 +23,15 @@ import 'source_clipper1_two_rectangle_union.dart';
 /// paths, including CW holes, use exact Clipper1 per-path arithmetic; a
 /// conservative NonZero-union subset bypasses Clipper2 when those offset
 /// boundaries do not interact. Exact interacting two-positive subsets cover
-/// axis-aligned rectangle contacts/overlaps and proper-crossing strict convex
-/// pairs with source scanline rounding and `BuildResult()` starts.
-/// Interacting holes, >2 interacting paths, convex touch/collinear cases outside
-/// the rectangle helper, multi-reflex/nonlocal non-orthogonal cleanup and
-/// orthogonal hole/point-touch ambiguity remain explicit compatibility seams.
-/// All post-offset cleanup stages are the direct ports already hosted by
+/// axis-aligned rectangle contacts/overlaps, proper-crossing strict convex
+/// pairs, and a pinned zero-area strict-convex contact subset (single point,
+/// full shared edge, or one strict contained shared-edge interval) with exact
+/// `BuildResult()` starts/order.
+/// Interacting holes, >2 interacting paths, endpoint-aligned/staggered convex
+/// collinear joins outside the rectangle helper, mixed crossing/contact cases,
+/// multi-reflex/nonlocal non-orthogonal cleanup and orthogonal hole/point-touch
+/// ambiguity remain explicit compatibility seams. All post-offset cleanup
+/// stages are the direct ports already hosted by
 /// [SourceArachneWallToolPathsPrepare2].
 class SourceArachneWallToolPathsPrepareExact2 {
   const SourceArachneWallToolPathsPrepareExact2._();
@@ -132,10 +136,12 @@ class SourceArachneWallToolPathsPrepareExact2 {
   /// - several convex paths (CCW contours and/or CW holes) execute exact
   ///   per-path Clipper1 offset/sign/orientation semantics. Noninteracting paths
   ///   use the represented NonZero winding/BuildResult subset; exactly two
-  ///   interacting positive rectangles use the pinned rectangle subset, while
-  ///   exactly two strict positive convex paths with only proper crossings use
-  ///   the exact scanline-rounded convex union subset. Other interacting sets
-  ///   fall back only at the final union;
+  ///   interacting positive rectangles use the pinned rectangle subset;
+  ///   exactly two strict positive convex paths with a represented zero-area
+  ///   contact use the pinned contact helper; and exactly two strict positive
+  ///   convex paths with only proper crossings use the exact scanline-rounded
+  ///   convex union subset. Other interacting sets fall back only at the final
+  ///   union;
   /// - multi-reflex/nonlocal non-orthogonal cleanup and orthogonal hole/point-
   ///   touch ambiguity stay on the compatibility path until independently
   ///   represented.
@@ -226,6 +232,9 @@ class SourceArachneWallToolPathsPrepareExact2 {
       }
       if (SourceClipper1TwoRectangleUnion2.supports(perPath)) {
         return SourceClipper1TwoRectangleUnion2.unionAll(perPath);
+      }
+      if (SourceClipper1TwoConvexContactUnion2.supports(perPath)) {
+        return SourceClipper1TwoConvexContactUnion2.unionAll(perPath);
       }
       if (SourceClipper1TwoConvexUnion2.supports(perPath)) {
         return List.unmodifiable([
