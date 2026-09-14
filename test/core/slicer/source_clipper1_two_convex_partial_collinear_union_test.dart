@@ -100,6 +100,20 @@ void main() {
     );
   });
 
+  test('guarded decreasing-Y non-horizontal host-end overlap is exact', () {
+    _expectPartialUnion(
+      _poly([(104400, -316800), (794400, -112800), (68400, -220800)]),
+      _poly([(-498600, -460800), (104400, -316800), (97200, -297600)]),
+      const [
+        SourcePoint2(104400, -316800),
+        SourcePoint2(794400, -112800),
+        SourcePoint2(68400, -220800),
+        SourcePoint2(97200, -297600),
+        SourcePoint2(-498600, -460800),
+      ],
+    );
+  });
+
   test('rightward horizontal staggered overlap is exact', () {
     _expectPartialUnion(
       _poly([(0, 0), (120000, 0), (60000, 60000)]),
@@ -189,7 +203,7 @@ void main() {
     );
   });
 
-  test('decreasing-Y non-horizontal host-end stays on compatibility seam', () {
+  test('decreasing-Y host-end without guest start stays on seam', () {
     expect(
       SourceClipper1TwoConvexPartialCollinearUnion2.supports([
         _poly([(56000, 107000), (104000, 113000), (56000, 119000)]),
