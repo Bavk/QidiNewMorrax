@@ -21,8 +21,9 @@ import 'source_clipper1_two_rectangle_union.dart';
 /// paths, including CW holes, use exact Clipper1 per-path arithmetic; a
 /// conservative NonZero-union subset bypasses Clipper2 when those offset
 /// boundaries do not interact, and an exact two-positive-rectangle subset now
-/// covers source-ordered horizontal/vertical/diagonal interacting unions.
-/// General interacting/deeper-nested cross-path unions, multi-reflex/nonlocal
+/// covers source-ordered horizontal/vertical/diagonal area intersections,
+/// partial unequal edge contacts and point-only contacts.
+/// General convex/deeper-nested cross-path unions, multi-reflex/nonlocal
 /// non-orthogonal cleanup and orthogonal hole/point-touch ambiguity remain
 /// explicit compatibility seams. All post-offset cleanup stages are the direct
 /// ports already hosted by [SourceArachneWallToolPathsPrepare2].
@@ -130,7 +131,8 @@ class SourceArachneWallToolPathsPrepareExact2 {
   ///   per-path Clipper1 offset/sign/orientation semantics. Noninteracting paths
   ///   use the represented NonZero winding/BuildResult subset; exactly two
   ///   interacting positive rectangles use the pinned scan-order rectangle
-  ///   subset. Other interacting sets fall back only at the final union;
+  ///   subset, including partial unequal edge and point-only contacts. Other
+  ///   interacting sets fall back only at the final union;
   /// - multi-reflex/nonlocal non-orthogonal cleanup and orthogonal hole/point-
   ///   touch ambiguity stay on the compatibility path until independently
   ///   represented.
@@ -220,9 +222,7 @@ class SourceArachneWallToolPathsPrepareExact2 {
         return SourceClipper1NonInteractingUnion2.union(perPath);
       }
       if (SourceClipper1TwoRectangleUnion2.supports(perPath)) {
-        return List.unmodifiable([
-          SourceClipper1TwoRectangleUnion2.union(perPath),
-        ]);
+        return SourceClipper1TwoRectangleUnion2.unionAll(perPath);
       }
       return SourceArachneWallToolPathsPrepare2.unionNonZero(perPath);
     }
