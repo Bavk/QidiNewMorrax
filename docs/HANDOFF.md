@@ -16,15 +16,15 @@ Do not infer completion from visual similarity, compilation or common-case tests
 
 Latest validated code checkpoint:
 
-- code commit `1299cb5999f31b5c1659e1796d6d462fafa5d9f1` (`test: lock decreasing strict-contained contacts`);
-- `.github/workflows/flutter-parity.yml` run `34896399166` (#542), job `104151463543`;
+- code commit `3be152aa74f3c555423a39d1b2ab36b63f959343` (`test: lock host-start fixup triangle joins`);
+- `.github/workflows/flutter-parity.yml` run `34897876786` (#552), job `104156397361`;
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **816/816 passed**;
+- `flutter test --reporter expanded` → **832/832 passed**;
 - job conclusion → **success**.
 
-The suite retains every earlier represented Classic/Arachne/geometry fixture and adds fourteen tests beyond #532: seven for equal-bottom point-contact source ordering and seven for decreasing-Y strict-contained triangle contacts, including exact Arachne routing and ownership/rejection boundaries.
+The suite retains every earlier represented Classic/Arachne/geometry fixture and adds thirty tests beyond #532: seven equal-bottom point-contact tests, seven decreasing-Y strict-contained contact tests, eight host-end fixup tests and eight host-start fixup tests.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -40,7 +40,7 @@ Process and Clipper1 evidence comes from the **actual upstream compiled binary a
 
 The raw preload probe calls the pinned modified Clipper1 `clipper_union(Paths&, pftNonZero)` template at PIE offset `0x10b54d0` and dumps result paths without rotating or reordering them. `BuildResult()` starts each path at `OutRec::Pts->Prev`, so exact parity depends on Clipper output-list state and later `FixupOutPolygon()`, not only on final geometry.
 
-Retained evidence includes the #493 **39/39** exact proper-crossing convex matrix, the #510 triangle contact/start audits (`1100/1100` standalone starts, `1000/1000` full shared-edge starts, `4600/4600` supported contact state predicates), the #510 partial-collinear matrix (`4392/4392` exact raw result paths after excluding post-join fixup cases), the #518 guarded non-horizontal extension (**36000/36000**), the #525 remaining decreasing-Y host-end extension (**23400/23400**) and the #532 all-slope non-horizontal staggered extension (**145800/145800**).
+Retained evidence includes the #493 **39/39** exact proper-crossing convex matrix, the #510 triangle contact/start audits (`1100/1100` standalone starts, `1000/1000` full shared-edge starts, `4600/4600` older supported contact predicates), the #510 partial-collinear matrix (`4392/4392`), the #518 guarded non-horizontal extension (**36000/36000**), the #525 remaining decreasing-Y host-end extension (**23400/23400**) and the #532 all-slope non-horizontal staggered extension (**145800/145800**).
 
 ### #539 equal-bottom point-contact extension
 
@@ -50,24 +50,23 @@ Retained evidence includes the #493 **39/39** exact proper-crossing convex matri
 - shared-bottom and flat-bottom vertex-contact matrix: **9000/9000**;
 - sheared nonvertical vertex↔edge matrix: **10800/10800**.
 
-All matrices include all 3×3 cyclic rotations and both polygon input orders. Clipper1 keeps two contours; each preserves its standalone triangle `BuildResult()` start, while tied-bottom contour order is exactly the **reverse of `AddPath()` / input order**. Wider convex paths and non-point contacts are not implied.
+Each contour preserves its standalone positive-triangle `BuildResult()` start, while tied-bottom result contour order is exactly the **reverse of `AddPath()` / input order**. All matrices include all 3×3 cyclic rotations and both input orders. Wider convex paths and non-point contacts are not implied.
 
 ### #542 decreasing-Y strict-contained extension
 
-`SourceClipper1TwoConvexDecreasingStrictContainedUnion2` closes the previously unrepresented strict-contained shared-edge triangle state whose longer host edge has `dy < 0`. Both guest-edge endpoints must lie strictly inside the host edge, traversal is opposite and the third vertices occupy opposite open half-planes.
+`SourceClipper1TwoConvexDecreasingStrictContainedUnion2` closes the previously unrepresented strict-contained shared-edge triangle state whose longer host edge has `dy < 0`. Direct raw ELF matrices matched **30600/30600 exact full result paths**: **25200/25200** broad cases plus **5400/5400** targeted vertical/equal-Y/slope-boundary cases.
 
-Independent raw ELF matrices matched **30600/30600 exact full result paths**:
+Let `qStart` be the overlap endpoint nearer host start, `qEnd` nearer host end, `G` the guest third vertex and `H` the host third vertex. Exact raw start is `qEnd` for `G.y < qStart.y`, `H` for `G.y > qStart.y`, and the standalone host-triangle Clipper1 start on equality. All matrices include all 3×3 cyclic rotations and both input orders.
 
-- broad translations/slopes/overlap/third-vertex matrix: **25200/25200**;
-- targeted vertical/equal-Y/slope boundary matrix: **5400/5400**.
+### #549 / #552 endpoint-aligned fixup extension
 
-Let `qStart` be the overlap endpoint nearer host start, `qEnd` the endpoint nearer host end, `G` the guest third vertex and `H` the host third vertex. Exact raw start is:
+Two independent helpers now cover the exact endpoint-aligned triangle state where the join creates **one shared host endpoint collinear between the two third vertices**, and `FixupOutPolygon()` removes exactly that point. These helpers do not generalize to other fixup topologies.
 
-- `G.y < qStart.y` → `qEnd`;
-- `G.y > qStart.y` → `H`;
-- equal Y → standalone pinned Clipper1 start of the host triangle.
+`SourceClipper1TwoConvexHostEndFixupUnion2` directly owns the host-end state. Its raw matrix matched **145800/145800** full result paths across increasing/decreasing non-horizontal edges, vertical edges, both horizontal directions, integer shears, all 3×3 cyclic rotations and both input orders. Post-fix raw start is `hostStart` for every non-horizontal or leftward-horizontal host edge, and `guestThird` for a rightward horizontal host edge.
 
-The matrices include all 3×3 cyclic rotations and both input orders. Increasing-Y/horizontal strict-contained states remain with the previously proven contact helper; endpoint-aligned contacts remain with their partial-collinear helpers.
+`SourceClipper1TwoConvexHostStartFixupUnion2` independently owns the symmetric host-start state. Its raw matrix also matched **145800/145800** full result paths across the same direction/shear/rotation/order families. Post-fix start follows the already-proven host-start source-state rule: interior overlap for `dy < 0` or horizontal-right, otherwise host third.
+
+Combined endpoint-aligned one-point fixup evidence is therefore **291600/291600 exact full raw paths**. The central exact router reaches both through the fixup gateway; non-endpoint/staggered/full-edge cleanup states remain fallback.
 
 ## Current represented perimeter / Arachne path
 
@@ -89,16 +88,16 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. Exact represented subsets 
 - noninteracting NonZero cross-path behavior for direct holes, disconnected positive roots and nested same-sign suppression, including pinned `BuildResult()` starts/order;
 - interacting two-positive axis-aligned rectangles for same-span touch, diagonal area overlap, partial unequal edge/T contacts and point-only contacts;
 - exactly two positive strictly convex contours with only proper boundary crossings, preserving modified Clipper1 scanline intersection rounding and exact `BuildResult()` order/start;
-- exactly two positive strict-convex **triangles** for the raw-proven zero-area contact states: distinct-bottom point contacts, **equal-bottom point contacts**, complete shared edge and all represented strict-contained directions including the new decreasing-Y helper;
-- exactly two positive strict-convex triangles with one represented partial collinear contact: #510 host-start/horizontal states, #518 guarded non-horizontal states, #525 remaining non-fixup decreasing-Y host-end states, and #532 all non-horizontal staggered non-fixup states.
+- exactly two positive strict-convex **triangles** for the raw-proven zero-area contact states: distinct-bottom point contacts, equal-bottom point contacts, complete shared edge and represented strict-contained directions including decreasing-Y;
+- exactly two positive strict-convex triangles with represented partial collinear contact: host-start/horizontal states, guarded/remaining host-end states, all non-horizontal staggered non-fixup states, plus the newly proven **endpoint-aligned host-start/host-end one-point fixup** states.
 
-Still **not** general Clipper1 parity: wider-convex contact `OutRec` state, **fixup-mutated contact/partial joins**, mixed proper-crossing + touch/collinear cases, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those continue to use explicit compatibility fallback where necessary.
+Still **not** general Clipper1 parity: wider-convex contact `OutRec` state, **other non-endpoint fixup-mutated contact/partial joins**, mixed proper-crossing + touch/collinear cases, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those continue to use explicit compatibility fallback where necessary.
 
 ## First unfinished priority
 
 Continue in source/dependency order:
 
-1. finish the remaining two-path convex boundary-degeneracy/contact seam with exact pinned evidence: **fixup-mutated contact/partial joins, then mixed proper-crossing + touch/collinear cases**; widen beyond triangles only after raw `OutRec`/`BuildResult()` behavior is independently proved;
+1. finish the remaining two-path convex boundary-degeneracy seam with exact pinned evidence: **other non-endpoint fixup-mutated contact/partial joins, then mixed proper-crossing + touch/collinear cases**; widen beyond triangles only after raw `OutRec`/`BuildResult()` behavior is independently proved;
 2. continue the same Clipper1 final cross-path boolean priority with **interacting holes**, then **more than two interacting paths**;
 3. extend per-path Clipper1 `Execute()` beyond current V-notch/orthogonal subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup;
 4. validate remaining prepared-outline final `unionNonZero()` cases so that a later Clipper2 call cannot silently reintroduce source-order/rounding drift after exact pre-offset work;
@@ -121,6 +120,15 @@ Decreasing-Y strict-contained contacts:
 - `f8d034d9a16d0f654940bbdb05547ad56e038098` — `feat: port decreasing strict-contained contacts`;
 - `7c4521919b961f0d50c4a32ab07a748f6305d70b` — `feat: route decreasing strict-contained contacts`;
 - `1299cb5999f31b5c1659e1796d6d462fafa5d9f1` — `test: lock decreasing strict-contained contacts` (#542, 816/816).
+
+Endpoint-aligned one-point fixup contacts:
+
+- `95bff65f41cf25c92465d2e48e71cca37e5320fb` — `feat: port host-end fixup triangle joins`;
+- `2815d153f7ffeec84a9cce71af074487ede4a9f0` — `feat: route host-end fixup triangle joins`;
+- `7c5e6ea5abc19281c0c8b46ef414a921da40db9d` — `test: lock host-end fixup triangle joins` (#549, 824/824);
+- `902d8ec1de7bde47c9bfb954056aabbcd348fabd` — `feat: port host-start fixup triangle joins`;
+- `767b861f9c118ef1039398648dd8a14afe9c7b5b` — `feat: route host-start fixup triangle joins`;
+- `3be152aa74f3c555423a39d1b2ab36b63f959343` — `test: lock host-start fixup triangle joins` (#552, 832/832).
 
 ## Numeric/source invariants
 
