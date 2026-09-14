@@ -1,15 +1,18 @@
 import '../geometry/source_geometry.dart';
 import '../geometry/source_polygon.dart';
+import 'source_clipper1_two_convex_full_shared_edge_fixup_union.dart';
 import 'source_clipper1_two_convex_host_start_fixup_union.dart';
 
-/// Exact pinned Clipper1 `ctUnion` + `pftNonZero` gateway for endpoint-aligned
-/// two-triangle joins where `FixupOutPolygon()` removes exactly one shared host
-/// endpoint.
+/// Exact pinned Clipper1 `ctUnion` + `pftNonZero` gateway for represented
+/// two-triangle joins where `FixupOutPolygon()` removes exactly one source
+/// point.
 ///
-/// This class owns the host-*end* state directly and delegates the independently
-/// proved symmetric host-*start* state to
-/// [SourceClipper1TwoConvexHostStartFixupUnion2]. Keeping the predicates split
-/// avoids generalizing either raw `OutRec`/pointer-state proof.
+/// This class owns the endpoint-aligned host-*end* state directly, delegates
+/// the independently proved symmetric host-*start* state to
+/// [SourceClipper1TwoConvexHostStartFixupUnion2], and delegates the separately
+/// proved full-shared-edge state to
+/// [SourceClipper1TwoConvexFullSharedEdgeFixupUnion2]. Keeping the predicates
+/// split avoids generalizing any raw `OutRec`/pointer-state proof.
 ///
 /// Host-end direct raw-ELF matrices matched 145800/145800 full result paths
 /// across both non-horizontal Y directions, vertical edges, both horizontal
@@ -28,7 +31,8 @@ class SourceClipper1TwoConvexHostEndFixupUnion2 {
   static bool supports(Iterable<SourcePolygon2> polygons) {
     final values = List<SourcePolygon2>.of(polygons);
     return _resultOrNull(values) != null ||
-        SourceClipper1TwoConvexHostStartFixupUnion2.supports(values);
+        SourceClipper1TwoConvexHostStartFixupUnion2.supports(values) ||
+        SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.supports(values);
   }
 
   static SourcePolygon2 union(Iterable<SourcePolygon2> polygons) {
@@ -38,8 +42,11 @@ class SourceClipper1TwoConvexHostEndFixupUnion2 {
     if (SourceClipper1TwoConvexHostStartFixupUnion2.supports(values)) {
       return SourceClipper1TwoConvexHostStartFixupUnion2.union(values);
     }
+    if (SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.supports(values)) {
+      return SourceClipper1TwoConvexFullSharedEdgeFixupUnion2.union(values);
+    }
     throw ArgumentError(
-      'Pinned endpoint-fixup two-triangle Clipper1 subset does not apply',
+      'Pinned fixup two-triangle Clipper1 subset does not apply',
     );
   }
 
