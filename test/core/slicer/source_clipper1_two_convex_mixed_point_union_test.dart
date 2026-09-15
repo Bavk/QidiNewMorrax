@@ -109,6 +109,77 @@ void main() {
     );
   });
 
+  test('ordered strict-maximum vertical touch with three crossings is exact', () {
+    _expectExactAllRotations(
+      _poly([
+        (650000, -260000),
+        (390000, -510000),
+        (720000, -480000),
+      ]),
+      _poly([
+        (650000, -210000),
+        (650000, -320000),
+        (680000, -590000),
+      ]),
+      const [
+        SourcePoint2(671663, -484394),
+        SourcePoint2(720000, -480000),
+        SourcePoint2(655250, -276500),
+        SourcePoint2(650000, -210000),
+        SourcePoint2(650000, -260000),
+        SourcePoint2(390000, -510000),
+        SourcePoint2(668300, -484700),
+        SourcePoint2(680000, -590000),
+      ],
+    );
+  });
+
+  test('ordered strict-maximum positive-slope touch is exact', () {
+    _expectExactAllRotations(
+      _poly([
+        (580000, -260000),
+        (400000, -510000),
+        (490000, -580000),
+      ]),
+      _poly([
+        (670000, 10000),
+        (490000, -530000),
+        (950000, -680000),
+      ]),
+      const [
+        SourcePoint2(670000, 10000),
+        SourcePoint2(580000, -260000),
+        SourcePoint2(400000, -510000),
+        SourcePoint2(490000, -580000),
+        SourcePoint2(502881, -534200),
+        SourcePoint2(950000, -680000),
+      ],
+    );
+  });
+
+  test('ordered strict-maximum negative-slope touch is exact', () {
+    _expectExactAllRotations(
+      _poly([
+        (-80000, 800000),
+        (-350000, 720000),
+        (10000, 770000),
+      ]),
+      _poly([
+        (-160000, 840000),
+        (220000, 650000),
+        (310000, 650000),
+      ]),
+      const [
+        SourcePoint2(-160000, 840000),
+        SourcePoint2(-80000, 800000),
+        SourcePoint2(-350000, 720000),
+        SourcePoint2(-13478, 766739),
+        SourcePoint2(220000, 650000),
+        SourcePoint2(310000, 650000),
+      ],
+    );
+  });
+
   test('Arachne zero offset routes represented mixed point state exactly', () {
     final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
       [
@@ -140,7 +211,40 @@ void main() {
     );
   });
 
-  test('non-minimum touching vertex remains on mixed compatibility seam', () {
+  test('Arachne zero offset routes ordered strict-maximum state exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([
+          (650000, -260000),
+          (390000, -510000),
+          (720000, -480000),
+        ]),
+        _poly([
+          (650000, -210000),
+          (650000, -320000),
+          (680000, -590000),
+        ]),
+      ],
+      0,
+    );
+
+    expect(result, hasLength(1));
+    expect(
+      result.single.points,
+      const [
+        SourcePoint2(671663, -484394),
+        SourcePoint2(720000, -480000),
+        SourcePoint2(655250, -276500),
+        SourcePoint2(650000, -210000),
+        SourcePoint2(650000, -260000),
+        SourcePoint2(390000, -510000),
+        SourcePoint2(668300, -484700),
+        SourcePoint2(680000, -590000),
+      ],
+    );
+  });
+
+  test('side touching vertex remains on mixed compatibility seam', () {
     final values = [
       _poly([
         (410000, -470000),
@@ -151,6 +255,42 @@ void main() {
         (335000, 0),
         (25000, -1160000),
         (1375000, 660000),
+      ]),
+    ];
+
+    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+    expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
+  });
+
+  test('horizontal strict-maximum touched edge remains fallback', () {
+    final values = [
+      _poly([
+        (60000, 50000),
+        (-80000, 30000),
+        (-10000, 20000),
+      ]),
+      _poly([
+        (120000, 50000),
+        (30000, 50000),
+        (-120000, -90000),
+      ]),
+    ];
+
+    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+    expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
+  });
+
+  test('strict-maximum without proved scanline ordering remains fallback', () {
+    final values = [
+      _poly([
+        (-420000, -80000),
+        (-620000, -260000),
+        (-390000, -160000),
+      ]),
+      _poly([
+        (-420000, -30000),
+        (-420000, -260000),
+        (-340000, -180000),
       ]),
     ];
 
