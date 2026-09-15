@@ -17,14 +17,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `34911206898` (#569), job `104198867460`, executed code commit `d238cc809cc40f55a29db20c0010188007832414` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `34939897047` (#575), job `104285940280`, executed code commit `a987f4ae1858af1f973d1c72fb3ce17ff93c7f2c` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **`+848: All tests passed!`**;
+- `flutter test --reporter expanded` — **854/854 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds eight mixed proper-crossing + point-touch regressions beyond #562, including exact Arachne routing and strict ownership/rejection boundaries.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds six regressions beyond #569 for the ordered strict-maximum mixed point-touch state: three exact all-rotation/input-order fixtures, exact Arachne zero-offset routing, and two explicit fallback boundaries.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -40,57 +40,84 @@ Reference evidence comes from the **actual upstream compiled BambuStudio artifac
 
 The artifact was re-used from the previously SHA-verified download for this batch. The debug-symbol ELF exposes the pinned modified Clipper 6.2.9 implementation. The preload probe calls the exact `clipper_union(Paths&, pftNonZero)` template at PIE offset `0x10b54d0` before application startup and dumps raw result paths without normalizing rotation/order.
 
-Pinned source inspection and ELF tracing confirm why geometric equivalence is insufficient: `BuildResult(Paths&)` starts each result at `OutRec::Pts->Prev`; `AddOutPt()`, local-minimum side assignment, `AppendPolygon()`, `JoinPoints()` and `FixupOutPolygon()` can change output-list state and therefore raw path rotation/order.
+Pinned source inspection and ELF tracing confirm why geometric equivalence is insufficient: `BuildResult(Paths&)` starts each result at `OutRec::Pts->Prev`; `AddOutPt()`, local-minimum/local-maximum side assignment, `AppendPolygon()`, `JoinPoints()` and `FixupOutPolygon()` can change output-list state and therefore raw path rotation/order.
 
-## #569 mixed proper-crossing + strict-minimum point-touch oracle
+## #575 ordered strict-maximum mixed point-touch oracle
 
-New exact helper: `SourceClipper1TwoConvexMixedPointUnion2`, routed by `SourceArachneWallToolPathsPrepareExact2` before the proper-only convex helper.
+`SourceClipper1TwoConvexMixedPointUnion2` now represents a second independently proved mixed proper-crossing + point-touch source-event class in addition to the #569 strict-minimum class.
 
-Represented source state:
+Represented #575 state:
 
 - exactly two positive strict-convex triangles;
 - at least one proper boundary crossing;
 - exactly one unique vertex↔strict-edge-interior point touch;
-- the touching source vertex is the **strict minimum-Y vertex of its owning triangle**, so both adjacent source vertices have greater Y;
+- the touching source vertex is the **strict maximum-Y vertex** of its owning triangle, so both adjacent owner vertices have smaller Y;
+- the touched edge of the other triangle is **non-horizontal**;
+- the third vertex of the touched-edge triangle is strictly earlier in Clipper scanline order than both neighboring owner vertices: `otherThird.y < min(ownerPrevious.y, ownerNext.y)`;
 - no second touch and no nonzero collinear overlap;
-- wider-convex paths and every other mixed touch/collinear event class remain outside the helper.
+- wider-convex, side-vertex, horizontal/equal-Y and mixed-collinear states remain outside this proof.
 
-For this narrow source-event class, the same modified-Clipper `TopX()` / intersection rounding and final rebase used by the proper-only convex helper is exact. An independently generated direct raw-ELF matrix matched **39600/39600 exact full raw result paths**:
+An independently generated raw-ELF matrix matched **72000/72000 exact full raw result paths**:
 
-- **2,200** independently generated base geometries;
+- **4,000** newly generated base geometries using an independent seed;
 - all **3×3 cyclic source rotations**;
 - both polygon input/AddPath orders;
+- proper-crossing distribution across the base set: 727 with one crossing, 1,869 with two, 982 with three, 422 with four;
+- touched-edge directions include vertical, positive-slope and negative-slope states;
 - equality includes raw contour count, exact integer coordinates, vertex sequence and `BuildResult()` start with no normalization.
 
-Committed regression coverage in `test/core/slicer/source_clipper1_two_convex_mixed_point_union_test.dart` contains eight tests: three exact mixed fixtures with all rotations/orders, exact Arachne zero-offset routing, rejection of a non-minimum touching-vertex counterexample, ownership separation from point-only contact and proper-only crossing helpers, and rejection of wider-convex input. CI #569 (`34911206898`, job `104198867460`) completed with analyzer clean and **848/848** total tests passed.
+The committed implementation extends the existing helper rather than creating a competing router. The pre-existing Arachne exact router already invokes this helper, so expanding its exact `supports()` predicate automatically routes the new zero-offset states before the generic compatibility fallback.
+
+### Runtime output-list trace
+
+A targeted preload trace over **500** canonical #575 bases hooked touch-time output-list transitions. Results:
+
+- **400** bases had no touch-time local-maximum/append event;
+- **100** bases executed touch-time `AddLocalMaxPoly()` together with `AppendPolygon()` at the touching vertex;
+- **500/500** still matched the independently predicted raw result start and full path.
+
+This is important limiting evidence: touch-time `AppendPolygon()` is acceptance-relevant but is **not** by itself a failure predicate. The safe class is bounded by the proved scanline ordering above, not by merely suppressing append states.
+
+### Rejected weaker hypotheses
+
+A weaker candidate — strict maximum-Y touching vertex + vertical touched edge + exactly one proper crossing — was tested independently and failed:
+
+- **44712/45000** exact raw paths;
+- **288/45000** mismatches, corresponding to 16 failing base geometries across cyclic rotations/input orders.
+
+The broad exploratory matrix likewise retained raw-start failures outside the #575 ordering predicate: strict-maximum and side-vertex source-event classes are not generally safe. Horizontal touched edges and equal-Y owner/touch states remain unrepresented as well. These counterexamples are why the implementation uses the source scanline predicate rather than a broad maximum-vertex/slope heuristic.
+
+Committed regression coverage adds six tests to `test/core/slicer/source_clipper1_two_convex_mixed_point_union_test.dart`: exact vertical, positive-slope and negative-slope ordered strict-max fixtures across all cyclic rotations/input orders; exact Arachne routing; rejection of a horizontal strict-max edge; and rejection when the scanline-order predicate is violated. CI #575 (`34939897047`, job `104285940280`) completed with analyzer clean and **854/854** total tests passed.
+
+## Retained #569 strict-minimum mixed point-touch oracle
+
+The same exact helper retains the first mixed source-event class proved in #569:
+
+- exactly two positive strict-convex triangles;
+- at least one proper boundary crossing;
+- exactly one unique vertex↔strict-edge-interior point touch;
+- touching source vertex is the **strict minimum-Y vertex** of its owning triangle;
+- no second touch or nonzero collinear overlap.
+
+The independent #569 matrix remains **39600/39600 exact full raw result paths**: 2,200 independently generated base geometries × all 3×3 cyclic source rotations × both polygon input orders.
 
 ### Broad mixed negative evidence retained
 
-The #569 helper was deliberately narrowed only after broader hypotheses failed.
+The helper was deliberately narrowed only after broader hypotheses failed.
 
-First exploratory matrix: positive strict-convex triangles with proper crossings plus a point touch were compared against a candidate that reused the #493 proper-only boundary reconstruction and “successor of rightmost minimum-Y result vertex” rebasing rule:
+First exploratory matrix against the proper-only rebase rule:
 
 - total: **37,008** raw cases;
 - exact raw-start matches: **35,874/37,008**;
 - raw-start mismatches: **1,134/37,008**.
 
-A second independently generated matrix tested a simpler geometric guard and also falsified it:
+A second independently generated matrix testing a simpler geometric guard:
 
 - total: **28,800** raw cases;
 - exact matches: **27,450/28,800**;
 - raw-start mismatches: **1,350/28,800**.
 
-Runtime preload tracing hooked the output-list lifecycle around the touch event, including `AddLocalMinPoly`, `AddLocalMaxPoly`, `AppendPolygon` and `AddOutPt`. In the original traced base set:
-
-- **1,993** bases had no touch-time `AppendPolygon()` and produced zero raw-start errors;
-- **63** bases performed touch-time `AppendPolygon()` and all 63 were raw-start counterexamples.
-
-In the independently generated traced base set:
-
-- **1,265** no-touch-append bases were exact;
-- among **335** touch-time-append bases, **75** changed the raw start and 260 happened to retain it.
-
-This identifies touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle as acceptance-relevant but does **not** establish a static general routing predicate. The remaining mixed seam therefore stays explicit fallback. The next proof must derive source scanline/output-list state, not normalize the geometry or widen the #569 guard heuristically.
+Earlier runtime tracing established that touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle is acceptance-relevant. The new #575 trace refines that conclusion: append can still be exact under a stronger independently proved scanline ordering, so “append happened” must not become a static reject/accept shortcut.
 
 ## #562 full-shared-edge one-point fixup oracle
 
@@ -113,7 +140,7 @@ Direct raw-ELF evidence remains **226908/226908 exact raw result paths**:
 - independent removed-start unequal-third-distance matrix: **97200/97200**;
 - targeted equal-Y pointer boundaries: **108/108**.
 
-The removed-start branch intentionally preserves the observed input/AddPath-order-sensitive `OutRec::Pts` rule rather than rotating to a canonical contour. Eight committed tests are re-executed by #569.
+The removed-start branch intentionally preserves the observed input/AddPath-order-sensitive `OutRec::Pts` rule rather than rotating to a canonical contour. Eight committed tests are re-executed by #575.
 
 For strict triangles with one collinear shared interval, represented one-point cleanup geometries now include endpoint-aligned partial overlaps (#549/#552) and complete shared edges (#562). Strict-contained or staggered overlap retains support-line boundary fragments and does not create the same adjacent-third-vertex cleanup. This does **not** prove wider-convex, multi-point or mixed-crossing cleanup state.
 
@@ -158,11 +185,11 @@ Each family covers start/end overlap states, equal-Y ties and equality boundarie
 
 The exact proper-crossing subset remains limited to two positive strictly convex paths with only proper segment intersections: no edge/point touching, collinear overlap or containment-only case. Seven hand-selected plus 32 deterministic random pairs produced **39/39 exact** raw ELF matches including reversed input order and 2/4/6-crossing topologies.
 
-The broad negative mixed audits above explicitly demonstrate that this proper-only raw-start rule must not be extrapolated outside the #569 independently proved mixed event class.
+The broad negative mixed audits above explicitly demonstrate that this proper-only raw-start rule must not be extrapolated outside the independently proved #569/#575 mixed event classes.
 
 ## Retained Clipper1 / compiled Arachne evidence
 
-Earlier direct compiled-oracle batches remain re-executed by #569, including offset input pruning and arithmetic, convex contour/hole offset semantics, orthogonal concave Execute, isolated positive V-notch and one-reflex negative cleanup, noninteracting NonZero ordering/winding, rectangle interactions and the represented convex-contact/final-union subsets above.
+Earlier direct compiled-oracle batches remain re-executed by #575, including offset input pruning and arithmetic, convex contour/hole offset semantics, orthogonal concave Execute, isolated positive V-notch and one-reflex negative cleanup, noninteracting NonZero ordering/winding, rectangle interactions and the represented convex-contact/final-union subsets above.
 
 The suite also retains independent pinned compiled-BambuStudio process fixtures for normal two-wall and one-wall gates, non-speed and speed-graded overhang, partial `Alltop`, through-hole walls, QIDI `LoopNode`, QIDI circle-copy metadata behavior, final Arachne fill boundaries and a narrow-wedge topology case. These remain scoped fixture evidence; `process_arachne()` is **`implemented_unverified` as a whole**.
 
@@ -170,7 +197,7 @@ The suite also retains independent pinned compiled-BambuStudio process fixtures 
 
 For the current Clipper1/Arachne priority, independent or complete representation is still missing for:
 
-- remaining **mixed proper-crossing + touch/collinear cases**, especially touch-time `AppendPolygon()` / `OutRec::Pts` states outside the strict-minimum-Y touching-vertex subset;
+- remaining **mixed proper-crossing + point-touch/collinear cases**: strict-maximum states outside the #575 scanline predicate, side-vertex touches, horizontal/equal-Y touch ordering and mixed collinear states;
 - wider-convex zero-area/contact/collinear and fixup output-list state;
 - multi-point or otherwise unrepresented `FixupOutPolygon()` cleanup;
 - interacting positive/negative hole boundaries and deeper/multiple surviving hole hierarchy;
@@ -183,7 +210,7 @@ Product-wide work also remains for later fill/support/seam/bridge/adaptive/ironi
 
 ## Next validation boundary
 
-1. Derive exact raw-ELF scanline/output-list state for remaining **mixed proper-crossing + point-touch/collinear** cases beyond #569, starting from touch-time `AppendPolygon()` / `OutRec::Pts` counterexamples. Do not widen the proper-only or strict-minimum rebase rules without independent proof.
+1. Derive exact raw-ELF scanline/output-list state for remaining **mixed proper-crossing + point-touch/collinear** cases beyond #569/#575: strict-max states outside the ordering guard, side-vertex touches, horizontal/equal-Y ordering, then mixed collinear cases. Do not widen the proper-only or mixed rebase rules without independent proof.
 2. Keep wider-convex and multi-point/non-triangle fixup states on explicit compatibility fallback until their `OutRec`/`BuildResult()` behavior is independently proved.
 3. Extend the final-union oracle matrix to **interacting holes**, then **more than two interacting paths**.
 4. Continue generic/per-path Clipper1 execution only with exact source-order/rounding evidence.
