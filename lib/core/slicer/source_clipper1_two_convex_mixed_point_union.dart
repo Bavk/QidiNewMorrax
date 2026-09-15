@@ -5,18 +5,24 @@ import '../geometry/source_polygon.dart';
 /// strict-convex triangles with both proper crossings and exactly one
 /// vertex-to-edge point touch.
 ///
-/// The represented source-event class is deliberately narrow: the touching
-/// source vertex must be the strict minimum-Y vertex of its owning triangle
-/// (both neighboring source vertices have greater Y), and it must lie strictly
-/// inside one edge of the other triangle. There must be at least one proper
-/// crossing, no other touch, and no collinear interval overlap.
+/// The represented source-event classes are deliberately narrow. The touching
+/// source vertex must lie strictly inside one edge of the other triangle and be
+/// either:
 ///
-/// For this state the same modified-Clipper intersection arithmetic and
-/// `BuildResult()` rebase as the proper-only convex helper is exact. An
-/// independent direct raw-ELF matrix matched 39600/39600 full raw paths across
-/// 2200 independently generated geometries, all 3x3 cyclic source rotations
-/// and both input orders. Other mixed touch/collinear states remain explicit
-/// compatibility seams because separate audits contain raw-start counterexamples.
+/// 1. the strict minimum-Y vertex of its owning triangle; or
+/// 2. the strict maximum-Y vertex, with a non-horizontal touched edge and the
+///    other triangle's third vertex strictly above both neighboring owner
+///    vertices in Clipper scanline order (`third.y < min(neighbor.y)`).
+///
+/// There must be at least one proper crossing, no other touch, and no collinear
+/// interval overlap. The same modified-Clipper intersection arithmetic and
+/// `BuildResult()` rebase as the proper-only convex helper is exact for these
+/// source states. Independent direct raw-ELF matrices matched 39600/39600 full
+/// raw paths for the strict-minimum class and 72000/72000 for the ordered
+/// strict-maximum class, each across all 3x3 cyclic source rotations and both
+/// input orders. Other maximum/side/horizontal/equal-Y mixed touch states remain
+/// explicit compatibility seams because broader audits contain raw-start
+/// counterexamples.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -125,10 +131,7 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
     final owner = firstOwnsTouch ? first : second;
     final other = firstOwnsTouch ? second : first;
-    if (!_isStrictMinimumYVertex(owner, touch) ||
-        !_strictlyInsideAnyEdge(other, touch)) {
-      return null;
-    }
+    if (!_isSupportedTouchState(owner, other, touch)) return null;
 
     final boundary = <_DirectedMixedEdge2>[];
     if (!_appendOutsideFragments(first, second, firstSplits, boundary) ||
@@ -149,18 +152,33 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     return rebased == null ? null : SourcePolygon2(rebased);
   }
 
-  static bool _isStrictMinimumYVertex(
-    SourcePolygon2 polygon,
+  static bool _isSupportedTouchState(
+    SourcePolygon2 owner,
+    SourcePolygon2 other,
     SourcePoint2 touch,
   ) {
-    final index = polygon.points.indexOf(touch);
-    if (index < 0) return false;
-    final previous = polygon.points[(index + 2) % 3];
-    final next = polygon.points[(index + 1) % 3];
-    return previous.y > touch.y && next.y > touch.y;
+    final ownerIndex = owner.points.indexOf(touch);
+    if (ownerIndex < 0) return false;
+    final previous = owner.points[(ownerIndex + 2) % 3];
+    final next = owner.points[(ownerIndex + 1) % 3];
+
+    final edgeIndex = _strictContainingEdgeIndex(other, touch);
+    if (edgeIndex == null) return false;
+
+    if (previous.y > touch.y && next.y > touch.y) return true;
+    if (!(previous.y < touch.y && next.y < touch.y)) return false;
+
+    final edgeStart = other.points[edgeIndex];
+    final edgeEnd = other.points[(edgeIndex + 1) % 3];
+    if (edgeStart.y == edgeEnd.y) return false;
+
+    final otherThird = other.points[(edgeIndex + 2) % 3];
+    final minimumOwnerNeighborY =
+        previous.y < next.y ? previous.y : next.y;
+    return otherThird.y < minimumOwnerNeighborY;
   }
 
-  static bool _strictlyInsideAnyEdge(
+  static int? _strictContainingEdgeIndex(
     SourcePolygon2 polygon,
     SourcePoint2 point,
   ) {
@@ -168,10 +186,10 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       final start = polygon.points[index];
       final end = polygon.points[(index + 1) % 3];
       if (point != start && point != end && _onSegment(start, end, point)) {
-        return true;
+        return index;
       }
     }
-    return false;
+    return null;
   }
 
   static bool _appendOutsideFragments(
@@ -462,7 +480,8 @@ class _MixedClipperEdge2 {
   final double dx;
   final bool isHorizontal;
 
-  int topX(int y) => y == top.y ? top.x : bot.x + _clipperRound(dx * (y - bot.y));
+  int topX(int y) =>
+      y == top.y ? top.x : bot.x + _clipperRound(dx * (y - bot.y));
 }
 
 class _DirectedMixedEdge2 {
