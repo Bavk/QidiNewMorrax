@@ -15,12 +15,12 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-15
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `8f9b8f0fbdea9c476ad9fd5b46161e5aaf76b5c1` (`test: cover full-edge removed-start fixups`);
-- workflow `34909811431` (#562), job `104194568959`, conclusion **success**;
+- validated code `d238cc809cc40f55a29db20c0010188007832414` (`feat: route mixed point-touch Clipper1 subset`);
+- workflow `34911206898` (#569), job `104198867460`, conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **840/840 passing**.
+- `flutter test --reporter expanded` — **848/848 passing**.
 
-The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds eight full-shared-edge one-point-fixup regressions beyond #552, including raw input-order-sensitive removed-start state and exact Arachne zero-offset routing.
+The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds eight mixed proper-crossing + point-touch regressions beyond #562, including exact Arachne zero-offset routing and ownership/rejection boundaries.
 
 ## Top-level gates
 
@@ -48,28 +48,28 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. The represented exact subs
 - exactly two positive strictly convex contours with only proper boundary crossings, preserving the pinned modified-Clipper scanline intersection arithmetic and exact `BuildResult()` vertex order/start;
 - exactly two positive strict-convex **triangles** for raw-proven point/full/strict-contained contact states, including equal-bottom point ordering and decreasing-Y strict-contained shared-edge contacts;
 - exactly two positive strict-convex triangles with represented partial collinear contact, including host-start/horizontal, guarded/remaining host-end and all non-horizontal staggered non-fixup states;
-- strict-triangle one-point `FixupOutPolygon()` cleanup for endpoint-aligned host-start/host-end joins and now complete-shared-edge joins, including the input-order-sensitive case where cleanup removes the ordinary full-edge `BuildResult()` start.
+- strict-triangle one-point `FixupOutPolygon()` cleanup for endpoint-aligned host-start/host-end joins and complete-shared-edge joins, including the input-order-sensitive removed-start state;
+- exactly two positive strict-convex triangles with proper crossings plus exactly one vertex↔strict-edge-interior point touch when the touching source vertex is the strict minimum-Y vertex of its owning triangle.
 
 The exact pinned artifact remains Actions artifact `10085378329`, with downloaded SHA-256 `912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8` and AppImage SHA-256 `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`.
 
 Retained direct raw-ELF evidence includes standalone triangle starts **1100/1100**, complete shared-edge triangle starts **1000/1000**, older contact predicates **4600/4600**, #510 partial-collinear **4392/4392**, #518 guarded non-horizontal **36000/36000**, #525 decreasing-Y host-end **23400/23400**, and #532 all-slope non-horizontal staggered **145800/145800**.
 
-Newer contact/fixup evidence:
+Newer contact/fixup/mixed evidence:
 
-- #539 equal-bottom point contacts: **41400/41400 exact raw paths**; tied-bottom contour order is reverse input/AddPath order while each contour keeps its standalone triangle start;
+- #539 equal-bottom point contacts: **41400/41400 exact raw paths**;
 - #542 decreasing-Y strict-contained contacts: **30600/30600 exact full raw paths**;
 - #549 host-end endpoint-aligned one-point fixup: **145800/145800 exact full raw paths**;
 - #552 host-start endpoint-aligned one-point fixup: **145800/145800 exact full raw paths**;
 - combined endpoint-aligned one-point fixup evidence: **291600/291600 exact full raw paths**;
-- #562 full-shared-edge one-point fixup: **226908/226908 exact raw paths** — 64800/64800 non-start-removal, 64800/64800 removed-start classification, 97200/97200 independent unequal-third-distance cases and 108/108 equal-Y boundaries.
+- #562 full-shared-edge one-point fixup: **226908/226908 exact raw paths**;
+- #569 mixed proper-crossing + strict-minimum-Y vertex↔edge point-touch: **39600/39600 exact full raw paths** from 2,200 independent base geometries × all 3×3 cyclic rotations × both input orders.
 
-For the #562 full-edge state, removing the ordinary raw start exposes a real `OutRec::Pts` / `AddPath()` ordering asymmetry. The Dart helper preserves that state-specific rule rather than rotating to a canonical contour.
+The broad mixed seam is intentionally still open. Before defining the #569 narrow source-event class, one exploratory matrix matched the proper-only raw-start rebase in only **35874/37008** cases, leaving **1134** mismatches. A second independently generated matrix matched only **27450/28800**, leaving **1350** raw-start mismatches. Runtime tracing tied the dangerous states to the touch event's output-list lifecycle and touch-time `AppendPolygon()`: no-touch-append bases were exact in both traced samples, while touch-time-append bases could change the final raw start. This is limiting evidence, not a general routing predicate.
 
-For strict triangles with one collinear shared interval, the represented one-point cleanup geometry now covers endpoint-aligned and full-shared-edge cases. Strict-contained and staggered overlaps retain support-line boundary segments and do not create the same adjacent-third-vertex one-point cleanup. This statement does **not** promote wider-convex, multi-point or mixed-crossing fixup topologies.
+For strict triangles with one collinear shared interval, the represented one-point cleanup geometry covers endpoint-aligned and full-shared-edge cases. Strict-contained and staggered overlaps retain support-line boundary segments and do not create the same adjacent-third-vertex one-point cleanup. This statement does **not** promote wider-convex, multi-point or mixed-crossing fixup topologies.
 
-The first mixed proper-crossing + point-touch exploratory matrix after #562 also falsified a tempting shortcut: the existing proper-crossing geometry/rebase candidate matched exact raw start only **35874/37008** times, with **1134** raw-start mismatches. No mixed branch was promoted from that audit.
-
-Still **not** general Clipper1 parity: wider-convex contact/fixup output-list state, multi-point/unrepresented cleanup, **mixed proper-crossing + touch/collinear cases**, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those remain explicit compatibility seams and must not be promoted from Clipper2 fallback without independent source evidence.
+Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/collinear output-list states, wider-convex contact/fixup output-list state, multi-point/unrepresented cleanup, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those remain explicit compatibility seams and must not be promoted from Clipper2 fallback without independent source evidence.
 
 ## Traceability summary
 
@@ -78,7 +78,7 @@ Still **not** general Clipper1 parity: wider-convex contact/fixup output-list st
 | represented integer geometry / Polyline / ArcFitter / Circle / ThickPolyline / Boost-Voronoi / MedialAxis | `lib/core/geometry` source-shaped ports | translated and direct C++/Boost fixtures in current suite | `parity_verified` (scoped) | broader source APIs/pathologies |
 | Classic perimeter represented surface path | classic source pipeline modules | translated/source-shaped process fixtures | `parity_verified` (scoped) | later toolpath families and wider production matrix |
 | Arachne wall-generation dependency chain | `lib/core/slicer/source_arachne_*` | direct/source-shaped plus compiled process fixtures | `parity_verified` (scoped dependencies) | broader production/pathological matrix |
-| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #562 CI | `parity_verified` (exact fixture scopes) | mixed contact states, wider/multi-point fixup, interacting holes, >2 paths and broader Execute cleanup |
+| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #569 CI | `parity_verified` (exact fixture scopes) | remaining mixed states, wider/multi-point fixup, interacting holes, >2 paths and broader Execute cleanup |
 | represented `process_arachne()` boundary | `SourceArachneProcessPipeline2` + dependencies | common/hole/Alltop/overhang/fill/LoopNode/wedge exact fixtures | `implemented_unverified` | general Clipper1 seams + wider process differentials |
 | full slicer/toolpath product | multiple foundations | partial | `port_started` | fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft/full G-code etc. |
 | formats/profiles/scene/Preview/Device/UI | Flutter/Dart foundations | partial | `port_started` | complete 1:1 behavior and integrations |
@@ -86,7 +86,7 @@ Still **not** general Clipper1 parity: wider-convex contact/fixup output-list st
 
 ## Immediate next dependency order
 
-1. Continue the two-path convex boundary-degeneracy seam with exact pinned evidence for **mixed proper-crossing + point-touch/collinear cases**. Start from the 1134/37008 raw-start counterexamples rather than assuming the old proper-crossing start rule.
+1. Continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569 strict-minimum-Y touching-vertex subset. Start from the traced touch-time `AppendPolygon()` / `OutRec::Pts` states and retained raw-start counterexamples rather than assuming the proper-only rebase rule.
 2. Keep wider-convex and any multi-point/non-triangle `FixupOutPolygon()` states on explicit fallback until raw `OutRec`/`BuildResult()` state is independently proved.
 3. Continue the same Clipper1 final cross-path priority with **interacting holes**, then **more than two interacting paths**.
 4. Extend per-path Clipper1 `Execute()` beyond current orthogonal/V-notch subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup.
