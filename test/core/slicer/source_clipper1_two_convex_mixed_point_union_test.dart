@@ -180,6 +180,98 @@ void main() {
     );
   });
 
+  test('late strict-maximum vertical single-crossing touch is exact', () {
+    _expectExactAllRotations(
+      _poly([
+        (-870000, -1033000),
+        (-1060000, -1164000),
+        (-659000, -1202000),
+      ]),
+      _poly([
+        (-870000, -1133000),
+        (-870000, -683000),
+        (-1530000, -1125000),
+      ]),
+      const [
+        SourcePoint2(-870000, -1033000),
+        SourcePoint2(-870000, -683000),
+        SourcePoint2(-1530000, -1125000),
+        SourcePoint2(-1012532, -1131272),
+        SourcePoint2(-1060000, -1164000),
+        SourcePoint2(-659000, -1202000),
+      ],
+    );
+  });
+
+  test('late strict-maximum positive-slope single-crossing touch is exact', () {
+    _expectExactAllRotations(
+      _poly([
+        (262000, -1122000),
+        (67000, -1154000),
+        (547000, -1601000),
+      ]),
+      _poly([
+        (112000, -1242000),
+        (612000, -842000),
+        (-367000, -831000),
+      ]),
+      const [
+        SourcePoint2(262000, -1122000),
+        SourcePoint2(612000, -842000),
+        SourcePoint2(-367000, -831000),
+        SourcePoint2(112000, -1242000),
+        SourcePoint2(138625, -1220700),
+        SourcePoint2(547000, -1601000),
+      ],
+    );
+  });
+
+  test('late strict-maximum negative-slope single-crossing touch is exact', () {
+    _expectExactAllRotations(
+      _poly([
+        (-240000, -29000),
+        (-410000, -364000),
+        (51000, -114000),
+      ]),
+      _poly([
+        (-160000, -99000),
+        (-560000, 251000),
+        (-863000, -172000),
+      ]),
+      const [
+        SourcePoint2(51000, -114000),
+        SourcePoint2(-240000, -29000),
+        SourcePoint2(-560000, 251000),
+        SourcePoint2(-863000, -172000),
+        SourcePoint2(-281948, -111663),
+        SourcePoint2(-410000, -364000),
+      ],
+    );
+  });
+
+  test('previous strict-maximum fallback is now an exact late state', () {
+    _expectExactAllRotations(
+      _poly([
+        (-420000, -80000),
+        (-620000, -260000),
+        (-390000, -160000),
+      ]),
+      _poly([
+        (-420000, -30000),
+        (-420000, -260000),
+        (-340000, -180000),
+      ]),
+      const [
+        SourcePoint2(-340000, -180000),
+        SourcePoint2(-420000, -30000),
+        SourcePoint2(-420000, -80000),
+        SourcePoint2(-620000, -260000),
+        SourcePoint2(-420000, -173043),
+        SourcePoint2(-420000, -260000),
+      ],
+    );
+  });
+
   test('Arachne zero offset routes represented mixed point state exactly', () {
     final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
       [
@@ -244,6 +336,37 @@ void main() {
     );
   });
 
+  test('Arachne zero offset routes late strict-maximum state exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([
+          (-870000, -1033000),
+          (-1060000, -1164000),
+          (-659000, -1202000),
+        ]),
+        _poly([
+          (-870000, -1133000),
+          (-870000, -683000),
+          (-1530000, -1125000),
+        ]),
+      ],
+      0,
+    );
+
+    expect(result, hasLength(1));
+    expect(
+      result.single.points,
+      const [
+        SourcePoint2(-870000, -1033000),
+        SourcePoint2(-870000, -683000),
+        SourcePoint2(-1530000, -1125000),
+        SourcePoint2(-1012532, -1131272),
+        SourcePoint2(-1060000, -1164000),
+        SourcePoint2(-659000, -1202000),
+      ],
+    );
+  });
+
   test('side touching vertex remains on mixed compatibility seam', () {
     final values = [
       _poly([
@@ -280,17 +403,35 @@ void main() {
     expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
   });
 
-  test('strict-maximum without proved scanline ordering remains fallback', () {
+  test('late strict-maximum equal-Y boundary remains fallback', () {
     final values = [
       _poly([
-        (-420000, -80000),
-        (-620000, -260000),
-        (-390000, -160000),
+        (-126000, 102000),
+        (-455000, -127000),
+        (65000, -185000),
       ]),
       _poly([
-        (-420000, -30000),
-        (-420000, -260000),
-        (-340000, -180000),
+        (24000, 312000),
+        (-176000, 32000),
+        (91000, -185000),
+      ]),
+    ];
+
+    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+    expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
+  });
+
+  test('late strict-maximum multi-crossing state remains fallback', () {
+    final values = [
+      _poly([
+        (-606000, 279000),
+        (-905000, 166000),
+        (-354000, 79000),
+      ]),
+      _poly([
+        (-856000, 79000),
+        (-406000, 439000),
+        (-870000, 163000),
       ]),
     ];
 
