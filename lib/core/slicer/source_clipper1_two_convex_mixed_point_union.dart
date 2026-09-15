@@ -9,20 +9,24 @@ import '../geometry/source_polygon.dart';
 /// source vertex must lie strictly inside one edge of the other triangle and be
 /// either:
 ///
-/// 1. the strict minimum-Y vertex of its owning triangle; or
+/// 1. the strict minimum-Y vertex of its owning triangle;
 /// 2. the strict maximum-Y vertex, with a non-horizontal touched edge and the
 ///    other triangle's third vertex strictly above both neighboring owner
-///    vertices in Clipper scanline order (`third.y < min(neighbor.y)`).
+///    vertices in Clipper scanline order (`third.y < min(neighbor.y)`); or
+/// 3. the strict maximum-Y vertex, with exactly one proper crossing, a
+///    non-horizontal touched edge and the other triangle's third vertex
+///    strictly later than the earlier owner neighbor
+///    (`third.y > min(neighbor.y)`).
 ///
-/// There must be at least one proper crossing, no other touch, and no collinear
-/// interval overlap. The same modified-Clipper intersection arithmetic and
-/// `BuildResult()` rebase as the proper-only convex helper is exact for these
-/// source states. Independent direct raw-ELF matrices matched 39600/39600 full
-/// raw paths for the strict-minimum class and 72000/72000 for the ordered
-/// strict-maximum class, each across all 3x3 cyclic source rotations and both
-/// input orders. Other maximum/side/horizontal/equal-Y mixed touch states remain
-/// explicit compatibility seams because broader audits contain raw-start
-/// counterexamples.
+/// There must be no other touch and no collinear interval overlap. The same
+/// modified-Clipper intersection arithmetic and `BuildResult()` rebase as the
+/// proper-only convex helper is exact for these source states. Independent
+/// direct raw-ELF matrices matched 39600/39600 full raw paths for the
+/// strict-minimum class, 72000/72000 for the ordered strict-maximum class and
+/// 64800/64800 for the late single-crossing strict-maximum class, each across
+/// all 3x3 cyclic source rotations and both input orders. Other maximum/side/
+/// horizontal/equal-Y mixed touch states remain explicit compatibility seams
+/// because broader audits contain raw-start counterexamples.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -131,7 +135,7 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
     final owner = firstOwnsTouch ? first : second;
     final other = firstOwnsTouch ? second : first;
-    if (!_isSupportedTouchState(owner, other, touch)) return null;
+    if (!_isSupportedTouchState(owner, other, touch, properCount)) return null;
 
     final boundary = <_DirectedMixedEdge2>[];
     if (!_appendOutsideFragments(first, second, firstSplits, boundary) ||
@@ -156,6 +160,7 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     SourcePolygon2 owner,
     SourcePolygon2 other,
     SourcePoint2 touch,
+    int properCount,
   ) {
     final ownerIndex = owner.points.indexOf(touch);
     if (ownerIndex < 0) return false;
@@ -175,7 +180,9 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     final otherThird = other.points[(edgeIndex + 2) % 3];
     final minimumOwnerNeighborY =
         previous.y < next.y ? previous.y : next.y;
-    return otherThird.y < minimumOwnerNeighborY;
+    if (otherThird.y < minimumOwnerNeighborY) return true;
+
+    return properCount == 1 && otherThird.y > minimumOwnerNeighborY;
   }
 
   static int? _strictContainingEdgeIndex(
