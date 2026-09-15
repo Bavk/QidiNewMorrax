@@ -4,11 +4,11 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger re
 
 ## Current validation checkpoint
 
-- code: `d238cc809cc40f55a29db20c0010188007832414`;
-- workflow: `.github/workflows/flutter-parity.yml` run `34911206898` (#569), job `104198867460`;
+- code: `a987f4ae1858af1f973d1c72fb3ce17ff93c7f2c`;
+- workflow: `.github/workflows/flutter-parity.yml` run `34939897047` (#575), job `104285940280`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
-- tests: **848/848 passed**;
+- tests: **854/854 passed**;
 - conclusion: **success**.
 
 Recent milestone chain:
@@ -28,7 +28,8 @@ Recent milestone chain:
 - #549 / `7c5e6ea5...`: endpoint-aligned host-end one-point fixup joins, 824/824;
 - #552 / `3be152aa...`: symmetric host-start one-point fixup joins, 832/832;
 - #562 / `8f9b8f0f...`: full-shared-edge one-point fixup joins including removed-start pointer state, 840/840;
-- **#569 / `d238cc80...`: mixed proper-crossing + strict-minimum-Y point-touch triangle subset, 848/848.**
+- #569 / `d238cc80...`: mixed proper-crossing + strict-minimum-Y point-touch triangle subset, 848/848;
+- **#575 / `a987f4ae...`: ordered strict-maximum mixed point-touch triangle extension, 854/854.**
 
 All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures are re-executed by the current suite.
 
@@ -52,8 +53,8 @@ All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures
 | endpoint-aligned host-end join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexHostEndFixupUnion2` | #549 **145800/145800** exact full raw paths across Y directions, vertical, horizontal, shears, rotations/orders; eight tests | `parity_verified` (scoped) | Wider/multi-point/mixed fixup states remain open. |
 | symmetric endpoint-aligned host-start one-point fixup join | `SourceClipper1TwoConvexHostStartFixupUnion2` via fixup gateway | #552 **145800/145800** exact full raw paths across same direction/shear/rotation/order families; eight tests | `parity_verified` (scoped) | Wider/multi-point/mixed fixup states remain open. |
 | full-shared-edge strict-triangle join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexFullSharedEdgeFixupUnion2` via fixup gateway | #562 **226908/226908** exact raw paths: 64800 non-start removal + 64800 removed-start classification + 97200 independent unequal-distance + 108 equal-Y; eight tests | `parity_verified` (scoped) | Wider-convex, multi-point and mixed-crossing cleanup not implied. |
-| two positive strict-convex triangles with proper crossings + exactly one strict-minimum-Y vertex↔edge point touch | `SourceClipper1TwoConvexMixedPointUnion2` | #569 independent raw ELF matrix **39600/39600** exact full raw paths: 2200 bases × 3×3 rotations × both input orders; eight tests | `parity_verified` (scoped) | Other mixed point-touch/collinear output-list states remain open. |
-| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + route tests through #569 | `parity_verified` for represented branches | Remaining mixed states, interacting holes, >2 paths and generic boolean cases still fall back. |
+| two positive strict-convex triangles with proper crossings + exactly one vertex↔strict-edge point touch in the #569 strict-minimum or #575 ordered strict-maximum source-event classes | `SourceClipper1TwoConvexMixedPointUnion2` | #569 **39600/39600** + #575 **72000/72000** exact full raw paths; #575 spans 4000 independent bases × 3×3 rotations × both input orders and 1–4 crossings | `parity_verified` (scoped) | Other strict-max, side-vertex, horizontal/equal-Y and mixed-collinear output-list states remain open. |
+| Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + route tests through #575 | `parity_verified` for represented branches | Remaining mixed states, interacting holes, >2 paths and generic boolean cases still fall back. |
 | BridgeDetector / LineSegmentation / QIDI loop-node geometry represented subsets | source-shaped Dart helpers | translated/source-shaped fixtures | `parity_verified` (scoped) | Broader consumers/topologies remain open. |
 
 The prior contact helper was deliberately narrowed in `bf3610af5327a82e43469d31d4fd825128635c23`: a direct wider-convex audit showed **0/40** random full-shared-edge quadrilateral cases matched the old raw-start heuristic. Triangle exactness must not be extrapolated to wider convex paths.
@@ -68,7 +69,9 @@ The #562 full-shared-edge helper adds the other strict-triangle one-point collin
 
 For strict triangles with a single collinear shared interval, endpoint-aligned and full-shared-edge cases are the one-point cleanup geometries where the two off-support-line third edges become adjacent at a shared endpoint. Strict-contained/staggered overlap keeps a support-line boundary fragment at the relevant endpoint and does not create that same collinearity. Wider-convex, multi-point and mixed-crossing fixups remain unproved.
 
-The #569 mixed helper is deliberately state-bounded. An independent **39600/39600** matrix proves the event class where the unique touching vertex is the strict minimum-Y source vertex of its owning triangle. Broader mixed geometry is not implied: one exploration matched the proper-only rebase only **35874/37008** times (1134 failures), and a second independent exploration matched only **27450/28800** (1350 failures). Runtime tracing associates the dangerous states with touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle. In the first traced base set, 1993 no-touch-append cases had zero start errors while all 63 touch-append bases were counterexamples; in the second, 1265 no-touch-append bases were exact while 75 of 335 touch-append bases changed raw start. These statistics constrain the next source-state investigation; they are not a general static routing rule.
+The mixed point helper remains explicitly source-event bounded. #569 proves the strict-minimum touching vertex class with **39600/39600** raw paths. #575 proves a second class with **72000/72000** raw paths: strict maximum-Y touching owner vertex, non-horizontal touched edge and `otherThird.y < min(ownerPrevious.y, ownerNext.y)`. The #575 matrix uses 4,000 independently generated geometries, all cyclic rotations and both input orders, with 1–4 proper crossings and vertical/positive/negative slopes.
+
+Runtime tracing of 500 #575 bases found 100 touch-time `AddLocalMaxPoly()` + `AppendPolygon()` states and 400 without them; all 500 were exact. This corrects the earlier tempting interpretation that touch-time append alone predicts failure. The relevant safe boundary is the independently proved scanline ordering. A weaker vertical-one-crossing strict-max hypothesis failed at **44712/45000**, leaving 288 raw mismatches. Broad strict-max and side-vertex states also contain raw-start failures, so they remain fallback rather than being absorbed by a geometric rebase heuristic.
 
 ## Slicer semantic model / Arachne dependencies
 
@@ -100,7 +103,7 @@ An earlier local audit recorded 3,657/3,657 copied runtime entries matching sour
 
 ## Immediate open Clipper1 trace
 
-1. Continue **mixed proper-crossing + point-touch/collinear degeneracies** beyond the #569 strict-minimum-Y point-touch subset, beginning with traced touch-time `AppendPolygon()` / `OutRec::Pts` states and retained raw-start counterexamples; do not reuse the proper-crossing rebase heuristic without proof.
+1. Continue **mixed proper-crossing + point-touch/collinear degeneracies** beyond the #569/#575 event classes: strict-max states outside the ordering guard, side-vertex touches, horizontal/equal-Y touch ordering, then mixed collinear states. Use exact traced output-list state; do not reuse the proper-crossing rebase heuristic without proof.
 2. Wider-convex and multi-point/non-triangle fixup state only with direct raw evidence.
 3. Interacting holes and surviving hole hierarchy.
 4. More than two interacting paths.
