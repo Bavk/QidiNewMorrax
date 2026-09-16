@@ -5,7 +5,7 @@ on:
     branches: [chatgpt/late-strict-max-multicross]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   probe:
@@ -32,3 +32,19 @@ jobs:
           sed -i 's/long long min_y = raw.front().y()/int min_y = raw.front().y()/g' tools/late_strict_max_separated_min_probe.cpp
           g++ -std=c++17 -O2 -Ioracle/src -I/usr/include/eigen3 oracle/src/clipper/clipper.cpp tools/late_strict_max_separated_min_probe.cpp -o oracle/late_strict_max_separated_min_probe
           ./oracle/late_strict_max_separated_min_probe
+
+      - name: Apply proved boundary and remove temporary oracle files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 tools/apply_late_multicross_boundary.py
+          rm -f tools/apply_late_multicross_boundary.py
+          rm -f tools/late_strict_max_separated_min_probe.cpp
+          rm -f .github/workflows/late-strict-max-separated-min-oracle.yml
+          rm -rf oracle
+          git config user.name Bavk
+          git config user.email denmurdok@gmail.com
+          git add -A
+          git diff --cached --check
+          git commit -m 'fix: cover late multicross separated minima'
+          git push origin HEAD:chatgpt/late-strict-max-multicross
