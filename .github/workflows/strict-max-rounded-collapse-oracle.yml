@@ -29,5 +29,5 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/clipper/clipper.cpp" -o oracle/src/clipper/clipper.cpp
           curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/clipper/clipper.hpp" -o oracle/src/clipper/clipper.hpp
           curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/libslic3r/Int128.hpp" -o oracle/src/libslic3r/Int128.hpp
-          g++ -std=c++17 -O2 -Ioracle/src -I/usr/include/eigen3 oracle/src/clipper/clipper.cpp tools/strict_max_rounded_touch_collapse_probe.cpp -o oracle/strict_max_rounded_touch_collapse_probe
+          g++ -std=c++17 -O2 -Ioracle/src -I/usr/include/eigen3 oracle/src/clipper/clipper.cpp tools/strict_max_rounded_touch_collapse_broad_probe.cpp -o oracle/strict_max_rounded_touch_collapse_probe
           ./oracle/strict_max_rounded_touch_collapse_probe
