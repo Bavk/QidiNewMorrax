@@ -39,34 +39,31 @@ struct Fixture {
   const char *name;
   Path owner;
   Path other;
-  Path expected;
 };
 
 int main() {
   const std::vector<Fixture> fixtures = {
       {
-          "retained_all_vertices",
-          {{9, -82}, {122, 60}, {-18, 77}},
-          {{-10, 67}, {6, 3}, {-34, 73}},
-          {{6, 3}, {-34, 73}, {-13, 69}, {-18, 77}, {9, -82}, {122, 60}, {0, 75}, {-10, 67}},
+          "retained_inner_vertex",
+          {{0, 0}, {162, -141}, {164, -8}},
+          {{-20, 17}, {20, -17}, {70, -58}},
       },
       {
-          "widened_wedge",
-          {{-120, -220}, {80, 80}, {210, -220}},
-          {{240, -160}, {-65, -99}, {-67, -101}},
-          {{-67, -101}, {-65, -99}, {-66, -100}, {-31, -86}, {-120, -220}, {210, -220}, {95, -28}, {80, 80}},
-      },
-      {
-          "retained_nearby_vertex",
-          {{-120, -220}, {80, 80}, {210, -220}},
-          {{220, -107}, {-70, -46}, {-66, -47}},
-          {{-66, -47}, {-70, -46}, {-69, -46}, {-26, -79}, {-120, -220}, {210, -220}, {195, -186}, {80, 80}},
+          "retained_wedge",
+          {{0, 0}, {-142, -178}, {27, -173}},
+          {{-125, -167}, {125, 167}, {-6, -8}},
       },
   };
 
   int matched = 0;
   int total = 0;
   for (const Fixture &fixture : fixtures) {
+    Path expected;
+    if (!source_union(fixture.owner, fixture.other, expected)) {
+      std::cerr << "BASE_EXEC_FAIL " << fixture.name << "\n";
+      return 2;
+    }
+    std::cout << fixture.name << " raw=" << path_string(expected) << "\n";
     int fixture_matched = 0;
     for (int ro = 0; ro < 3; ++ro) {
       for (int rt = 0; rt < 3; ++rt) {
@@ -80,22 +77,23 @@ int main() {
                             actual)) {
             std::cerr << "EXEC_FAIL " << fixture.name << " ro=" << ro
                       << " rt=" << rt << " order=" << order << "\n";
-            return 2;
+            return 3;
           }
-          if (actual != fixture.expected) {
+          if (actual != expected) {
             std::cerr << "MISMATCH " << fixture.name << " ro=" << ro
                       << " rt=" << rt << " order=" << order
-                      << " expected=" << path_string(fixture.expected)
+                      << " expected=" << path_string(expected)
                       << " actual=" << path_string(actual) << "\n";
-            return 3;
+            return 4;
           }
           ++matched;
           ++fixture_matched;
         }
       }
     }
-    std::cout << fixture.name << " " << fixture_matched << "/18 exact raw paths\n";
+    std::cout << fixture.name << " " << fixture_matched
+              << "/18 exact raw paths\n";
   }
   std::cout << "TOTAL " << matched << "/" << total << " exact raw paths\n";
-  return matched == total ? 0 : 4;
+  return matched == total ? 0 : 5;
 }
