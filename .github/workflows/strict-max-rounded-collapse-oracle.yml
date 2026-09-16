@@ -1,8 +1,7 @@
 name: Strict-max rounded collapse oracle
 
 on:
-  push:
-    branches: [chatgpt/rounded-degenerate-strict-max]
+  workflow_dispatch:
 
 permissions:
   contents: read
