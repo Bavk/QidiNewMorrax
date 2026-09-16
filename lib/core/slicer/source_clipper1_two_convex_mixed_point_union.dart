@@ -28,7 +28,10 @@ import '../geometry/source_polygon.dart';
 /// 64800/64800 for the late single-crossing strict-maximum class. Independent
 /// pinned-source late multi-crossing probes add 216000/216000 exact raw starts
 /// across proper-count 2-4, including targeted vertical, positive-slope and
-/// negative-slope touched edges. A separate exact pinned-source Clipper1 probe
+/// negative-slope touched edges. A separate late multi-crossing boundary matrix
+/// adds 64800/64800 exact full raw paths where the touched-edge endpoint and
+/// earlier owner neighbor share the separated global minimum Y. A separate
+/// exact pinned-source Clipper1 probe
 /// matched the proper-only raw start rule in 54000/54000 equal-Y cases across
 /// 3000 bases, all 3x3 cyclic source rotations and both input orders; the
 /// committed equal-Y fixture locks the full raw path. Side/horizontal and
@@ -144,6 +147,13 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     if (!_isSupportedTouchState(owner, other, touch, properCount)) return null;
     final equalYStrictMaximum =
         _isEqualYStrictMaximumTouchState(owner, other, touch);
+    final lateSeparatedMinimumBoundary =
+        _isLateStrictMaximumSeparatedMinimumBoundary(
+      owner,
+      other,
+      touch,
+      properCount,
+    );
 
     final boundary = <_DirectedMixedEdge2>[];
     if (!_appendOutsideFragments(first, second, firstSplits, boundary) ||
@@ -162,7 +172,8 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
     final rebased = _rebaseBuildResult(
       simplified,
-      allowSeparatedEqualMinimumY: equalYStrictMaximum,
+      allowSeparatedEqualMinimumY:
+          equalYStrictMaximum || lateSeparatedMinimumBoundary,
     );
     return rebased == null ? null : SourcePolygon2(rebased);
   }
@@ -217,6 +228,33 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     final minimumOwnerNeighborY =
         previous.y < next.y ? previous.y : next.y;
     return otherThird.y == minimumOwnerNeighborY;
+  }
+
+  static bool _isLateStrictMaximumSeparatedMinimumBoundary(
+    SourcePolygon2 owner,
+    SourcePolygon2 other,
+    SourcePoint2 touch,
+    int properCount,
+  ) {
+    if (properCount < 2) return false;
+    final ownerIndex = owner.points.indexOf(touch);
+    if (ownerIndex < 0) return false;
+    final previous = owner.points[(ownerIndex + 2) % 3];
+    final next = owner.points[(ownerIndex + 1) % 3];
+    if (!(previous.y < touch.y && next.y < touch.y)) return false;
+
+    final edgeIndex = _strictContainingEdgeIndex(other, touch);
+    if (edgeIndex == null) return false;
+    final edgeStart = other.points[edgeIndex];
+    final edgeEnd = other.points[(edgeIndex + 1) % 3];
+    if (edgeStart.y == edgeEnd.y) return false;
+
+    final otherThird = other.points[(edgeIndex + 2) % 3];
+    final minimumOwnerNeighborY =
+        previous.y < next.y ? previous.y : next.y;
+    if (otherThird.y <= minimumOwnerNeighborY) return false;
+    return edgeStart.y == minimumOwnerNeighborY ||
+        edgeEnd.y == minimumOwnerNeighborY;
   }
 
   static int? _strictContainingEdgeIndex(
