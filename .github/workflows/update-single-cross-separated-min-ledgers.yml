@@ -19,7 +19,33 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/update_single_cross_separated_min_ledgers.py')
+          text = p.read_text()
+          old = '''    if count != 1:\n        raise RuntimeError(f"{label}: expected one replacement, found {count}")\n'''
+          new = '''    if count != 1:\n        if label == "trace prose" and count == 0:\n            return\n        raise RuntimeError(f"{label}: expected one replacement, found {count}")\n'''
+          if text.count(old) != 1:
+              raise RuntimeError('updater guard target mismatch')
+          p.write_text(text.replace(old, new, 1))
+          PY
           python3 tools/update_single_cross_separated_min_ledgers.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('migration/TRACEABILITY.md')
+          text = p.read_text()
+          old = '''The mixed point helper remains explicitly source-event bounded. #569 proves the strict-minimum touching vertex class with **39600/39600** raw paths. #575 proves an early strict-max class with **72000/72000** full raw paths when the touched edge is non-horizontal and `otherThird.y < min(ownerPrevious.y, ownerNext.y)`, spanning 1–4 proper crossings. #588 proves the equal-Y boundary with **54000/54000** raw-start-rule matches plus a fixed complete-path regression. #582 proves the late `>` single-crossing class with **64800/64800** exact full raw paths. #601 extends the same late `>` class to multi-crossing states with **216000/216000** independent generic/targeted raw-start matches and a separate **64800/64800 exact full-path** separated-minimum boundary matrix; together the `>` source matrices span proper-count 1–4.
+
+The #588 and #601 audits establish two independently classified cases where a valid output may have two nonadjacent global minimum-Y vertices. `SourceClipper1TwoConvexMixedPointUnion2` relaxes its old adjacent-minima rebase guard only for those proved states and still chooses the source rightmost-minimum anchor. Horizontal strict-max touches, side-vertex touches, rounded-degenerate cases and mixed collinear states stay fallback. Runtime `AppendPolygon()` / `OutRec::Pts` behavior remains acceptance-relevant but is not by itself a safe static classifier; the exact predicates above are the independently proved bounds.
+'''
+          new = '''The mixed point helper remains explicitly source-event bounded. #569 proves the strict-minimum touching vertex class with **39600/39600** raw paths. #575 proves an early strict-max class with **72000/72000** full raw paths when the touched edge is non-horizontal and `otherThird.y < min(ownerPrevious.y, ownerNext.y)`, spanning 1–4 proper crossings. #588 proves the equal-Y boundary with **54000/54000** raw-start-rule matches plus a fixed complete-path regression. #582 proves the late `>` single-crossing class with **64800/64800** exact full raw paths. #601 extends the same late `>` class to multi-crossing states with **216000/216000** independent generic/targeted raw-start matches and a separate **64800/64800 exact full-path** multi-cross separated-minimum boundary matrix. #608 independently proves the matching single-cross separated-minimum endpoint-Y boundary with **64800/64800 exact full raw paths** plus **18/18** fixed variants; together the `>` source matrices span proper-count 1–4.
+
+The #588, #601 and #608 audits establish independently classified states where a valid output may have two nonadjacent global minimum-Y vertices. `SourceClipper1TwoConvexMixedPointUnion2` relaxes its old adjacent-minima rebase guard only for those proved states and still chooses the source rightmost-minimum anchor. Horizontal strict-max touches, side-vertex touches, mixed collinear states and other rounded/degenerated cases stay fallback. Runtime `AppendPolygon()` / `OutRec::Pts` behavior remains acceptance-relevant but is not by itself a safe static classifier; the exact predicates above are the independently proved bounds.
+'''
+          if text.count(old) != 1:
+              raise RuntimeError('trace prose post-fix target mismatch')
+          p.write_text(text.replace(old, new, 1))
+          PY
           rm -f tools/update_single_cross_separated_min_ledgers.py
           rm -f .github/workflows/update-single-cross-separated-min-ledgers.yml
           git config user.name Bavk
