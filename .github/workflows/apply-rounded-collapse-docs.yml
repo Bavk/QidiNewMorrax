@@ -1,0 +1,27 @@
+name: Apply rounded collapse docs
+
+on:
+  push:
+    branches:
+      - chatgpt/rounded-degenerate-strict-max
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/rounded-degenerate-strict-max
+          fetch-depth: 0
+      - name: Update ledgers
+        run: python3 tools/apply_rounded_collapse_docs.py
+      - name: Commit ledgers
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add docs/HANDOFF.md migration/MIGRATION_STATUS.md migration/VALIDATION.md migration/TRACEABILITY.md
+          git commit -m "docs: record rounded strict-max collapse validation"
+          git push origin HEAD:chatgpt/rounded-degenerate-strict-max
