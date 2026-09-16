@@ -19,6 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          sed -i 's|beyond #569/#575/#588/#582: late strict-max|beyond #569/#575/#588/#582/#601: late strict-max|' tools/update_late_multicross_ledgers.py
           python3 tools/update_late_multicross_ledgers.py
           rm -f tools/update_late_multicross_ledgers.py
           rm -f .github/workflows/update-late-multicross-ledgers.yml
