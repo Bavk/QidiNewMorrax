@@ -146,11 +146,15 @@ static bool rounded_intersection(const IntPoint &a, const IntPoint &b,
   return true;
 }
 
-static bool e2_insert_tie(const Edge &e1, const Edge &e2) {
-  // Exact equality branch inside pinned E2InsertsBeforeE1() when Curr.x is tied.
-  if (e2.top.y() > e1.top.y())
-    return e2.top.x() == top_x(e1, e2.top.y());
-  return e1.top.x() == top_x(e2, e1.top.y());
+static bool e2_inserts_before_e1(const Edge &e1, const Edge &e2, long long y) {
+  const long long e1_curr_x = top_x(e1, y);
+  const long long e2_curr_x = top_x(e2, y);
+  if (e2_curr_x == e1_curr_x) {
+    if (e2.top.y() > e1.top.y())
+      return e2.top.x() < top_x(e1, e2.top.y());
+    return e1.top.x() > top_x(e2, e1.top.y());
+  }
+  return e2_curr_x < e1_curr_x;
 }
 
 static std::string point_key(const IntPoint &p) {
@@ -235,23 +239,61 @@ static int strict_touch_edge(const Path &other, const IntPoint &touch) {
   return -1;
 }
 
-static int touch_collapse_owner_edge(const Path &first, const Path &second,
-                                     const IntPoint &touch) {
-  int found = -1;
+struct CollapsePair {
+  int owner_edge = -1;
+  int other_edge = -1;
+};
+
+static CollapsePair touch_collapse_pair(const Path &owner, const Path &other,
+                                        const IntPoint &touch) {
+  CollapsePair found;
+  int count = 0;
   for (int i = 0; i < 3; ++i) {
-    const IntPoint &a = first[i];
-    const IntPoint &b = first[(i + 1) % 3];
+    const IntPoint &a = owner[i];
+    const IntPoint &b = owner[(i + 1) % 3];
     for (int j = 0; j < 3; ++j) {
-      const IntPoint &c = second[j];
-      const IntPoint &d = second[(j + 1) % 3];
+      const IntPoint &c = other[j];
+      const IntPoint &d = other[(j + 1) % 3];
       if (!proper(a, b, c, d)) continue;
       IntPoint rounded;
       if (!rounded_intersection(a, b, c, d, rounded) || !same(rounded, touch)) continue;
-      if (found != -1) return -2;
-      found = i;
+      found.owner_edge = i;
+      found.other_edge = j;
+      ++count;
     }
   }
+  if (count != 1) return CollapsePair{};
   return found;
+}
+
+static bool owner_bounds_surround_active_other_edges(
+    const Path &owner, const Path &other, const IntPoint &touch,
+    int touch_edge, const CollapsePair &collapse) {
+  if (collapse.owner_edge != 0 && collapse.owner_edge != 2) return false;
+  if (collapse.other_edge == touch_edge) return false;
+
+  const Edge owner0 = edge_from(owner[0], owner[1]);
+  const Edge owner2 = edge_from(owner[2], owner[0]);
+  const Edge &left_bound = owner0.dx > owner2.dx ? owner0 : owner2;
+  const Edge &right_bound = owner0.dx > owner2.dx ? owner2 : owner0;
+
+  const Edge touched = edge_from(other[touch_edge], other[(touch_edge + 1) % 3]);
+  const Edge crossing = edge_from(other[collapse.other_edge],
+                                  other[(collapse.other_edge + 1) % 3]);
+  const long long y = touch.y();
+
+  // This exact state is the local-minimum insertion seen in the pinned trace:
+  // both already-active other bounds have Curr.x == touch.x, the owner left
+  // bound inserts before both, and the owner right bound inserts after both.
+  // Then both owner bounds have WindCnt==1 and contribute before the two
+  // same-coordinate IntersectEdges() events are processed.
+  for (const Edge *active : {&touched, &crossing}) {
+    if (!(active->top.y() < y && active->bot.y() > y)) return false;
+    if (top_x(*active, y) != touch.x()) return false;
+    if (!e2_inserts_before_e1(*active, left_bound, y)) return false;
+    if (e2_inserts_before_e1(*active, right_bound, y)) return false;
+  }
+  return true;
 }
 
 static bool exact_all_variants(const Path &owner, const Path &other,
@@ -277,12 +319,11 @@ int main() {
   const IntPoint touch(0, 0);
   const int target = 5000;
   int tested = 0;
-  int rejected_ael_tie = 0;
   int collapse_edge_0 = 0;
   int collapse_edge_2 = 0;
   long long attempts = 0;
 
-  while (attempts < 220000000 && tested < target) {
+  while (attempts < 300000000 && tested < target) {
     ++attempts;
     IntPoint p(coord(rng), neg_y(rng));
     IntPoint q(coord(rng), neg_y(rng));
@@ -311,8 +352,10 @@ int main() {
     if (!one_unique_touch_no_overlap(owner, other, proper_count, found_touch)) continue;
     if (!same(found_touch, touch) || proper_count != 1) continue;
 
-    const int collapse_owner_edge = touch_collapse_owner_edge(owner, other, touch);
-    if (collapse_owner_edge != 0 && collapse_owner_edge != 2) continue;
+    const int touch_edge = strict_touch_edge(other, touch);
+    if (touch_edge < 0) continue;
+    const CollapsePair collapse = touch_collapse_pair(owner, other, touch);
+    if (collapse.owner_edge < 0 || collapse.other_edge < 0) continue;
 
     int inside_count = 0;
     for (const IntPoint &point : other) {
@@ -320,26 +363,14 @@ int main() {
     }
     if (inside_count != 2) continue;
 
-    const int touch_edge = strict_touch_edge(other, touch);
-    if (touch_edge < 0) continue;
-    const Edge active_touch = edge_from(other[touch_edge], other[(touch_edge + 1) % 3]);
-    const int other_owner_edge = collapse_owner_edge == 0 ? 2 : 0;
-    const Edge noncollapsed_owner =
-        edge_from(owner[other_owner_edge], owner[(other_owner_edge + 1) % 3]);
-    if (e2_insert_tie(noncollapsed_owner, active_touch)) {
-      ++rejected_ael_tie;
-      continue;
-    }
+    if (!owner_bounds_surround_active_other_edges(
+            owner, other, touch, touch_edge, collapse)) continue;
 
-    // This exact subset follows the source local-minimum insertion order:
-    // the rounded crossing collapses onto the strict-max touch, the opposite
-    // owner bound does not hit the E2InsertsBeforeE1 integer TopX tie, and the
-    // rounded-away sliver leaves the owner contour anchored at its predecessor.
     const Path expected = rotate_path(owner, 2);
     if (!exact_all_variants(owner, other, expected)) {
       Path actual;
       source_union(owner, other, actual);
-      std::cerr << "COUNTER edge=" << collapse_owner_edge
+      std::cerr << "COUNTER edge=" << collapse.owner_edge
                 << " owner=" << path_string(owner)
                 << " other=" << path_string(other)
                 << " expected=" << path_string(expected)
@@ -347,12 +378,12 @@ int main() {
       return 3;
     }
 
-    if (collapse_owner_edge == 0) ++collapse_edge_0;
+    if (collapse.owner_edge == 0) ++collapse_edge_0;
     else ++collapse_edge_2;
     ++tested;
 
     if (tested <= 8) {
-      std::cout << "CASE " << tested << " edge=" << collapse_owner_edge
+      std::cout << "CASE " << tested << " edge=" << collapse.owner_edge
                 << " owner=" << path_string(owner)
                 << " other=" << path_string(other)
                 << " raw=" << path_string(expected) << "\n";
@@ -362,7 +393,6 @@ int main() {
   std::cout << "tested_bases=" << tested
             << " exact_full_paths=" << (long long)tested * 18
             << " collapse_edges=" << collapse_edge_0 << "," << collapse_edge_2
-            << " rejected_ael_tie=" << rejected_ael_tie
             << " attempts=" << attempts << "\n";
   return tested == target ? 0 : 2;
 }
