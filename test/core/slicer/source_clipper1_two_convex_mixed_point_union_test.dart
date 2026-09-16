@@ -295,6 +295,27 @@ void main() {
     ]);
   });
 
+  test('Arachne zero offset routes late multi-crossing strict-maximum state exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(-606000, 279000), (-905000, 166000), (-354000, 79000)]),
+        _poly([(-856000, 79000), (-406000, 439000), (-870000, 163000)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(-606000, 279000),
+      SourcePoint2(-406000, 439000),
+      SourcePoint2(-795185, 207502),
+      SourcePoint2(-905000, 166000),
+      SourcePoint2(-869568, 160405),
+      SourcePoint2(-856000, 79000),
+      SourcePoint2(-773253, 145198),
+      SourcePoint2(-354000, 79000),
+    ]);
+  });
+
   test('side touching vertex remains on mixed compatibility seam', () {
     final values = [
       _poly([(410000, -470000), (260000, 470000), (300000, -330000)]),
@@ -313,13 +334,21 @@ void main() {
     expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
   });
 
-  test('late strict-maximum multi-crossing state remains fallback', () {
-    final values = [
+  test('late strict-maximum multi-crossing touch is exact', () {
+    _expectExactAllRotations(
       _poly([(-606000, 279000), (-905000, 166000), (-354000, 79000)]),
       _poly([(-856000, 79000), (-406000, 439000), (-870000, 163000)]),
-    ];
-    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
-    expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
+      const [
+        SourcePoint2(-606000, 279000),
+        SourcePoint2(-406000, 439000),
+        SourcePoint2(-795185, 207502),
+        SourcePoint2(-905000, 166000),
+        SourcePoint2(-869568, 160405),
+        SourcePoint2(-856000, 79000),
+        SourcePoint2(-773253, 145198),
+        SourcePoint2(-354000, 79000),
+      ],
+    );
   });
 
   test('point-only contact stays owned by zero-area contact helper', () {
