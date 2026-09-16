@@ -64,6 +64,14 @@ static void make_positive(Path &p) {
   if (area2(p) < 0) std::swap(p[1], p[2]);
 }
 
+static bool strictly_inside(const Path &positive_triangle, const IntPoint &p) {
+  for (int i = 0; i < 3; ++i) {
+    if (orient(positive_triangle[i], positive_triangle[(i + 1) % 3], p) <= 0)
+      return false;
+  }
+  return true;
+}
+
 static long long round_clipper(double v) {
   return v < 0 ? (long long)std::ceil(v - 0.5) : (long long)std::floor(v + 0.5);
 }
@@ -93,8 +101,8 @@ static Edge edge_from(const IntPoint &a, const IntPoint &b) {
 }
 
 static long long top_x(const Edge &e, long long y) {
-  if (y == e.top.y()) return e.top.x();
-  return e.bot.x() + round_clipper(e.dx * (double)(y - e.bot.y()));
+  return y == e.top.y() ? e.top.x()
+                        : e.bot.x() + round_clipper(e.dx * (double)(y - e.bot.y()));
 }
 
 static bool rounded_intersection(const IntPoint &a, const IntPoint &b,
@@ -159,6 +167,14 @@ static Path rotate_path(const Path &p, int start) {
   return out;
 }
 
+static Path rotate_owner_to_unique_minimum(const Path &owner) {
+  int anchor = 0;
+  for (int i = 1; i < 3; ++i) {
+    if (owner[i].y() < owner[anchor].y()) anchor = i;
+  }
+  return rotate_path(owner, anchor);
+}
+
 static bool source_union(const Path &a, const Path &b, Path &out) {
   Clipper clipper;
   if (!clipper.AddPath(a, ptSubject, true)) return false;
@@ -211,9 +227,9 @@ static bool one_unique_touch_no_overlap(const Path &first, const Path &second,
   return true;
 }
 
-static bool has_touch_collapse(const Path &first, const Path &second,
-                               const IntPoint &touch, int &collapse_count) {
-  collapse_count = 0;
+static int touch_collapse_count(const Path &first, const Path &second,
+                                const IntPoint &touch) {
+  int count = 0;
   for (int i = 0; i < 3; ++i) {
     const IntPoint &a = first[i];
     const IntPoint &b = first[(i + 1) % 3];
@@ -222,16 +238,14 @@ static bool has_touch_collapse(const Path &first, const Path &second,
       const IntPoint &d = second[(j + 1) % 3];
       if (!proper(a, b, c, d)) continue;
       IntPoint rounded;
-      if (!rounded_intersection(a, b, c, d, rounded)) continue;
-      if (same(rounded, touch)) ++collapse_count;
+      if (rounded_intersection(a, b, c, d, rounded) && same(rounded, touch)) ++count;
     }
   }
-  return collapse_count > 0;
+  return count;
 }
 
-static bool stable_all_variants(const Path &owner, const Path &other,
-                                Path &expected) {
-  bool have = false;
+static bool exact_all_variants(const Path &owner, const Path &other,
+                               const Path &expected) {
   for (int ro = 0; ro < 3; ++ro) {
     for (int rt = 0; rt < 3; ++rt) {
       const Path a = rotate_path(owner, ro);
@@ -239,37 +253,34 @@ static bool stable_all_variants(const Path &owner, const Path &other,
       for (int order = 0; order < 2; ++order) {
         Path result;
         if (!source_union(order == 0 ? a : b, order == 0 ? b : a, result)) return false;
-        if (!have) {
-          expected = result;
-          have = true;
-        } else if (result != expected) {
-          return false;
-        }
+        if (result != expected) return false;
       }
     }
   }
-  return have;
+  return true;
 }
 
 int main() {
-  std::mt19937_64 rng(0x6080615ULL);
-  std::uniform_int_distribution<int> coord(-90, 90);
-  std::uniform_int_distribution<int> neg_y(-90, -1);
-  int accepted = 0;
+  std::mt19937_64 rng(0x6150608ULL);
+  std::uniform_int_distribution<int> coord(-180, 180);
+  std::uniform_int_distribution<int> neg_y(-180, -1);
   const IntPoint touch(0, 0);
+  const int target = 5000;
+  int tested = 0;
+  long long attempts = 0;
 
-  for (long long attempt = 0; attempt < 12000000 && accepted < 12; ++attempt) {
+  while (attempts < 120000000 && tested < target) {
+    ++attempts;
     IntPoint p(coord(rng), neg_y(rng));
     IntPoint q(coord(rng), neg_y(rng));
-    if (same(p, q) || cross(touch, p, q) == 0) continue;
+    if (same(p, q) || cross(touch, p, q) == 0 || p.y() == q.y()) continue;
     Path owner{touch, p, q};
     make_positive(owner);
     if (!strict_positive_triangle(owner)) continue;
 
     int ex = coord(rng);
     int ey = coord(rng);
-    if (ex == 0 && ey == 0) continue;
-    if (ey == 0) continue;
+    if ((ex == 0 && ey == 0) || ey == 0) continue;
     IntPoint u(-ex, -ey);
     IntPoint v(ex, ey);
     IntPoint w(coord(rng), coord(rng));
@@ -279,29 +290,42 @@ int main() {
     if (!strict_positive_triangle(other)) continue;
 
     const long long owner_min_y = std::min(owner[1].y(), owner[2].y());
-    // Late strict-max only; exclude the already-proved endpoint-Y boundary.
     if (w.y() <= owner_min_y) continue;
     if (u.y() == owner_min_y || v.y() == owner_min_y) continue;
 
     int proper_count = 0;
     IntPoint found_touch;
     if (!one_unique_touch_no_overlap(owner, other, proper_count, found_touch)) continue;
-    if (!same(found_touch, touch)) continue;
+    if (!same(found_touch, touch) || proper_count != 1) continue;
+    if (touch_collapse_count(owner, other, touch) != 1) continue;
 
-    int collapse_count = 0;
-    if (!has_touch_collapse(owner, other, touch, collapse_count)) continue;
-    if (collapse_count != 1) continue;
+    int inside_count = 0;
+    for (const IntPoint &point : other) {
+      if (strictly_inside(owner, point)) ++inside_count;
+    }
+    if (inside_count != 2) continue;
 
-    Path expected;
-    if (!stable_all_variants(owner, other, expected)) continue;
+    const Path expected = rotate_owner_to_unique_minimum(owner);
+    if (!exact_all_variants(owner, other, expected)) {
+      Path actual;
+      source_union(owner, other, actual);
+      std::cerr << "COUNTER owner=" << path_string(owner)
+                << " other=" << path_string(other)
+                << " expected=" << path_string(expected)
+                << " actual=" << path_string(actual) << "\n";
+      return 3;
+    }
 
-    ++accepted;
-    std::cout << "CASE " << accepted << " proper=" << proper_count
-              << " owner=" << path_string(owner)
-              << " other=" << path_string(other)
-              << " raw=" << path_string(expected) << "\n";
+    ++tested;
+    if (tested <= 8) {
+      std::cout << "CASE " << tested << " owner=" << path_string(owner)
+                << " other=" << path_string(other)
+                << " raw=" << path_string(expected) << "\n";
+    }
   }
 
-  std::cout << "accepted=" << accepted << "\n";
-  return accepted >= 6 ? 0 : 2;
+  std::cout << "tested_bases=" << tested
+            << " variants=" << (long long)tested * 18
+            << " attempts=" << attempts << "\n";
+  return tested == target ? 0 : 2;
 }
