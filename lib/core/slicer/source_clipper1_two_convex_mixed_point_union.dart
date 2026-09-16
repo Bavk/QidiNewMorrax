@@ -142,6 +142,8 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     final owner = firstOwnsTouch ? first : second;
     final other = firstOwnsTouch ? second : first;
     if (!_isSupportedTouchState(owner, other, touch, properCount)) return null;
+    final equalYStrictMaximum =
+        _isEqualYStrictMaximumTouchState(owner, other, touch);
 
     final boundary = <_DirectedMixedEdge2>[];
     if (!_appendOutsideFragments(first, second, firstSplits, boundary) ||
@@ -158,7 +160,10 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     final polygon = SourcePolygon2(simplified);
     if (polygon.signedArea <= 0) return null;
 
-    final rebased = _rebaseBuildResult(simplified);
+    final rebased = _rebaseBuildResult(
+      simplified,
+      allowSeparatedEqualMinimumY: equalYStrictMaximum,
+    );
     return rebased == null ? null : SourcePolygon2(rebased);
   }
 
@@ -189,6 +194,29 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     if (otherThird.y <= minimumOwnerNeighborY) return true;
 
     return properCount == 1;
+  }
+
+  static bool _isEqualYStrictMaximumTouchState(
+    SourcePolygon2 owner,
+    SourcePolygon2 other,
+    SourcePoint2 touch,
+  ) {
+    final ownerIndex = owner.points.indexOf(touch);
+    if (ownerIndex < 0) return false;
+    final previous = owner.points[(ownerIndex + 2) % 3];
+    final next = owner.points[(ownerIndex + 1) % 3];
+    if (!(previous.y < touch.y && next.y < touch.y)) return false;
+
+    final edgeIndex = _strictContainingEdgeIndex(other, touch);
+    if (edgeIndex == null) return false;
+    final edgeStart = other.points[edgeIndex];
+    final edgeEnd = other.points[(edgeIndex + 1) % 3];
+    if (edgeStart.y == edgeEnd.y) return false;
+
+    final otherThird = other.points[(edgeIndex + 2) % 3];
+    final minimumOwnerNeighborY =
+        previous.y < next.y ? previous.y : next.y;
+    return otherThird.y == minimumOwnerNeighborY;
   }
 
   static int? _strictContainingEdgeIndex(
@@ -329,8 +357,9 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
   }
 
   static List<SourcePoint2>? _rebaseBuildResult(
-    List<SourcePoint2> points,
-  ) {
+    List<SourcePoint2> points, {
+    bool allowSeparatedEqualMinimumY = false,
+  }) {
     var minimumY = points.first.y;
     for (final point in points.skip(1)) {
       if (point.y < minimumY) minimumY = point.y;
@@ -346,7 +375,7 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       final adjacent =
           (first + 1) % points.length == second ||
           (second + 1) % points.length == first;
-      if (!adjacent) return null;
+      if (!adjacent && !allowSeparatedEqualMinimumY) return null;
     }
 
     var anchor = minima.first;
