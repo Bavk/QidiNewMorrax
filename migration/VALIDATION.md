@@ -17,14 +17,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `35069180391` (#588), job `104706390860`, executed code commit `81beaaed952b67843ae63ff114943673304a4b0c` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `35072315131` (#601), job `104716457571`, executed code commit `827938693fc719ab1ac02f2c6d84b78f6e5e9468` (functional tree from `3a100f821806671e6ca40dfa0e2961447395134e`) and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **861/861 tests passed**;
+- `flutter test --reporter expanded` — **862/862 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the strict-maximum equal-Y mixed point-touch boundary, exact Arachne zero-offset routing and explicit conservative rejection boundaries for late multi-crossing, rounded-degenerate, side-vertex and horizontal neighbors.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the late strict-maximum multi-crossing mixed point-touch class, the independently proved separated-minimum rebase boundary, exact Arachne zero-offset routing and explicit conservative rejection boundaries for rounded-degenerate, side-vertex and horizontal neighbors.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -41,6 +41,24 @@ Reference evidence comes from the **actual upstream compiled BambuStudio artifac
 The artifact was re-used from the previously SHA-verified download for retained raw-ELF batches. The debug-symbol ELF exposes the pinned modified Clipper 6.2.9 implementation. The preload probe calls the exact `clipper_union(Paths&, pftNonZero)` template at PIE offset `0x10b54d0` before application startup and dumps raw result paths without normalizing rotation/order.
 
 Pinned source inspection and ELF tracing confirm why geometric equivalence is insufficient: `BuildResult(Paths&)` starts each result at `OutRec::Pts->Prev`; `AddOutPt()`, local-minimum/local-maximum side assignment, `AppendPolygon()`, `JoinPoints()` and `FixupOutPolygon()` can change output-list state and therefore raw path rotation/order.
+
+## #601 late strict-maximum multi-crossing mixed point-touch oracle
+
+`SourceClipper1TwoConvexMixedPointUnion2` now extends the non-horizontal late strict-maximum `otherThird.y > min(ownerPrevious.y, ownerNext.y)` class beyond the #582 single-crossing state.
+
+Represented #601 state remains deliberately bounded to exactly two positive strict-convex triangles, exactly one unique vertex↔strict-edge-interior point touch, a strict maximum-Y touching owner vertex, a non-horizontal touched edge, no second touch and no nonzero collinear overlap. The new evidence covers the multiple-proper-crossing branch (proper-count 2–4 in the generated source matrices).
+
+Three independent pinned-source batches were executed against BambuStudio commit `f2b55a5a83f266cf56e06c7943a81a08bebb7fad`:
+
+- broad run `35070969892`, job `104712127182`: **6,000** independent bases × all 3×3 cyclic rotations × both AddPath orders = **108000/108000 exact raw-start matches**, spanning proper-count 2–4;
+- independently targeted slope run `35071087252`, job `104712499829`: another **108000/108000 exact raw-start matches**, split into **36,000 vertical**, **36,000 positive-slope** and **36,000 negative-slope** touched-edge executions, again spanning proper-count 2–4;
+- separated-minimum boundary run `35072113339`, job `104715791685`: **3,600** independently generated bases × all 18 rotation/input-order variants = **64800/64800 exact raw starts and 64800/64800 exact complete raw paths**. This batch targets the source state where one touched-edge endpoint shares the earlier owner-neighbor minimum Y and the final contour has two nonadjacent global minima.
+
+Combined new #601 evidence is **280800/280800 raw-start checks**, with **64800/64800 full raw-path matches** on the independently isolated separated-minimum boundary.
+
+The first Dart extension intentionally retained the old separated-minimum safety guard. PR CI #594 (`35071653958`, job `104714339008`) kept analyzer green but failed the all-rotations regression, correctly exposing that the fixed three-crossing source path has two nonadjacent minima. The final implementation adds `_isLateStrictMaximumSeparatedMinimumBoundary()` and relaxes the rebase guard only for that independently proved source state. Final CI #601 (`35072315131`, job `104716457571`) is green at **862/862**.
+
+Together, #582 and #601 cover the proved late `>` strict-max ordering states from single crossing through the generated multi-crossing matrix (proper-count 1–4). Horizontal touched edges, side-vertex touches, rounded/degenerated strict-max states and mixed-collinear cases remain fallback.
 
 ## #588 strict-maximum equal-Y mixed point-touch boundary
 
@@ -72,9 +90,9 @@ The independently proved non-horizontal strict-maximum partition is now:
 
 - #575: `otherThird.y < min(ownerPrevious.y, ownerNext.y)`, with its matrix spanning 1–4 proper crossings;
 - #588: `otherThird.y == min(ownerPrevious.y, ownerNext.y)`, with at least one proper crossing;
-- #582: `otherThird.y > min(ownerPrevious.y, ownerNext.y)`, with **exactly one** proper crossing.
+- #582 + #601: `otherThird.y > min(ownerPrevious.y, ownerNext.y)`, with the source matrices spanning the proved single- and multi-crossing states (proper-count 1–4).
 
-Horizontal touched edges, late strict-max states with multiple proper crossings, side-vertex touches, rounded/degenerated strict-max states and mixed-collinear cases remain fallback.
+Horizontal touched edges, side-vertex touches, rounded/degenerated strict-max states and mixed-collinear cases remain fallback.
 
 ## #582 late strict-maximum single-crossing mixed point-touch oracle
 
@@ -117,7 +135,7 @@ Its independent raw-ELF matrix remains **72000/72000 exact full raw result paths
 
 A targeted runtime preload trace over **500** canonical #575 bases found 400 without touch-time local-max/append activity and 100 with touch-time `AddLocalMaxPoly()` + `AppendPolygon()` at the touching vertex; **500/500** still matched the proved raw start. Touch-time append is therefore acceptance-relevant but not itself a failure predicate.
 
-A weaker strict-max hypothesis was falsified independently: vertical touched edge + exactly one proper crossing matched only **44712/45000**, leaving **288** raw mismatches. The exact #575/#588/#582 predicates must not be widened from slope or extrema alone.
+A weaker strict-max hypothesis was falsified independently: vertical touched edge + exactly one proper crossing matched only **44712/45000**, leaving **288** raw mismatches. The exact #575/#588/#582/#601 predicates must not be widened from slope or extrema alone.
 
 ## #569 strict-minimum mixed point-touch oracle
 
@@ -147,7 +165,7 @@ A second independently generated matrix testing a simpler geometric guard:
 - exact matches: **27,450/28,800**;
 - raw-start mismatches: **1,350/28,800**.
 
-Earlier runtime tracing established that touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle is acceptance-relevant. The #575/#588/#582 results refine that conclusion: append state alone is not a static classifier. The exact accept/reject boundary must come from independently proved scanline/output-list state.
+Earlier runtime tracing established that touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle is acceptance-relevant. The #575/#588/#582/#601 results refine that conclusion: append state alone is not a static classifier. The exact accept/reject boundary must come from independently proved scanline/output-list state.
 
 ## #562 full-shared-edge one-point fixup oracle
 
@@ -215,11 +233,11 @@ Each family covers start/end overlap states, equal-Y ties and equality boundarie
 
 The exact proper-crossing subset remains limited to two positive strictly convex paths with only proper segment intersections: no edge/point touching, collinear overlap or containment-only case. Seven hand-selected plus 32 deterministic random pairs produced **39/39 exact** raw ELF matches including reversed input order and 2/4/6-crossing topologies.
 
-The broad negative mixed audits above explicitly demonstrate that this proper-only raw-start rule must not be extrapolated outside the independently proved #569/#575/#588/#582 mixed event classes.
+The broad negative mixed audits above explicitly demonstrate that this proper-only raw-start rule must not be extrapolated outside the independently proved #569/#575/#588/#582/#601 mixed event classes.
 
 ## Retained Clipper1 / compiled Arachne evidence
 
-Earlier direct compiled-oracle batches remain re-executed by #588, including offset input pruning and arithmetic, convex contour/hole offset semantics, orthogonal concave Execute, isolated positive V-notch and one-reflex negative cleanup, noninteracting NonZero ordering/winding, rectangle interactions and the represented convex-contact/final-union subsets above.
+Earlier direct compiled-oracle batches remain re-executed by #601, including offset input pruning and arithmetic, convex contour/hole offset semantics, orthogonal concave Execute, isolated positive V-notch and one-reflex negative cleanup, noninteracting NonZero ordering/winding, rectangle interactions and the represented convex-contact/final-union subsets above.
 
 The suite also retains independent pinned compiled-BambuStudio process fixtures for normal two-wall and one-wall gates, non-speed and speed-graded overhang, partial `Alltop`, through-hole walls, QIDI `LoopNode`, QIDI circle-copy metadata behavior, final Arachne fill boundaries and a narrow-wedge topology case. These remain scoped fixture evidence; `process_arachne()` is **`implemented_unverified` as a whole**.
 
@@ -227,7 +245,7 @@ The suite also retains independent pinned compiled-BambuStudio process fixtures 
 
 For the current Clipper1/Arachne priority, independent or complete representation is still missing for:
 
-- remaining **mixed proper-crossing + point-touch/collinear cases**: late strict-max states with multiple proper crossings, rounded/degenerated strict-max states, side-vertex touches, horizontal touch ordering and mixed collinear states;
+- remaining **mixed proper-crossing + point-touch/collinear cases**: rounded/degenerated strict-max states, side-vertex touches, horizontal touch ordering and mixed collinear states;
 - wider-convex zero-area/contact/collinear and fixup output-list state;
 - multi-point or otherwise unrepresented `FixupOutPolygon()` cleanup;
 - interacting positive/negative hole boundaries and deeper/multiple surviving hole hierarchy;
@@ -240,7 +258,7 @@ Product-wide work also remains for later fill/support/seam/bridge/adaptive/ironi
 
 ## Next validation boundary
 
-1. Derive exact raw-ELF/source scanline/output-list state for remaining **mixed proper-crossing + point-touch/collinear** cases beyond #569/#575/#588/#582: late strict-max multi-crossing, rounded/degenerated strict-max, side-vertex, horizontal ordering, then mixed collinear cases. Do not widen the proper-only or mixed rebase rules without independent proof.
+1. Derive exact raw-ELF/source scanline/output-list state for remaining **mixed proper-crossing + point-touch/collinear** cases beyond #569/#575/#588/#582/#601: rounded/degenerated strict-max, side-vertex, horizontal ordering, then mixed collinear cases. Do not widen the proper-only or mixed rebase rules without independent proof.
 2. Keep wider-convex and multi-point/non-triangle fixup states on explicit compatibility fallback until their `OutRec`/`BuildResult()` behavior is independently proved.
 3. Extend the final-union oracle matrix to **interacting holes**, then **more than two interacting paths**.
 4. Continue generic/per-path Clipper1 execution only with exact source-order/rounding evidence.
