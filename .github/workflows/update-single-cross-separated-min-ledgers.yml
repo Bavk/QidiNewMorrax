@@ -1,0 +1,30 @@
+name: Apply single-cross separated-min ledger update
+
+on:
+  push:
+    branches: [chatgpt/rounded-strict-max]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update ledgers and self-clean
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 tools/update_single_cross_separated_min_ledgers.py
+          rm -f tools/update_single_cross_separated_min_ledgers.py
+          rm -f .github/workflows/update-single-cross-separated-min-ledgers.yml
+          git config user.name Bavk
+          git config user.email denmurdok@gmail.com
+          git add -A
+          git diff --cached --check
+          git commit -m 'docs: record single-cross separated-min validation'
+          git push origin HEAD:chatgpt/rounded-strict-max
