@@ -10,28 +10,25 @@ permissions:
 
 jobs:
   patch:
-    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: chatgpt/rounded-degenerate-strict-max
           fetch-depth: 0
-
-      - name: Apply patch
+      - name: Patch helper and tests
         shell: bash
         run: |
-          python3 - <<'PY'
+          cat > /tmp/patch.py <<'PY'
           from pathlib import Path
 
           helper = Path('lib/core/slicer/source_clipper1_two_convex_mixed_point_union.dart')
           text = helper.read_text()
 
-          text = text.replace(
-              "    final touches = <SourcePoint2>{};\n    final intersections = <SourcePoint2>{};\n    var properCount = 0;\n",
-              "    final touches = <SourcePoint2>{};\n    final intersections = <SourcePoint2>{};\n    final roundedEndpointIntersections = <_RoundedMixedIntersection2>[];\n    var properCount = 0;\n",
-              1,
-          )
+          old = "    final touches = <SourcePoint2>{};\n    final intersections = <SourcePoint2>{};\n    var properCount = 0;\n"
+          new = "    final touches = <SourcePoint2>{};\n    final intersections = <SourcePoint2>{};\n    final roundedEndpointIntersections = <_RoundedMixedIntersection2>[];\n    var properCount = 0;\n"
+          assert old in text
+          text = text.replace(old, new, 1)
 
           old = """        if (_segmentsProperlyIntersect(a, b, c, d)) {
           final point = _clipperIntersection(a, b, c, d);
@@ -113,15 +110,13 @@ jobs:
     required SourcePoint2 roundedPoint,
   }) {
     if (properCount != 1 || roundedPoint != touch) return null;
-
     final ownerIndex = owner.points.indexOf(touch);
     if (ownerIndex < 0) return null;
     final previousIndex = (ownerIndex + 2) % 3;
     final nextIndex = (ownerIndex + 1) % 3;
     final previous = owner.points[previousIndex];
     final next = owner.points[nextIndex];
-    if (!(previous.y < touch.y && next.y < touch.y) ||
-        previous.y == next.y) {
+    if (!(previous.y < touch.y && next.y < touch.y) || previous.y == next.y) {
       return null;
     }
     if (collapsedOwnerEdgeIndex != ownerIndex &&
@@ -136,9 +131,7 @@ jobs:
     final touchStart = other.points[touchEdgeIndex];
     final touchEnd = other.points[(touchEdgeIndex + 1) % 3];
     if (touchStart.y == touchEnd.y) return null;
-
-    final minimumOwnerNeighborY =
-        previous.y < next.y ? previous.y : next.y;
+    final minimumOwnerNeighborY = previous.y < next.y ? previous.y : next.y;
     final otherThird = other.points[(touchEdgeIndex + 2) % 3];
     if (otherThird.y <= minimumOwnerNeighborY ||
         touchStart.y == minimumOwnerNeighborY ||
@@ -154,14 +147,12 @@ jobs:
 
     final outgoingOwner = _MixedClipperEdge2.fromSegment(touch, next);
     final incomingOwner = _MixedClipperEdge2.fromSegment(previous, touch);
-    if (outgoingOwner.dx == incomingOwner.dx) return null;
     final leftBound = outgoingOwner.dx > incomingOwner.dx
         ? outgoingOwner
         : incomingOwner;
     final rightBound = outgoingOwner.dx > incomingOwner.dx
         ? incomingOwner
         : outgoingOwner;
-
     final touchedEdge = _MixedClipperEdge2.fromSegment(touchStart, touchEnd);
     final crossingEdge = _MixedClipperEdge2.fromSegment(
       other.points[collapsedOtherEdgeIndex],
@@ -193,8 +184,7 @@ jobs:
             triangle.points[index],
             triangle.points[(index + 1) % 3],
             point,
-          ) <=
-          0) {
+          ) <= 0) {
         return false;
       }
     }
@@ -253,34 +243,52 @@ jobs:
           text = text.replace(old, new, 1)
           helper.write_text(text)
 
-          tests = Path('test/core/slicer/source_clipper1_two_convex_mixed_point_union_test.dart')
-          text = tests.read_text()
-          marker = "  test('Arachne zero offset routes represented mixed point state exactly', () {\n"
-          assert marker in text
-          additions = """  test('rounded strict-max AEL-contained collapse is exact', () {
+          test = Path('test/core/slicer/source_clipper1_two_convex_rounded_collapse_test.dart')
+          test.write_text("""import 'package:flutter_test/flutter_test.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_geometry.dart';
+import 'package:qidi_flow_flutter/core/geometry/source_polygon.dart';
+import 'package:qidi_flow_flutter/core/slicer/source_arachne_wall_tool_paths_prepare_exact.dart';
+import 'package:qidi_flow_flutter/core/slicer/source_clipper1_two_convex_mixed_point_union.dart';
+
+SourcePolygon2 _poly(List<(int, int)> points) => SourcePolygon2([
+      for (final point in points) SourcePoint2(point.$1, point.$2),
+    ]);
+
+SourcePolygon2 _rotated(SourcePolygon2 polygon, int start) => SourcePolygon2([
+      for (var index = 0; index < polygon.points.length; index++)
+        polygon.points[(start + index) % polygon.points.length],
+    ]);
+
+void _expectExactAllRotations(
+  SourcePolygon2 first,
+  SourcePolygon2 second,
+  List<SourcePoint2> expected,
+) {
+  for (var firstRotation = 0; firstRotation < 3; firstRotation++) {
+    for (var secondRotation = 0; secondRotation < 3; secondRotation++) {
+      final a = _rotated(first, firstRotation);
+      final b = _rotated(second, secondRotation);
+      for (final values in [[a, b], [b, a]]) {
+        expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isTrue);
+        expect(SourceClipper1TwoConvexMixedPointUnion2.union(values).points, expected);
+      }
+    }
+  }
+}
+
+void main() {
+  test('rounded strict-max AEL-contained collapse is exact', () {
     _expectExactAllRotations(
       _poly([(0, 0), (-129, -164), (149, -16)]),
       _poly([(-21, 56), (21, -56), (28, -74)]),
-      const [
-        SourcePoint2(149, -16),
-        SourcePoint2(0, 0),
-        SourcePoint2(-129, -164),
-      ],
+      const [SourcePoint2(149, -16), SourcePoint2(0, 0), SourcePoint2(-129, -164)],
     );
   });
 
   test('translated scaled rounded AEL collapse is exact', () {
     _expectExactAllRotations(
-      _poly([
-        (376000000, 761000000),
-        (375996396, 760996566),
-        (376000527, 760997280),
-      ]),
-      _poly([
-        (375999133, 760998300),
-        (375999983, 760999966),
-        (376001734, 761003400),
-      ]),
+      _poly([(376000000, 761000000), (375996396, 760996566), (376000527, 760997280)]),
+      _poly([(375999133, 760998300), (375999983, 760999966), (376001734, 761003400)]),
       const [
         SourcePoint2(376000527, 760997280),
         SourcePoint2(376000000, 761000000),
@@ -291,10 +299,7 @@ jobs:
 
   test('Arachne zero offset routes rounded AEL collapse exactly', () {
     final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
-      [
-        _poly([(0, 0), (-129, -164), (149, -16)]),
-        _poly([(-21, 56), (21, -56), (28, -74)]),
-      ],
+      [_poly([(0, 0), (-129, -164), (149, -16)]), _poly([(-21, 56), (21, -56), (28, -74)])],
       0,
     );
     expect(result, hasLength(1));
@@ -305,12 +310,7 @@ jobs:
     ]);
   });
 
-"""
-          text = text.replace(marker, additions + marker, 1)
-
-          marker = "  test('point-only contact stays owned by zero-area contact helper', () {\n"
-          assert marker in text
-          negatives = """  test('rounded strict-max retained inner vertex stays fallback', () {
+  test('rounded strict-max retained inner vertex stays fallback', () {
     final values = [
       _poly([(0, 0), (162, -141), (164, -8)]),
       _poly([(-20, 17), (20, -17), (70, -58)]),
@@ -325,14 +325,12 @@ jobs:
     ];
     expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
   });
-
-"""
-          text = text.replace(marker, negatives + marker, 1)
-          tests.write_text(text)
+}
+""")
           PY
-
+          python3 /tmp/patch.py
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add lib/core/slicer/source_clipper1_two_convex_mixed_point_union.dart test/core/slicer/source_clipper1_two_convex_mixed_point_union_test.dart
+          git add lib/core/slicer/source_clipper1_two_convex_mixed_point_union.dart test/core/slicer/source_clipper1_two_convex_rounded_collapse_test.dart
           git commit -m 'fix: cover AEL-contained rounded strict-max collapse'
           git push origin HEAD:chatgpt/rounded-degenerate-strict-max
