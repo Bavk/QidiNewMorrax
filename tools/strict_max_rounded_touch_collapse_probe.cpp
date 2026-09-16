@@ -146,6 +146,13 @@ static bool rounded_intersection(const IntPoint &a, const IntPoint &b,
   return true;
 }
 
+static bool e2_insert_tie(const Edge &e1, const Edge &e2) {
+  // Exact equality branch inside pinned E2InsertsBeforeE1() when Curr.x is tied.
+  if (e2.top.y() > e1.top.y())
+    return e2.top.x() == top_x(e1, e2.top.y());
+  return e1.top.x() == top_x(e2, e1.top.y());
+}
+
 static std::string point_key(const IntPoint &p) {
   return std::to_string(p.x()) + "," + std::to_string(p.y());
 }
@@ -219,6 +226,15 @@ static bool one_unique_touch_no_overlap(const Path &first, const Path &second,
   return true;
 }
 
+static int strict_touch_edge(const Path &other, const IntPoint &touch) {
+  for (int i = 0; i < 3; ++i) {
+    const IntPoint &a = other[i];
+    const IntPoint &b = other[(i + 1) % 3];
+    if (!same(a, touch) && !same(b, touch) && on_segment(a, b, touch)) return i;
+  }
+  return -1;
+}
+
 static int touch_collapse_owner_edge(const Path &first, const Path &second,
                                      const IntPoint &touch) {
   int found = -1;
@@ -261,12 +277,12 @@ int main() {
   const IntPoint touch(0, 0);
   const int target = 5000;
   int tested = 0;
+  int rejected_ael_tie = 0;
   int collapse_edge_0 = 0;
-  int collapse_edge_1 = 0;
   int collapse_edge_2 = 0;
   long long attempts = 0;
 
-  while (attempts < 160000000 && tested < target) {
+  while (attempts < 220000000 && tested < target) {
     ++attempts;
     IntPoint p(coord(rng), neg_y(rng));
     IntPoint q(coord(rng), neg_y(rng));
@@ -296,7 +312,7 @@ int main() {
     if (!same(found_touch, touch) || proper_count != 1) continue;
 
     const int collapse_owner_edge = touch_collapse_owner_edge(owner, other, touch);
-    if (collapse_owner_edge < 0) continue;
+    if (collapse_owner_edge != 0 && collapse_owner_edge != 2) continue;
 
     int inside_count = 0;
     for (const IntPoint &point : other) {
@@ -304,9 +320,21 @@ int main() {
     }
     if (inside_count != 2) continue;
 
-    // In this state the pinned source drops the rounded-away sliver and emits
-    // the owner triangle. OutRec::Pts is anchored at the owner vertex directly
-    // preceding the strict-max touch in positive source order.
+    const int touch_edge = strict_touch_edge(other, touch);
+    if (touch_edge < 0) continue;
+    const Edge active_touch = edge_from(other[touch_edge], other[(touch_edge + 1) % 3]);
+    const int other_owner_edge = collapse_owner_edge == 0 ? 2 : 0;
+    const Edge noncollapsed_owner =
+        edge_from(owner[other_owner_edge], owner[(other_owner_edge + 1) % 3]);
+    if (e2_insert_tie(noncollapsed_owner, active_touch)) {
+      ++rejected_ael_tie;
+      continue;
+    }
+
+    // This exact subset follows the source local-minimum insertion order:
+    // the rounded crossing collapses onto the strict-max touch, the opposite
+    // owner bound does not hit the E2InsertsBeforeE1 integer TopX tie, and the
+    // rounded-away sliver leaves the owner contour anchored at its predecessor.
     const Path expected = rotate_path(owner, 2);
     if (!exact_all_variants(owner, other, expected)) {
       Path actual;
@@ -320,8 +348,7 @@ int main() {
     }
 
     if (collapse_owner_edge == 0) ++collapse_edge_0;
-    else if (collapse_owner_edge == 1) ++collapse_edge_1;
-    else if (collapse_owner_edge == 2) ++collapse_edge_2;
+    else ++collapse_edge_2;
     ++tested;
 
     if (tested <= 8) {
@@ -334,8 +361,8 @@ int main() {
 
   std::cout << "tested_bases=" << tested
             << " exact_full_paths=" << (long long)tested * 18
-            << " collapse_edges=" << collapse_edge_0 << ","
-            << collapse_edge_1 << "," << collapse_edge_2
+            << " collapse_edges=" << collapse_edge_0 << "," << collapse_edge_2
+            << " rejected_ael_tie=" << rejected_ael_tie
             << " attempts=" << attempts << "\n";
   return tested == target ? 0 : 2;
 }
