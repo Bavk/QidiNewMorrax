@@ -185,6 +185,21 @@ void main() {
     );
   });
 
+  test('strict-maximum equal-Y boundary matches pinned raw path', () {
+    _expectExactAllRotations(
+      _poly([(-126000, 102000), (-455000, -127000), (65000, -185000)]),
+      _poly([(24000, 312000), (-176000, 32000), (91000, -185000)]),
+      const [
+        SourcePoint2(24000, 312000),
+        SourcePoint2(-126000, 102000),
+        SourcePoint2(-455000, -127000),
+        SourcePoint2(65000, -185000),
+        SourcePoint2(34370, -138975),
+        SourcePoint2(91000, -185000),
+      ],
+    );
+  });
+
   test('rounded old strict-maximum fixture remains fallback', () {
     final values = [
       _poly([(-420000, -80000), (-620000, -260000), (-390000, -160000)]),
@@ -261,6 +276,25 @@ void main() {
     ]);
   });
 
+  test('Arachne zero offset routes strict-maximum equal-Y state exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(-126000, 102000), (-455000, -127000), (65000, -185000)]),
+        _poly([(24000, 312000), (-176000, 32000), (91000, -185000)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(24000, 312000),
+      SourcePoint2(-126000, 102000),
+      SourcePoint2(-455000, -127000),
+      SourcePoint2(65000, -185000),
+      SourcePoint2(34370, -138975),
+      SourcePoint2(91000, -185000),
+    ]);
+  });
+
   test('side touching vertex remains on mixed compatibility seam', () {
     final values = [
       _poly([(410000, -470000), (260000, 470000), (300000, -330000)]),
@@ -274,15 +308,6 @@ void main() {
     final values = [
       _poly([(60000, 50000), (-80000, 30000), (-10000, 20000)]),
       _poly([(120000, 50000), (30000, 50000), (-120000, -90000)]),
-    ];
-    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
-    expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
-  });
-
-  test('late strict-maximum equal-Y boundary remains fallback', () {
-    final values = [
-      _poly([(-126000, 102000), (-455000, -127000), (65000, -185000)]),
-      _poly([(24000, 312000), (-176000, 32000), (91000, -185000)]),
     ];
     expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
     expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);

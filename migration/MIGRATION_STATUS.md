@@ -12,15 +12,15 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). The target is 
 
 A scoped `parity_verified` row never implies its top-level subsystem is complete.
 
-## Current executable checkpoint — 2026-09-15
+## Current executable checkpoint — 2026-09-16
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `83665f5ab62c70275a415e6d46ea6b0ac903b7e3` (`test: keep rounded strict-max state on fallback`);
-- workflow `35032161503` (#582), job `104592903612`, conclusion **success**;
+- validated code `81beaaed952b67843ae63ff114943673304a4b0c` (`fix: preserve equal-y mixed raw start state`);
+- workflow `35069180391` (#588), job `104706390860`, conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **860/860 passing**.
+- `flutter test --reporter expanded` — **861/861 passing**.
 
-The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds six tests beyond #575 for the late strict-maximum single-crossing mixed point-touch class, exact Arachne routing and conservative fallback boundaries.
+The current suite retains every earlier represented Classic/Arachne/geometry fixture, promotes the strict-maximum equal-Y mixed point-touch boundary into the exact helper, locks its complete pinned raw fixture across all cyclic rotations/input orders, and adds exact Arachne zero-offset routing while retaining late multi-crossing, rounded-degenerate, side and horizontal neighbors on fallback.
 
 ## Top-level gates
 
@@ -49,7 +49,7 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. The represented exact subs
 - exactly two positive strict-convex **triangles** for raw-proven point/full/strict-contained contact states, including equal-bottom point ordering and decreasing-Y strict-contained shared-edge contacts;
 - exactly two positive strict-convex triangles with represented partial collinear contact, including host-start/horizontal, guarded/remaining host-end and all non-horizontal staggered non-fixup states;
 - strict-triangle one-point `FixupOutPolygon()` cleanup for endpoint-aligned host-start/host-end joins and complete-shared-edge joins, including the input-order-sensitive removed-start state;
-- exactly two positive strict-convex triangles with proper crossings plus exactly one vertex↔strict-edge-interior point touch for three independently proved source-event classes: #569 strict minimum-Y owner vertex, #575 ordered strict maximum-Y owner vertex with `otherThird.y < min(ownerNeighbor.y)`, and #582 late strict maximum-Y single-crossing state with `otherThird.y > min(ownerNeighbor.y)`.
+- exactly two positive strict-convex triangles with proper crossings plus exactly one vertex↔strict-edge-interior point touch for four independently proved source-event classes: #569 strict minimum-Y owner vertex, #575 ordered strict maximum-Y owner vertex with `otherThird.y < min(ownerNeighbor.y)`, #582 late strict maximum-Y single-crossing state with `otherThird.y > min(ownerNeighbor.y)`, and #588 the non-horizontal strict-maximum equal-Y boundary `otherThird.y == min(ownerNeighbor.y)`.
 
 The exact pinned artifact remains Actions artifact `10085378329`, with downloaded SHA-256 `912517d86774f4705c28a9e649f3fc91f96fe1623bdf070cb5f14f02ba3827f8` and AppImage SHA-256 `ad90fda9a4537222a679b5d2ad12712a86652858106dce00f69fac24c3af8b46`.
 
@@ -65,9 +65,10 @@ Newer contact/fixup/mixed evidence:
 - #562 full-shared-edge one-point fixup: **226908/226908 exact raw paths**;
 - #569 mixed proper-crossing + strict-minimum-Y vertex↔edge point-touch: **39600/39600 exact full raw paths**;
 - #575 ordered strict-maximum mixed point-touch: **72000/72000 exact full raw paths** from 4,000 independent base geometries × all 3×3 rotations × both input orders, spanning 1–4 proper crossings and vertical/positive/negative-slope touched edges;
-- #582 late strict-maximum single-crossing mixed point-touch: **64800/64800 exact full raw paths** from 3,600 independent base geometries — 1,200 vertical, 1,200 positive-slope and 1,200 negative-slope touched edges — × all 3×3 rotations × both input orders.
+- #582 late strict-maximum single-crossing mixed point-touch: **64800/64800 exact full raw paths** from 3,600 independent base geometries — 1,200 vertical, 1,200 positive-slope and 1,200 negative-slope touched edges — × all 3×3 rotations × both input orders;
+- #588 strict-maximum equal-Y mixed point-touch boundary: direct compilation of pinned BambuStudio Clipper1 source in Actions run `35068502159`, job `104704216962`, generated **3,000** independent bases (528 one-crossing and 2,472 multi-crossing), then all 3×3 rotations × both input/AddPath orders; **54000/54000** raw results matched the source `BuildResult()` start rule, while the committed fixed fixture locks the complete raw path for all 18 rotation/order variants.
 
-The #575 and #582 strict-max predicates intentionally meet on an unrepresented equality boundary. #575 owns `otherThird.y < min(ownerPrevious.y, ownerNext.y)` with 1–4 proper crossings. #582 owns `otherThird.y > min(...)` only when there is exactly one proper crossing and the touched edge is non-horizontal. Equality, horizontal strict-max touches, late strict-max states with multiple proper crossings, side-vertex touches, rounded-degenerate states and mixed collinear cases remain explicit fallback.
+The #575/#588/#582 strict-max predicates now partition the represented non-horizontal ordering seam. #575 owns `otherThird.y < min(ownerPrevious.y, ownerNext.y)` with 1–4 proper crossings. #588 owns equality with at least one proper crossing. #582 owns `otherThird.y > min(...)` only when there is exactly one proper crossing. The equal-Y audit also exposed that the valid raw contour may contain two **nonadjacent** global minimum-Y vertices; the helper therefore permits the proven rightmost-minimum `BuildResult()` rebase only for the independently classified equal-Y state. Horizontal strict-max touches, late strict-max states with multiple proper crossings, side-vertex touches, rounded-degenerate states and mixed collinear cases remain explicit fallback.
 
 The runtime output-list evidence continues to matter: touch-time `AddLocalMaxPoly()`/`AppendPolygon()` can alter `OutRec::Pts`, but append alone is not a static failure predicate. The represented classes are bounded by independently validated source scanline/output-list states rather than a geometry-normalized rebase.
 
@@ -82,7 +83,7 @@ Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/c
 | represented integer geometry / Polyline / ArcFitter / Circle / ThickPolyline / Boost-Voronoi / MedialAxis | `lib/core/geometry` source-shaped ports | translated and direct C++/Boost fixtures in current suite | `parity_verified` (scoped) | broader source APIs/pathologies |
 | Classic perimeter represented surface path | classic source pipeline modules | translated/source-shaped process fixtures | `parity_verified` (scoped) | later toolpath families and wider production matrix |
 | Arachne wall-generation dependency chain | `lib/core/slicer/source_arachne_*` | direct/source-shaped plus compiled process fixtures | `parity_verified` (scoped dependencies) | broader production/pathological matrix |
-| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF oracles + #582 CI | `parity_verified` (exact fixture scopes) | remaining mixed states, wider/multi-point fixup, interacting holes, >2 paths and broader Execute cleanup |
+| modified Clipper1 represented offset/Execute/NonZero subsets | `source_clipper1_*` | direct pinned ELF/source oracles + #588 CI | `parity_verified` (exact fixture scopes) | remaining mixed states, wider/multi-point fixup, interacting holes, >2 paths and broader Execute cleanup |
 | represented `process_arachne()` boundary | `SourceArachneProcessPipeline2` + dependencies | common/hole/Alltop/overhang/fill/LoopNode/wedge exact fixtures | `implemented_unverified` | general Clipper1 seams + wider process differentials |
 | full slicer/toolpath product | multiple foundations | partial | `port_started` | fill/support/seam/bridge/adaptive/ironing/brim/skirt/raft/full G-code etc. |
 | formats/profiles/scene/Preview/Device/UI | Flutter/Dart foundations | partial | `port_started` | complete 1:1 behavior and integrations |
@@ -90,7 +91,7 @@ Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/c
 
 ## Immediate next dependency order
 
-1. Continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569/#575/#582 proved classes: strict-max equal-Y states, late strict-max multi-crossing states, rounded/degenerated strict-max cases, side-vertex touches, horizontal touch ordering, then mixed collinear cases. Start from traced `AppendPolygon()` / `OutRec::Pts` state rather than assuming the proper-only rebase rule.
+1. Continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569/#575/#582/#588 proved classes: late strict-max multi-crossing states, rounded/degenerated strict-max cases, side-vertex touches, horizontal touch ordering, then mixed collinear cases. Start from traced `AppendPolygon()` / `OutRec::Pts` state rather than assuming the proper-only rebase rule.
 2. Keep wider-convex and any multi-point/non-triangle `FixupOutPolygon()` states on explicit fallback until raw `OutRec`/`BuildResult()` state is independently proved.
 3. Continue the same Clipper1 final cross-path priority with **interacting holes**, then **more than two interacting paths**.
 4. Extend per-path Clipper1 `Execute()` beyond current orthogonal/V-notch subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup.
