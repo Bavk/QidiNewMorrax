@@ -3,6 +3,8 @@ name: Strict-max AEL-outside rounded oracle
 on:
   push:
     branches: [chatgpt/ael-outside-rounded-strict-max]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
