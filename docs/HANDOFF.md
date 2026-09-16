@@ -16,15 +16,15 @@ Do not infer completion from visual similarity, compilation or common-case tests
 
 Latest validated code checkpoint:
 
-- code commit `827938693fc719ab1ac02f2c6d84b78f6e5e9468` (`ci: revalidate late multicross checkpoint`; functional tree from `3a100f821806671e6ca40dfa0e2961447395134e`);
-- `.github/workflows/flutter-parity.yml` run `35072315131` (#601), job `104716457571`;
+- code commit `5bbdb555af8ecf662a7b906daee39b4a6acafc90` (`fix: cover strict-max single-cross separated minima`);
+- `.github/workflows/flutter-parity.yml` run `35090634147` (#608), job `104775845616`;
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **862/862 passed**;
+- `flutter test --reporter expanded` → **863/863 passed**;
 - job conclusion → **success**.
 
-The suite retains every earlier represented Classic/Arachne/geometry fixture and adds the independently proved late strict-maximum multi-crossing mixed point-touch class, its separated-minimum source-state boundary, exact Arachne zero-offset routing and explicit fallback boundaries for rounded-degenerate, side-vertex and horizontal neighbors.
+The suite retains every earlier represented Classic/Arachne/geometry fixture and adds the independently proved late strict-maximum **single-crossing separated-minimum** boundary, exact all-rotation raw-path regression and Arachne zero-offset routing. Side-vertex, horizontal, mixed-collinear and other rounded/degenerated strict-max states beyond this proved endpoint-Y boundary remain explicit fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -83,7 +83,7 @@ Every broad matrix includes all 3×3 cyclic source rotations and both input orde
 
 For strict triangles with a single collinear shared interval, the one-point post-join collinearity classes are represented for endpoint-aligned overlaps (#549/#552) and full shared edges (#562). Strict-contained and staggered overlaps retain a support-line boundary segment at each relevant endpoint and therefore do not create the same third-vertex/third-vertex cleanup geometry. This does **not** prove wider-convex, multi-point cleanup or mixed-crossing fixup behavior.
 
-### #569 / #575 / #588 / #582 / #601 mixed proper-crossing + point-touch extensions
+### #569 / #575 / #588 / #582 / #601 / #608 mixed proper-crossing + point-touch extensions
 
 `SourceClipper1TwoConvexMixedPointUnion2` remains deliberately state-bounded to exactly two positive strict-convex triangles with at least one proper boundary crossing, exactly one unique vertex↔strict-edge-interior point touch, no second touch and no nonzero collinear overlap.
 
@@ -101,7 +101,9 @@ The equality audit exposed a valid source contour with two **nonadjacent** globa
 
 PR CI #594 correctly caught that the first Dart extension still rejected the valid two-nonadjacent-minimum fixture. The final implementation relaxes that rebase guard only for the independently classified late strict-max multi-crossing boundary above. Final CI #601 is green at **862/862**.
 
-The represented non-horizontal strict-max partition is therefore: #575 `<` with 1–4 proper crossings, #588 `==` with at least one proper crossing, and #582 + #601 `>` spanning the proved single- and multi-crossing states (source matrices cover proper-count 1–4). Horizontal touched edges, side-vertex touches, rounded-degenerate states and mixed-collinear states remain on compatibility fallback. A previously retained rounded strict-max fixture stays explicitly locked as fallback.
+#608 independently closes the corresponding **single-crossing separated-minimum** boundary that had remained as the historical "rounded strict-max" fallback. Direct pinned-source run `35090443828`, job `104775225066`, locks the fixed fixture at **18/18 exact complete raw paths** and adds **3,600** independent bases — 1,200 vertical, 1,200 positive-slope and 1,200 negative-slope touched edges — across all 18 rotation/input-order variants. The generated matrix matched **64800/64800 exact raw starts and 64800/64800 exact complete raw paths**. The implementation therefore extends the separated-minimum rebase permission to `properCount == 1` only for the same late `>` endpoint-Y source state. Flutter parity #608 is green at **863/863**.
+
+The represented non-horizontal strict-max partition is therefore: #575 `<` with 1–4 proper crossings, #588 `==` with at least one proper crossing, and #582 + #601 + #608 `>` spanning the proved single- and multi-crossing states (source matrices cover proper-count 1–4), including independently proved separated-minimum boundaries for both single- and multi-crossing cases. Horizontal touched edges, side-vertex touches, mixed-collinear states and other rounded/degenerated strict-max states beyond this endpoint-Y boundary remain on compatibility fallback.
 
 The earlier runtime evidence remains important: touch-time `AddLocalMaxPoly()`/`AppendPolygon()` is acceptance-relevant but not by itself an accept/reject predicate. The exact classes above are bounded by independently proved source scanline/output-list state, not a broad geometric rebase heuristic.
 
@@ -126,7 +128,7 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. Exact represented subsets 
 - interacting two-positive axis-aligned rectangles for same-span touch, diagonal area overlap, partial unequal edge/T contacts and point-only contacts;
 - exactly two positive strictly convex contours with only proper boundary crossings, preserving modified Clipper1 scanline intersection rounding and exact `BuildResult()` order/start;
 - exactly two positive strict-convex **triangles** for raw-proven zero-area contact states, partial collinear contact states and one-point fixup states through #562;
-- exactly two positive strict-convex triangles for mixed proper-crossing + single point-touch states in the #569 strict-minimum, #575 early ordered strict-maximum, #588 equal-Y strict-maximum, #582 late single-crossing strict-maximum and #601 late multi-crossing strict-maximum classes described above.
+- exactly two positive strict-convex triangles for mixed proper-crossing + single point-touch states in the #569 strict-minimum, #575 early ordered strict-maximum, #588 equal-Y strict-maximum, #582 late single-crossing strict-maximum, #601 late multi-crossing strict-maximum and #608 single-cross separated-minimum classes described above.
 
 Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/collinear output-list states, wider-convex contact/fixup `OutRec` state, multi-point or otherwise unrepresented cleanup, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those continue to use explicit compatibility fallback where necessary.
 
@@ -134,7 +136,7 @@ Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/c
 
 Continue in source/dependency order:
 
-1. continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569/#575/#588/#582/#601 proved event classes: rounded/degenerated strict-max cases, side-vertex touches, horizontal touch ordering, then mixed collinear cases; use traced `AppendPolygon()` / `OutRec::Pts` source state rather than a geometric normalization heuristic;
+1. continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569/#575/#588/#582/#601/#608 proved event classes: remaining rounded/degenerated strict-max cases beyond the separated-minimum endpoint-Y boundary, then side-vertex touches, horizontal touch ordering and mixed collinear cases; use traced `AppendPolygon()` / `OutRec::Pts` source state rather than a geometric normalization heuristic;
 2. keep wider-convex and any multi-point/non-triangle `FixupOutPolygon()` states explicit fallback until their raw `OutRec` behavior is independently proved;
 3. continue the same Clipper1 final cross-path boolean priority with **interacting holes**, then **more than two interacting paths**;
 4. extend per-path Clipper1 `Execute()` beyond current V-notch/orthogonal subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup;
@@ -187,7 +189,8 @@ Mixed proper-crossing + point-touch subsets:
 - `83665f5ab62c70275a415e6d46ea6b0ac903b7e3` — `test: keep rounded strict-max state on fallback` (#582, 860/860);
 - `81beaaed952b67843ae63ff114943673304a4b0c` — `fix: preserve equal-y mixed raw start state` (#588, 861/861);
 - `db140fdd191d3432e38284a5652a7d13602c3d1d` — `feat: extend late strict-max multicross joins`;
-- `3a100f821806671e6ca40dfa0e2961447395134e` — `fix: cover late multicross separated minima` (#601 functional tree, 862/862).
+- `3a100f821806671e6ca40dfa0e2961447395134e` — `fix: cover late multicross separated minima` (#601 functional tree, 862/862);
+- `5bbdb555af8ecf662a7b906daee39b4a6acafc90` — `fix: cover strict-max single-cross separated minima` (#608, 863/863).
 
 ## Numeric/source invariants
 
