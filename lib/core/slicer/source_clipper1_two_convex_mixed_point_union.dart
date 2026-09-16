@@ -35,9 +35,12 @@ import '../geometry/source_polygon.dart';
 /// A separate exact pinned-source Clipper1 probe
 /// matched the proper-only raw start rule in 54000/54000 equal-Y cases across
 /// 3000 bases, all 3x3 cyclic source rotations and both input orders; the
-/// committed equal-Y fixture locks the full raw path. Side/horizontal and
-/// other rounded-degenerate mixed touch states remain explicit compatibility
-/// seams.
+/// committed equal-Y fixture locks the full raw path. A separate traced
+/// rounded-to-touch single-crossing state is represented when exact
+/// `E2InsertsBeforeE1()` ordering places both already-active other bounds
+/// between the owner bounds, so both owner bounds contribute with `WindCnt=1`.
+/// Side/horizontal, AEL-outside rounded collapses and other rounded-degenerate
+/// mixed touch states remain explicit compatibility seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -80,6 +83,7 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
     final touches = <SourcePoint2>{};
     final intersections = <SourcePoint2>{};
+    final roundedEndpointIntersections = <_RoundedMixedIntersection2>[];
     var properCount = 0;
 
     for (var firstIndex = 0; firstIndex < 3; firstIndex++) {
@@ -91,15 +95,19 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
         if (_segmentsProperlyIntersect(a, b, c, d)) {
           final point = _clipperIntersection(a, b, c, d);
-          if (point == null ||
-              point == a ||
-              point == b ||
-              point == c ||
-              point == d ||
-              !intersections.add(point)) {
-            return null;
-          }
+          if (point == null) return null;
           properCount++;
+          if (point == a || point == b || point == c || point == d) {
+            roundedEndpointIntersections.add(
+              _RoundedMixedIntersection2(
+                firstEdgeIndex: firstIndex,
+                secondEdgeIndex: secondIndex,
+                point: point,
+              ),
+            );
+            continue;
+          }
+          if (!intersections.add(point)) return null;
           firstSplits[firstIndex].add(point);
           secondSplits[secondIndex].add(point);
           continue;
@@ -146,6 +154,24 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
     final owner = firstOwnsTouch ? first : second;
     final other = firstOwnsTouch ? second : first;
+    if (roundedEndpointIntersections.isNotEmpty) {
+      if (roundedEndpointIntersections.length != 1) return null;
+      final rounded = roundedEndpointIntersections.single;
+      final result = _roundedStrictMaximumOwnerCollapseOrNull(
+        owner,
+        other,
+        touch,
+        properCount: properCount,
+        collapsedOwnerEdgeIndex: firstOwnsTouch
+            ? rounded.firstEdgeIndex
+            : rounded.secondEdgeIndex,
+        collapsedOtherEdgeIndex: firstOwnsTouch
+            ? rounded.secondEdgeIndex
+            : rounded.firstEdgeIndex,
+        roundedPoint: rounded.point,
+      );
+      return result == null ? null : SourcePolygon2(result);
+    }
     if (!_isSupportedTouchState(owner, other, touch, properCount)) return null;
     final equalYStrictMaximum =
         _isEqualYStrictMaximumTouchState(owner, other, touch);
@@ -271,6 +297,114 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       }
     }
     return null;
+  }
+
+  static List<SourcePoint2>? _roundedStrictMaximumOwnerCollapseOrNull(
+    SourcePolygon2 owner,
+    SourcePolygon2 other,
+    SourcePoint2 touch, {
+    required int properCount,
+    required int collapsedOwnerEdgeIndex,
+    required int collapsedOtherEdgeIndex,
+    required SourcePoint2 roundedPoint,
+  }) {
+    if (properCount != 1 || roundedPoint != touch) return null;
+    final ownerIndex = owner.points.indexOf(touch);
+    if (ownerIndex < 0) return null;
+    final previousIndex = (ownerIndex + 2) % 3;
+    final nextIndex = (ownerIndex + 1) % 3;
+    final previous = owner.points[previousIndex];
+    final next = owner.points[nextIndex];
+    if (!(previous.y < touch.y && next.y < touch.y) || previous.y == next.y) {
+      return null;
+    }
+    if (collapsedOwnerEdgeIndex != ownerIndex &&
+        collapsedOwnerEdgeIndex != previousIndex) {
+      return null;
+    }
+
+    final touchEdgeIndex = _strictContainingEdgeIndex(other, touch);
+    if (touchEdgeIndex == null || collapsedOtherEdgeIndex == touchEdgeIndex) {
+      return null;
+    }
+    final touchStart = other.points[touchEdgeIndex];
+    final touchEnd = other.points[(touchEdgeIndex + 1) % 3];
+    if (touchStart.y == touchEnd.y) return null;
+    final minimumOwnerNeighborY = previous.y < next.y ? previous.y : next.y;
+    final otherThird = other.points[(touchEdgeIndex + 2) % 3];
+    if (otherThird.y <= minimumOwnerNeighborY ||
+        touchStart.y == minimumOwnerNeighborY ||
+        touchEnd.y == minimumOwnerNeighborY) {
+      return null;
+    }
+
+    var insideCount = 0;
+    for (final point in other.points) {
+      if (_strictlyInsidePositiveTriangle(owner, point)) insideCount++;
+    }
+    if (insideCount != 2) return null;
+
+    final outgoingOwner = _MixedClipperEdge2.fromSegment(touch, next);
+    final incomingOwner = _MixedClipperEdge2.fromSegment(previous, touch);
+    final leftBound = outgoingOwner.dx > incomingOwner.dx
+        ? outgoingOwner
+        : incomingOwner;
+    final rightBound = outgoingOwner.dx > incomingOwner.dx
+        ? incomingOwner
+        : outgoingOwner;
+    final touchedEdge = _MixedClipperEdge2.fromSegment(touchStart, touchEnd);
+    final crossingEdge = _MixedClipperEdge2.fromSegment(
+      other.points[collapsedOtherEdgeIndex],
+      other.points[(collapsedOtherEdgeIndex + 1) % 3],
+    );
+    for (final active in <_MixedClipperEdge2>[touchedEdge, crossingEdge]) {
+      if (!(active.top.y < touch.y && active.bot.y > touch.y) ||
+          active.topX(touch.y) != touch.x) {
+        return null;
+      }
+      if (!_e2InsertsBeforeE1(active, leftBound, touch.y) ||
+          _e2InsertsBeforeE1(active, rightBound, touch.y)) {
+        return null;
+      }
+    }
+
+    // Pinned source trace: both owner bounds have WindCnt=1 here. The two
+    // same-coordinate events remove the rounded-away sliver and BuildResult()
+    // starts at the positive-order owner vertex immediately preceding touch.
+    return <SourcePoint2>[previous, touch, next];
+  }
+
+  static bool _strictlyInsidePositiveTriangle(
+    SourcePolygon2 triangle,
+    SourcePoint2 point,
+  ) {
+    for (var index = 0; index < 3; index++) {
+      if (_orientation(
+            triangle.points[index],
+            triangle.points[(index + 1) % 3],
+            point,
+          ) <= 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Pinned Clipper1 E2InsertsBeforeE1(), including its equal-Curr.x TopX tie.
+  static bool _e2InsertsBeforeE1(
+    _MixedClipperEdge2 first,
+    _MixedClipperEdge2 second,
+    int currentY,
+  ) {
+    final firstCurrentX = first.topX(currentY);
+    final secondCurrentX = second.topX(currentY);
+    if (secondCurrentX == firstCurrentX) {
+      if (second.top.y > first.top.y) {
+        return second.top.x < first.topX(second.top.y);
+      }
+      return first.top.x > second.topX(first.top.y);
+    }
+    return secondCurrentX < firstCurrentX;
   }
 
   static bool _appendOutsideFragments(
@@ -527,6 +661,18 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
   static int _clipperRound(double value) =>
       value < 0 ? (value - 0.5).ceil() : (value + 0.5).floor();
+}
+
+class _RoundedMixedIntersection2 {
+  const _RoundedMixedIntersection2({
+    required this.firstEdgeIndex,
+    required this.secondEdgeIndex,
+    required this.point,
+  });
+
+  final int firstEdgeIndex;
+  final int secondEdgeIndex;
+  final SourcePoint2 point;
 }
 
 class _MixedClipperEdge2 {

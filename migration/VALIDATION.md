@@ -17,14 +17,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `35090634147` (#608), job `104775845616`, executed code commit `5bbdb555af8ecf662a7b906daee39b4a6acafc90` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `35124252980` (#615), job `104889290591`, executed clean code checkpoint `d3bc685a316b8d70bffe66b0eecf496e5dd9926f` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **863/863 tests passed**;
+- `flutter test --reporter expanded` — **868/868 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the independently proved late strict-maximum single-crossing separated-minimum boundary, exact all-rotation raw-path regression and Arachne zero-offset routing while retaining side-vertex, horizontal, mixed-collinear and other rounded/degenerated strict-max states on fallback.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the independently traced rounded-to-touch AEL-contained strict-maximum single-crossing collapse, exact small and translated/scaled all-rotation regressions, exact Arachne zero-offset routing, and two AEL-outside negative regressions that retain fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -41,6 +41,25 @@ Reference evidence comes from the **actual upstream compiled BambuStudio artifac
 The artifact was re-used from the previously SHA-verified download for retained raw-ELF batches. The debug-symbol ELF exposes the pinned modified Clipper 6.2.9 implementation. The preload probe calls the exact `clipper_union(Paths&, pftNonZero)` template at PIE offset `0x10b54d0` before application startup and dumps raw result paths without normalizing rotation/order.
 
 Pinned source inspection and ELF tracing confirm why geometric equivalence is insufficient: `BuildResult(Paths&)` starts each result at `OutRec::Pts->Prev`; `AddOutPt()`, local-minimum/local-maximum side assignment, `AppendPolygon()`, `JoinPoints()` and `FixupOutPolygon()` can change output-list state and therefore raw path rotation/order.
+
+## #615 rounded-to-touch AEL-contained strict-maximum collapse
+
+`SourceClipper1TwoConvexMixedPointUnion2` now represents one rounded/degenerated strict-max state beyond the #608 separated-minimum endpoint-Y boundary. The state has exactly one proper crossing whose pinned Clipper1 rounded intersection lands on the strict maximum-Y point-touch coordinate. This is **not** accepted from geometry alone.
+
+A direct pinned-source event trace in run `35122390233`, job `104883098941`, established the source-shaped discriminator. At `touch.y`, the accepted branch has both already-active bounds from the touched triangle between the two owner bounds under the exact Clipper1 `E2InsertsBeforeE1()` / `TopX()` ordering. Both owner bounds therefore contribute with `WindCnt == 1`; the same-coordinate proper-cross/touch events remove the rounded-away sliver and the raw result is the owner contour beginning at the positive-order owner predecessor. Two traced counterstates put an active other bound outside that interval, give the owner `WindCnt == 2`, and retain either an inner vertex or a wedge; both are committed as fallback regressions.
+
+Independent pinned-source matrices at commit `f2b55a5a83f266cf56e06c7943a81a08bebb7fad` produced:
+
+- run `35122592466`, job `104883775222`: **5,000** bases × 18 variants = **90000/90000 exact complete raw paths**;
+- run `35123441575`, job `104886606102`, conclusion success: **1,000** asymmetric, nonzero-translated bases × 18 variants = **18000/18000 exact complete raw paths**, with collapsed-owner-edge split 531/469;
+- supplementary run `35122868681`, job `104884696367`: **1,239** translated/scaled valid bases = **22302/22302 exact complete raw paths** before its generation-attempt cap;
+- supplementary run `35123235250`, job `104885923066`: **1,935** asymmetric translated valid bases = **34830/34830 exact complete raw paths** before its generation-attempt cap.
+
+The supplementary runs ended because their requested valid-base quota was not reached inside the attempt cap; neither produced a source mismatch. Aggregate represented evidence is **9,174 bases / 165132/165132 exact complete raw-path comparisons**, each base checked over all 3×3 cyclic rotations and both input/AddPath orders.
+
+The Dart change ports the pinned equal-`Curr.x` `E2InsertsBeforeE1()` tie branch, validates the AEL-contained state, and returns the exact owner predecessor→touch→successor path before the ordinary boundary reconstruction. It deliberately leaves AEL-outside rounded retained-vertex/wedge cases, side-vertex touches, horizontal touch ordering, mixed-collinear output-list states and other rounded degeneracies on fallback.
+
+Flutter parity #615 (`35124252980`, job `104889290591`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **868/868** tests passing.
 
 ## #608 late strict-maximum single-crossing separated-minimum boundary
 
@@ -153,7 +172,7 @@ Its independent raw-ELF matrix remains **72000/72000 exact full raw result paths
 
 A targeted runtime preload trace over **500** canonical #575 bases found 400 without touch-time local-max/append activity and 100 with touch-time `AddLocalMaxPoly()` + `AppendPolygon()` at the touching vertex; **500/500** still matched the proved raw start. Touch-time append is therefore acceptance-relevant but not itself a failure predicate.
 
-A weaker strict-max hypothesis was falsified independently: vertical touched edge + exactly one proper crossing matched only **44712/45000**, leaving **288** raw mismatches. The exact #575/#588/#582/#601/#608 predicates must not be widened from slope or extrema alone.
+A weaker strict-max hypothesis was falsified independently: vertical touched edge + exactly one proper crossing matched only **44712/45000**, leaving **288** raw mismatches. The exact #575/#588/#582/#601/#608/#615 predicates must not be widened from slope, extrema or rounded-coordinate coincidence alone.
 
 ## #569 strict-minimum mixed point-touch oracle
 
@@ -183,7 +202,7 @@ A second independently generated matrix testing a simpler geometric guard:
 - exact matches: **27,450/28,800**;
 - raw-start mismatches: **1,350/28,800**.
 
-Earlier runtime tracing established that touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle is acceptance-relevant. The #575/#588/#582/#601/#608 results refine that conclusion: append state alone is not a static classifier. The exact accept/reject boundary must come from independently proved scanline/output-list state.
+Earlier runtime tracing established that touch-time `AppendPolygon()` / `OutRec::Pts` lifecycle is acceptance-relevant. The #575/#588/#582/#601/#608/#615 results refine that conclusion: append state or rounded-coordinate coincidence alone is not a static classifier. The exact accept/reject boundary must come from independently proved scanline/AEL/output-list state.
 
 ## #562 full-shared-edge one-point fixup oracle
 
