@@ -28,14 +28,16 @@ import '../geometry/source_polygon.dart';
 /// 64800/64800 for the late single-crossing strict-maximum class. Independent
 /// pinned-source late multi-crossing probes add 216000/216000 exact raw starts
 /// across proper-count 2-4, including targeted vertical, positive-slope and
-/// negative-slope touched edges. A separate late multi-crossing boundary matrix
-/// adds 64800/64800 exact full raw paths where the touched-edge endpoint and
-/// earlier owner neighbor share the separated global minimum Y. A separate
-/// exact pinned-source Clipper1 probe
+/// negative-slope touched edges. Separate late separated-minimum boundary
+/// matrices add 64800/64800 exact full raw paths for multi-crossing states and
+/// 64800/64800 exact full raw paths for single-crossing states where the
+/// touched-edge endpoint and earlier owner neighbor share the global minimum Y.
+/// A separate exact pinned-source Clipper1 probe
 /// matched the proper-only raw start rule in 54000/54000 equal-Y cases across
 /// 3000 bases, all 3x3 cyclic source rotations and both input orders; the
 /// committed equal-Y fixture locks the full raw path. Side/horizontal and
-/// rounded-degenerate mixed touch states remain explicit compatibility seams.
+/// other rounded-degenerate mixed touch states remain explicit compatibility
+/// seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -236,7 +238,7 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     SourcePoint2 touch,
     int properCount,
   ) {
-    if (properCount < 2) return false;
+    if (properCount < 1) return false;
     final ownerIndex = owner.points.indexOf(touch);
     if (ownerIndex < 0) return false;
     final previous = owner.points[(ownerIndex + 2) % 3];

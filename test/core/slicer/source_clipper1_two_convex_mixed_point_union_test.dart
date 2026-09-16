@@ -200,13 +200,19 @@ void main() {
     );
   });
 
-  test('rounded old strict-maximum fixture remains fallback', () {
-    final values = [
+  test('late strict-maximum single-cross separated-minimum state is exact', () {
+    _expectExactAllRotations(
       _poly([(-420000, -80000), (-620000, -260000), (-390000, -160000)]),
       _poly([(-420000, -30000), (-420000, -260000), (-340000, -180000)]),
-    ];
-    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
-    expect(SourceClipper1TwoConvexUnion2.supports(values), isFalse);
+      const [
+        SourcePoint2(-340000, -180000),
+        SourcePoint2(-420000, -30000),
+        SourcePoint2(-420000, -80000),
+        SourcePoint2(-620000, -260000),
+        SourcePoint2(-420000, -173043),
+        SourcePoint2(-420000, -260000),
+      ],
+    );
   });
 
   test('Arachne zero offset routes represented mixed point state exactly', () {
@@ -313,6 +319,25 @@ void main() {
       SourcePoint2(-856000, 79000),
       SourcePoint2(-773253, 145198),
       SourcePoint2(-354000, 79000),
+    ]);
+  });
+
+  test('Arachne zero offset routes single-cross separated-minimum state exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(-420000, -80000), (-620000, -260000), (-390000, -160000)]),
+        _poly([(-420000, -30000), (-420000, -260000), (-340000, -180000)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(-340000, -180000),
+      SourcePoint2(-420000, -30000),
+      SourcePoint2(-420000, -80000),
+      SourcePoint2(-620000, -260000),
+      SourcePoint2(-420000, -173043),
+      SourcePoint2(-420000, -260000),
     ]);
   });
 
