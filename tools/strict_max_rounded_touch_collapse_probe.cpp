@@ -167,14 +167,6 @@ static Path rotate_path(const Path &p, int start) {
   return out;
 }
 
-static Path rotate_owner_to_unique_minimum(const Path &owner) {
-  int anchor = 0;
-  for (int i = 1; i < 3; ++i) {
-    if (owner[i].y() < owner[anchor].y()) anchor = i;
-  }
-  return rotate_path(owner, anchor);
-}
-
 static bool source_union(const Path &a, const Path &b, Path &out) {
   Clipper clipper;
   if (!clipper.AddPath(a, ptSubject, true)) return false;
@@ -227,9 +219,9 @@ static bool one_unique_touch_no_overlap(const Path &first, const Path &second,
   return true;
 }
 
-static int touch_collapse_count(const Path &first, const Path &second,
-                                const IntPoint &touch) {
-  int count = 0;
+static int touch_collapse_owner_edge(const Path &first, const Path &second,
+                                     const IntPoint &touch) {
+  int found = -1;
   for (int i = 0; i < 3; ++i) {
     const IntPoint &a = first[i];
     const IntPoint &b = first[(i + 1) % 3];
@@ -238,10 +230,12 @@ static int touch_collapse_count(const Path &first, const Path &second,
       const IntPoint &d = second[(j + 1) % 3];
       if (!proper(a, b, c, d)) continue;
       IntPoint rounded;
-      if (rounded_intersection(a, b, c, d, rounded) && same(rounded, touch)) ++count;
+      if (!rounded_intersection(a, b, c, d, rounded) || !same(rounded, touch)) continue;
+      if (found != -1) return -2;
+      found = i;
     }
   }
-  return count;
+  return found;
 }
 
 static bool exact_all_variants(const Path &owner, const Path &other,
@@ -267,9 +261,12 @@ int main() {
   const IntPoint touch(0, 0);
   const int target = 5000;
   int tested = 0;
+  int collapse_edge_0 = 0;
+  int collapse_edge_1 = 0;
+  int collapse_edge_2 = 0;
   long long attempts = 0;
 
-  while (attempts < 120000000 && tested < target) {
+  while (attempts < 160000000 && tested < target) {
     ++attempts;
     IntPoint p(coord(rng), neg_y(rng));
     IntPoint q(coord(rng), neg_y(rng));
@@ -297,7 +294,9 @@ int main() {
     IntPoint found_touch;
     if (!one_unique_touch_no_overlap(owner, other, proper_count, found_touch)) continue;
     if (!same(found_touch, touch) || proper_count != 1) continue;
-    if (touch_collapse_count(owner, other, touch) != 1) continue;
+
+    const int collapse_owner_edge = touch_collapse_owner_edge(owner, other, touch);
+    if (collapse_owner_edge < 0) continue;
 
     int inside_count = 0;
     for (const IntPoint &point : other) {
@@ -305,27 +304,38 @@ int main() {
     }
     if (inside_count != 2) continue;
 
-    const Path expected = rotate_owner_to_unique_minimum(owner);
+    // In this state the pinned source drops the rounded-away sliver and emits
+    // the owner triangle. OutRec::Pts is anchored at the owner vertex directly
+    // preceding the strict-max touch in positive source order.
+    const Path expected = rotate_path(owner, 2);
     if (!exact_all_variants(owner, other, expected)) {
       Path actual;
       source_union(owner, other, actual);
-      std::cerr << "COUNTER owner=" << path_string(owner)
+      std::cerr << "COUNTER edge=" << collapse_owner_edge
+                << " owner=" << path_string(owner)
                 << " other=" << path_string(other)
                 << " expected=" << path_string(expected)
                 << " actual=" << path_string(actual) << "\n";
       return 3;
     }
 
+    if (collapse_owner_edge == 0) ++collapse_edge_0;
+    else if (collapse_owner_edge == 1) ++collapse_edge_1;
+    else if (collapse_owner_edge == 2) ++collapse_edge_2;
     ++tested;
+
     if (tested <= 8) {
-      std::cout << "CASE " << tested << " owner=" << path_string(owner)
+      std::cout << "CASE " << tested << " edge=" << collapse_owner_edge
+                << " owner=" << path_string(owner)
                 << " other=" << path_string(other)
                 << " raw=" << path_string(expected) << "\n";
     }
   }
 
   std::cout << "tested_bases=" << tested
-            << " variants=" << (long long)tested * 18
+            << " exact_full_paths=" << (long long)tested * 18
+            << " collapse_edges=" << collapse_edge_0 << ","
+            << collapse_edge_1 << "," << collapse_edge_2
             << " attempts=" << attempts << "\n";
   return tested == target ? 0 : 2;
 }
