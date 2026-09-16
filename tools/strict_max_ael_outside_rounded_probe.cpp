@@ -225,18 +225,19 @@ int main() {
       if (!(e.top.y() < 0 && e.bot.y() > 0) || top_x(e,0) != 0) return -1;
       const bool before_left = e2_before(e,left,0);
       const bool before_right = e2_before(e,right,0);
-      if (!before_left && !before_right) return 0; // retained-side outside AEL
-      if (before_left && !before_right) return 1; // between owner bounds
-      if (before_left && before_right) return 2;  // opposite-side outside AEL
+      if (!before_left && !before_right) return 0;
+      if (before_left && !before_right) return 1;
+      if (before_left && before_right) return 2;
       return -1;
     };
     const int touched_position = position(touched);
     const int crossing_position = position(crossing);
-    const bool retained_state = touched_position == 0 && crossing_position == 1;
-    const bool wedge_state = touched_position == 1 && crossing_position == 0;
+    const IntPoint touch_end = other[(touch_edge+1)%3];
+    const bool touch_end_inside = strictly_inside(owner, touch_end);
+    const bool retained_state = touched_position == 0 && crossing_position == 1 && touch_end_inside;
+    const bool wedge_state = touched_position == 1 && crossing_position == 0 && !touch_end_inside;
     if (!retained_state && !wedge_state) continue;
 
-    const IntPoint touch_end = other[(touch_edge+1)%3];
     Path expected;
     if (retained_state) {
       if (retained >= target_each) continue;
@@ -249,6 +250,7 @@ int main() {
       Path actual; source_union(owner,other,actual);
       std::cerr << "COUNTER touched_position=" << touched_position
                 << " crossing_position=" << crossing_position
+                << " touch_end_inside=" << touch_end_inside
                 << " owner=" << path_string(owner) << " other=" << path_string(other)
                 << " expected=" << path_string(expected) << " actual=" << path_string(actual) << "\n";
       return 3;
