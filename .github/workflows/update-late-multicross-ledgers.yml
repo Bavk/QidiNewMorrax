@@ -1,0 +1,30 @@
+name: Apply late multicross ledger update
+
+on:
+  push:
+    branches: [chatgpt/late-strict-max-multicross]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update ledgers and self-clean
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 tools/update_late_multicross_ledgers.py
+          rm -f tools/update_late_multicross_ledgers.py
+          rm -f .github/workflows/update-late-multicross-ledgers.yml
+          git config user.name Bavk
+          git config user.email denmurdok@gmail.com
+          git add -A
+          git diff --cached --check
+          git commit -m 'docs: record late strict-max multicross validation'
+          git push origin HEAD:chatgpt/late-strict-max-multicross
