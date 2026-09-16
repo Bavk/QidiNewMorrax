@@ -29,5 +29,6 @@ jobs:
           curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/clipper/clipper.cpp" -o oracle/src/clipper/clipper.cpp
           curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/clipper/clipper.hpp" -o oracle/src/clipper/clipper.hpp
           curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/libslic3r/Int128.hpp" -o oracle/src/libslic3r/Int128.hpp
+          sed -i 's/long long min_y = raw.front().y()/int min_y = raw.front().y()/g' tools/late_strict_max_separated_min_probe.cpp
           g++ -std=c++17 -O2 -Ioracle/src -I/usr/include/eigen3 oracle/src/clipper/clipper.cpp tools/late_strict_max_separated_min_probe.cpp -o oracle/late_strict_max_separated_min_probe
           ./oracle/late_strict_max_separated_min_probe
