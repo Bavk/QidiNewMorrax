@@ -1,0 +1,52 @@
+name: Strict-max rounded event trace
+
+on:
+  push:
+    branches: [chatgpt/rounded-degenerate-strict-max]
+
+permissions:
+  contents: read
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Eigen
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libeigen3-dev
+
+      - name: Build traced pinned Clipper1
+        shell: bash
+        run: |
+          set -euxo pipefail
+          PIN=f2b55a5a83f266cf56e06c7943a81a08bebb7fad
+          mkdir -p trace/src/clipper trace/src/libslic3r
+          curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/clipper/clipper.cpp" -o trace/src/clipper/clipper.cpp
+          curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/clipper/clipper.hpp" -o trace/src/clipper/clipper.hpp
+          curl -fsSL "https://raw.githubusercontent.com/bambulab/BambuStudio/${PIN}/src/libslic3r/Int128.hpp" -o trace/src/libslic3r/Int128.hpp
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('trace/src/clipper/clipper.cpp')
+          text = path.read_text()
+          text = text.replace('#include <ostream>\n', '#include <ostream>\n#include <iostream>\n')
+          text = text.replace(
+              'void Clipper::IntersectEdges(TEdge *e1, TEdge *e2, IntPoint &Pt)\n{\n  bool e1Contributing',
+              '''void Clipper::IntersectEdges(TEdge *e1, TEdge *e2, IntPoint &Pt)\n{\n  std::cerr << "IX pt=(" << Pt.x() << "," << Pt.y() << ")"\n            << " e1=(" << e1->Bot.x() << "," << e1->Bot.y() << ")->(" << e1->Top.x() << "," << e1->Top.y() << ") dx=" << e1->Dx << " out=" << e1->OutIdx << " side=" << int(e1->Side) << " wc=" << e1->WindCnt\n            << " e2=(" << e2->Bot.x() << "," << e2->Bot.y() << ")->(" << e2->Top.x() << "," << e2->Top.y() << ") dx=" << e2->Dx << " out=" << e2->OutIdx << " side=" << int(e2->Side) << " wc=" << e2->WindCnt << "\\n";\n  bool e1Contributing''')
+          text = text.replace(
+              'OutPt* Clipper::AddOutPt(TEdge *e, const IntPoint &pt)\n{\n  if(  e->OutIdx < 0 )',
+              '''OutPt* Clipper::AddOutPt(TEdge *e, const IntPoint &pt)\n{\n  std::cerr << "OUT pt=(" << pt.x() << "," << pt.y() << ") edge=(" << e->Bot.x() << "," << e->Bot.y() << ")->(" << e->Top.x() << "," << e->Top.y() << ") dx=" << e->Dx << " out=" << e->OutIdx << " side=" << int(e->Side) << " wc=" << e->WindCnt << "\\n";\n  if(  e->OutIdx < 0 )''')
+          text = text.replace(
+              'void Clipper::AddLocalMaxPoly(TEdge *e1, TEdge *e2, const IntPoint &Pt)\n{\n  AddOutPt( e1, Pt );',
+              '''void Clipper::AddLocalMaxPoly(TEdge *e1, TEdge *e2, const IntPoint &Pt)\n{\n  std::cerr << "MAX pt=(" << Pt.x() << "," << Pt.y() << ") out=" << e1->OutIdx << "," << e2->OutIdx << "\\n";\n  AddOutPt( e1, Pt );''')
+          text = text.replace(
+              '    if (!lb || !rb) continue;\n\n    //if any output polygons share an edge',
+              '''    std::cerr << "AEL y=" << botY;\n    for (TEdge *trace_e = m_ActiveEdges; trace_e; trace_e = trace_e->NextInAEL)\n      std::cerr << " | (" << trace_e->Bot.x() << "," << trace_e->Bot.y() << ")->(" << trace_e->Top.x() << "," << trace_e->Top.y() << ") curr=" << trace_e->Curr.x() << " dx=" << trace_e->Dx << " out=" << trace_e->OutIdx << " side=" << int(trace_e->Side) << " wc=" << trace_e->WindCnt;\n    std::cerr << "\\n";\n\n    if (!lb || !rb) continue;\n\n    //if any output polygons share an edge''')
+          path.write_text(text)
+          PY
+          g++ -std=c++17 -O0 -g -Itrace/src -I/usr/include/eigen3 trace/src/clipper/clipper.cpp tools/strict_max_rounded_trace.cpp -o trace/strict_max_rounded_trace
+          ./trace/strict_max_rounded_trace
