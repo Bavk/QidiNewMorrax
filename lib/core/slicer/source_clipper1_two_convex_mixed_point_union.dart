@@ -12,8 +12,11 @@ import '../geometry/source_polygon.dart';
 /// 1. the strict minimum-Y vertex of its owning triangle;
 /// 2. the strict maximum-Y vertex, with a non-horizontal touched edge and the
 ///    other triangle's third vertex strictly above both neighboring owner
-///    vertices in Clipper scanline order (`third.y < min(neighbor.y)`); or
-/// 3. the strict maximum-Y vertex, with exactly one proper crossing, a
+///    vertices in Clipper scanline order (`third.y < min(neighbor.y)`);
+/// 3. the strict maximum-Y vertex, with a non-horizontal touched edge and the
+///    other triangle's third vertex exactly tied with the earlier owner
+///    neighbor (`third.y == min(neighbor.y)`); or
+/// 4. the strict maximum-Y vertex, with exactly one proper crossing, a
 ///    non-horizontal touched edge and the other triangle's third vertex
 ///    strictly later than the earlier owner neighbor
 ///    (`third.y > min(neighbor.y)`).
@@ -23,10 +26,13 @@ import '../geometry/source_polygon.dart';
 /// proper-only convex helper is exact for these source states. Independent
 /// direct raw-ELF matrices matched 39600/39600 full raw paths for the
 /// strict-minimum class, 72000/72000 for the ordered strict-maximum class and
-/// 64800/64800 for the late single-crossing strict-maximum class, each across
-/// all 3x3 cyclic source rotations and both input orders. Other maximum/side/
-/// horizontal/equal-Y mixed touch states remain explicit compatibility seams
-/// because broader audits contain raw-start counterexamples.
+/// 64800/64800 for the late single-crossing strict-maximum class. A separate
+/// exact pinned-source Clipper1 probe matched the proper-only raw start rule in
+/// 54000/54000 equal-Y cases across 3000 bases, all 3x3 cyclic source rotations
+/// and both input orders; the committed equal-Y fixture locks the full raw path.
+/// Side/horizontal, late multi-crossing and rounded-degenerate mixed touch
+/// states remain explicit compatibility seams because broader audits contain
+/// raw-start counterexamples.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -180,9 +186,9 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     final otherThird = other.points[(edgeIndex + 2) % 3];
     final minimumOwnerNeighborY =
         previous.y < next.y ? previous.y : next.y;
-    if (otherThird.y < minimumOwnerNeighborY) return true;
+    if (otherThird.y <= minimumOwnerNeighborY) return true;
 
-    return properCount == 1 && otherThird.y > minimumOwnerNeighborY;
+    return properCount == 1;
   }
 
   static int? _strictContainingEdgeIndex(
