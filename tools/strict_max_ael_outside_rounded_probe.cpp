@@ -221,16 +221,24 @@ int main() {
     const Edge right = outgoing.dx > incoming.dx ? incoming : outgoing;
     const Edge touched = edge_from(other[touch_edge], other[(touch_edge+1)%3]);
     const Edge crossing = edge_from(other[crossing_edge], other[(crossing_edge+1)%3]);
-    auto between = [&](const Edge &e) {
-      if (!(e.top.y() < 0 && e.bot.y() > 0) || top_x(e,0) != 0) return false;
-      return e2_before(e,left,0) && !e2_before(e,right,0);
+    auto position = [&](const Edge &e) {
+      if (!(e.top.y() < 0 && e.bot.y() > 0) || top_x(e,0) != 0) return -1;
+      const bool before_left = e2_before(e,left,0);
+      const bool before_right = e2_before(e,right,0);
+      if (!before_left && !before_right) return 0; // retained-side outside AEL
+      if (before_left && !before_right) return 1; // between owner bounds
+      if (before_left && before_right) return 2;  // opposite-side outside AEL
+      return -1;
     };
-    const bool touched_between = between(touched), crossing_between = between(crossing);
-    if (touched_between == crossing_between) continue;
+    const int touched_position = position(touched);
+    const int crossing_position = position(crossing);
+    const bool retained_state = touched_position == 0 && crossing_position == 1;
+    const bool wedge_state = touched_position == 1 && crossing_position == 0;
+    if (!retained_state && !wedge_state) continue;
 
-    Path expected;
     const IntPoint touch_end = other[(touch_edge+1)%3];
-    if (!touched_between && crossing_between) {
+    Path expected;
+    if (retained_state) {
       if (retained >= target_each) continue;
       expected = {owner[1], owner[2], touch, touch_end};
     } else {
@@ -239,12 +247,13 @@ int main() {
     }
     if (!exact_all_variants(owner, other, expected)) {
       Path actual; source_union(owner,other,actual);
-      std::cerr << "COUNTER touched_between=" << touched_between
+      std::cerr << "COUNTER touched_position=" << touched_position
+                << " crossing_position=" << crossing_position
                 << " owner=" << path_string(owner) << " other=" << path_string(other)
                 << " expected=" << path_string(expected) << " actual=" << path_string(actual) << "\n";
       return 3;
     }
-    if (!touched_between) ++retained; else ++wedge;
+    if (retained_state) ++retained; else ++wedge;
   }
   std::cout << "generated retained=" << retained << "/" << target_each
             << " wedge=" << wedge << "/" << target_each << " bases\n";
