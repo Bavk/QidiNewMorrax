@@ -17,19 +17,19 @@ This repository is a **strict 1:1 reimplementation** of Qidi Flow 2.07.02.60 Pas
 
 Do not infer completion from visual similarity, compilation or common-case tests. Source quirks are part of the contract.
 
-## Current validated checkpoint — 2026-09-16
+## Current validated checkpoint — 2026-09-17
 
 Latest validated code checkpoint:
 
-- code commit `00a49000cedaa85f21bd9fbfcf007e2512860bb6` (`chore: remove rounded collapse patch workflow`; clean two-file functional tree for the rounded-collapse change);
-- `.github/workflows/flutter-parity.yml` run `35218255121` (#615), job `105191803438`;
+- code commit `00a49000cedaa85f21bd9fbfcf007e2512860bb6` (clean production checkpoint for the translated AEL-outside rounded-family extension);
+- `.github/workflows/flutter-parity.yml` run `35218255121` (#628), job `105191803438`;
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
 - `flutter test --reporter expanded` → **870/870 passed**;
 - job conclusion → **success**.
 
-The suite retains every earlier represented Classic/Arachne/geometry fixture and adds one independently traced **rounded-to-touch AEL-contained strict-maximum single-crossing collapse**. The accepted state uses exact pinned `E2InsertsBeforeE1()` / `TopX()` ordering: both already-active bounds from the touched triangle lie between the two owner bounds at the strict-max touch, both owner bounds contribute with `WindCnt == 1`, and the same-coordinate crossing/touch events collapse the rounded-away sliver to the owner triangle. AEL-outside `WindCnt == 2` retained-vertex/wedge states, side-vertex touches, horizontal touches and mixed-collinear states remain explicit fallback.
+The suite retains every earlier represented Classic/Arachne/geometry fixture, including the #615 rounded-to-touch AEL-contained collapse, and additionally locks two independently traced **AEL-outside** strict-maximum rounded families: retained-inner-vertex and retained-wedge under integer translation only. Scaling is explicitly excluded by pinned-source counterevidence. Broader AEL-outside rounded/degenerated states, side-vertex touches, horizontal touches and mixed-collinear states remain explicit fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 

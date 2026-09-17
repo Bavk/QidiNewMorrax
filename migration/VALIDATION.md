@@ -14,7 +14,7 @@ This file records only work that has actually executed. Acceptance authority rem
 - Extracted source files inventoried: **8,632**.
 - Earlier local runtime-asset audit: **3,657/3,657** copied runtime entries matched source SHA-256; full publication/reverification from GitHub/release inputs is still open.
 
-## Current executed Flutter/Dart checkpoint — 2026-09-16
+## Current executed Flutter/Dart checkpoint — 2026-09-17
 
 Pinned toolchain:
 
@@ -22,14 +22,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `35218255121` (#615), job `105191803438`, executed clean code checkpoint `00a49000cedaa85f21bd9fbfcf007e2512860bb6` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `35218255121` (#628), job `105191803438`, executed clean code checkpoint `00a49000cedaa85f21bd9fbfcf007e2512860bb6` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
 - `flutter test --reporter expanded` — **870/870 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the independently traced rounded-to-touch AEL-contained strict-maximum single-crossing collapse, exact small and translated/scaled all-rotation regressions, exact Arachne zero-offset routing, and two AEL-outside negative regressions that retain fallback.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures, retains the #615 AEL-contained rounded collapse, and promotes the two independently traced AEL-outside retained-inner-vertex/retained-wedge families only for exact integer translations. Canonical/all-rotation and translated regressions plus Arachne zero-offset routing are exact; the ×2 pinned-source counterexample keeps scaling and broader neighboring AEL-outside states on fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 

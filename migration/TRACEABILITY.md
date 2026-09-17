@@ -10,7 +10,7 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger re
 ## Current validation checkpoint
 
 - code: `00a49000cedaa85f21bd9fbfcf007e2512860bb6`;
-- workflow: `.github/workflows/flutter-parity.yml` run `35218255121` (#615), job `105191803438`;
+- workflow: `.github/workflows/flutter-parity.yml` run `35218255121` (#628), job `105191803438`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
 - tests: **870/870 passed**;

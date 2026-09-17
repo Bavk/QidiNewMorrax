@@ -12,15 +12,15 @@ Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). The target is 
 
 A scoped `parity_verified` row never implies its top-level subsystem is complete.
 
-## Current executable checkpoint — 2026-09-16
+## Current executable checkpoint — 2026-09-17
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `00a49000cedaa85f21bd9fbfcf007e2512860bb6` (clean branch checkpoint containing `fix: cover AEL-contained rounded strict-max collapse`);
-- workflow `35218255121` (#615), job `105191803438`, conclusion **success**;
+- validated code `00a49000cedaa85f21bd9fbfcf007e2512860bb6` (clean production checkpoint for the translated AEL-outside rounded-family extension);
+- workflow `35218255121` (#628), job `105191803438`, conclusion **success**;
 - `flutter analyze` — **No issues found!**;
 - `flutter test --reporter expanded` — **870/870 passing**.
 
-The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds the independently traced rounded-to-touch strict-max single-crossing class where exact pinned `E2InsertsBeforeE1()` / `TopX()` ordering places both active other bounds between the owner bounds and both owner bounds contribute with `WindCnt == 1`. Exact all-rotation raw-path fixtures and Arachne zero-offset routing are locked; broader AEL-outside rounded/degenerated states beyond the two translation-locked retained-inner-vertex/retained-wedge families, side, horizontal and mixed-collinear neighbors remain fallback.
+The current suite retains every earlier represented Classic/Arachne/geometry fixture, including the #615 AEL-contained rounded-to-touch collapse, and adds two source-traced AEL-outside rounded strict-max families under integer translation only: retained-inner-vertex and retained-wedge. Their exact raw paths and Arachne zero-offset routing are locked; scaling is explicitly excluded by source counterevidence. Broader AEL-outside rounded/degenerated states, side, horizontal and mixed-collinear neighbors remain fallback.
 
 ### #628 translated AEL-outside rounded strict-max families
 
