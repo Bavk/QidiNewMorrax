@@ -39,10 +39,10 @@ import '../geometry/source_polygon.dart';
 /// rounded-to-touch single-crossing state is represented when exact
 /// `E2InsertsBeforeE1()` ordering places both already-active other bounds
 /// between the owner bounds, so both owner bounds contribute with `WindCnt=1`.
-/// Independently proved AEL-outside retained-wedge and retained-inner
-/// no-extra-scanbeam branches are also represented. Side/horizontal, extra-
-/// TopX and other rounded-degenerate mixed touch states remain explicit
-/// compatibility seams.
+/// Independently proved AEL-outside retained-wedge, retained-inner tie and
+/// early-second-touch owner-collapse branches are also represented. Side /
+/// horizontal, extra-TopX and other rounded-degenerate mixed touch states
+/// remain explicit compatibility seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -380,6 +380,21 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       // #615 pinned source trace: both owner bounds have WindCnt=1 here. The
       // two same-coordinate events remove the rounded-away sliver and
       // BuildResult() starts at the positive-order owner predecessor.
+      return <SourcePoint2>[previous, touch, next];
+    }
+
+    if (touchedPosition == 0 &&
+        crossingPosition == 1 &&
+        _strictlyInsidePositiveTriangle(owner, touchEnd) &&
+        touchEnd.y < previous.y &&
+        otherThird.y < touchEnd.y &&
+        touchedEdge.topX(previous.y) > outgoingOwner.topX(previous.y)) {
+      // Pinned source early-second-touch state. By the first owner-predecessor
+      // scanbeam the touched bound has moved to the other side of the outgoing
+      // owner bound, so Clipper processes the second rounded intersection at
+      // the strict-max touch. That removes the retained inner endpoint and
+      // returns the owner contour with the same raw pointer-state start as the
+      // traced #615 owner-only collapse.
       return <SourcePoint2>[previous, touch, next];
     }
 
