@@ -5,6 +5,7 @@
 
 using namespace ClipperLib;
 
+// Fixed source-traced AEL-outside rounded-collapse fixtures.
 static Path rotated(const Path &path, int start) {
   Path result;
   result.reserve(path.size());
