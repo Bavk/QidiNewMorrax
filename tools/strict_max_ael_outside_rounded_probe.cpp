@@ -135,6 +135,22 @@ static bool source_union(const Path &a, const Path &b, Path &out) {
   if (!clipper.Execute(ctUnion, solution, pftNonZero, pftNonZero) || solution.size() != 1) return false;
   out = solution[0]; return true;
 }
+static Path rebase_rightmost_min_successor(const Path &cycle) {
+  long long min_y = cycle[0].y();
+  for (const auto &p : cycle) min_y = std::min(min_y, (long long)p.y());
+  int anchor = -1;
+  for (int i = 0; i < (int)cycle.size(); ++i) {
+    if (cycle[i].y() != min_y) continue;
+    if (anchor < 0 || cycle[i].x() > cycle[anchor].x()) anchor = i;
+  }
+  Path out;
+  out.reserve(cycle.size());
+  const int start = (anchor + 1) % cycle.size();
+  for (int i = 0; i < (int)cycle.size(); ++i)
+    out.push_back(cycle[(start + i) % cycle.size()]);
+  return out;
+}
+
 static bool exact_all_variants(const Path &owner, const Path &other, const Path &expected) {
   for (int ro = 0; ro < 3; ++ro) for (int rt = 0; rt < 3; ++rt) {
     const Path a = rotate3(owner, ro), b = rotate3(other, rt);
@@ -244,7 +260,8 @@ int main() {
       expected = {owner[1], owner[2], touch, touch_end};
     } else {
       if (wedge >= target_each) continue;
-      expected = {owner[2], touch, touch_end, other_third, owner[1]};
+      expected = rebase_rightmost_min_successor(
+          Path{owner[2], touch, touch_end, other_third, owner[1]});
     }
     if (!exact_all_variants(owner, other, expected)) {
       Path actual; source_union(owner,other,actual);
