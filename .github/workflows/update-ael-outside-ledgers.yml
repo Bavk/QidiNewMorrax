@@ -1,0 +1,26 @@
+name: Update AEL-outside ledgers
+
+on:
+  push:
+    branches:
+      - chatgpt/ael-outside-rounded-fixtures
+    paths:
+      - .github/workflows/update-ael-outside-ledgers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/ael-outside-rounded-fixtures
+      - run: python3 tools/update_ael_outside_ledgers.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/HANDOFF.md migration/MIGRATION_STATUS.md migration/VALIDATION.md migration/TRACEABILITY.md
+          git commit -m 'docs: record translated AEL-outside validation'
+          git push origin HEAD:chatgpt/ael-outside-rounded-fixtures
