@@ -211,18 +211,24 @@ int main() {
   int accepted = 0;
   long long attempts = 0;
   while (attempts++ < 240000000LL && accepted < target) {
-    IntPoint p(coord(rng), neg_y(rng)), q(coord(rng), neg_y(rng));
-    if (same(p,q) || cross(touch,p,q)==0 || p.y()==q.y()) continue;
+    // Generate the traced source-event shape directly: the outgoing owner
+    // bound stays active far below touch while the positive-order predecessor
+    // is the first shallow scanbeam. The classifier below remains unchanged.
+    const IntPoint p(
+        std::uniform_int_distribution<int>(80, 240)(rng),
+        -std::uniform_int_distribution<int>(80, 220)(rng));
+    const IntPoint q(
+        std::uniform_int_distribution<int>(20, 180)(rng),
+        -std::uniform_int_distribution<int>(5, 45)(rng));
+    if (cross(touch,p,q) <= 0 || p.y()==q.y()) continue;
     Path owner{touch,p,q};
-    make_positive(owner);
     if (!strict_positive_triangle(owner)) continue;
 
     // The rounded-to-touch family is numerically skinny. Construct a
     // primitive touch-line vector and a nearby third point with determinant
     // 1..4 so an independent proper crossing can round onto touch.
-    int ex = coord(rng);
+    int ex = std::uniform_int_distribution<int>(8, 90)(rng);
     int ey = -std::uniform_int_distribution<int>(8, 90)(rng);
-    if (ex == 0) continue;
     long long bezout_x = 0, bezout_y = 0;
     if (extended_gcd(ex, ey, bezout_x, bezout_y) != 1) continue;
     const int before = std::uniform_int_distribution<int>(1, 3)(rng);
