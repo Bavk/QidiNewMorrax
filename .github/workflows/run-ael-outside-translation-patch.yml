@@ -18,7 +18,6 @@ jobs:
         with:
           ref: chatgpt/ael-outside-rounded-fixtures
       - run: python3 tools/apply_ael_outside_translation_patch.py
-      - run: dart format lib/core/slicer/source_clipper1_two_convex_mixed_point_union.dart test/core/slicer/source_clipper1_two_convex_rounded_collapse_test.dart
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
