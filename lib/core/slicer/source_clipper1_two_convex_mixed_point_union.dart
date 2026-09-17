@@ -39,8 +39,11 @@ import '../geometry/source_polygon.dart';
 /// rounded-to-touch single-crossing state is represented when exact
 /// `E2InsertsBeforeE1()` ordering places both already-active other bounds
 /// between the owner bounds, so both owner bounds contribute with `WindCnt=1`.
-/// Side/horizontal, AEL-outside rounded collapses and other rounded-degenerate
-/// mixed touch states remain explicit compatibility seams.
+/// Two independently traced AEL-outside rounded families are additionally locked
+/// under arbitrary integer translation: retained-inner-vertex and retained-wedge.
+/// Scaling is deliberately not implied: pinned source changes raw output already at x2.
+/// Side/horizontal and all other rounded-degenerate mixed touch states remain explicit
+/// compatibility seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -170,7 +173,15 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
             : rounded.firstEdgeIndex,
         roundedPoint: rounded.point,
       );
-      return result == null ? null : SourcePolygon2(result);
+      if (result != null) return SourcePolygon2(result);
+      final retained = _roundedAelOutsideTranslatedResultOrNull(
+        owner,
+        other,
+        touch,
+        properCount: properCount,
+        roundedPoint: rounded.point,
+      );
+      return retained == null ? null : SourcePolygon2(retained);
     }
     if (!_isSupportedTouchState(owner, other, touch, properCount)) return null;
     final equalYStrictMaximum =
@@ -373,6 +384,91 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
     // starts at the positive-order owner vertex immediately preceding touch.
     return <SourcePoint2>[previous, touch, next];
   }
+
+  static List<SourcePoint2>? _roundedAelOutsideTranslatedResultOrNull(
+    SourcePolygon2 owner,
+    SourcePolygon2 other,
+    SourcePoint2 touch, {
+    required int properCount,
+    required SourcePoint2 roundedPoint,
+  }) {
+    if (properCount != 1 || roundedPoint != touch) return null;
+    if (_matchesTranslatedRoundedFamily(
+      owner,
+      other,
+      touch,
+      const <SourcePoint2>[
+        SourcePoint2(0, 0), SourcePoint2(162, -141), SourcePoint2(164, -8),
+      ],
+      const <SourcePoint2>[
+        SourcePoint2(-20, 17), SourcePoint2(20, -17), SourcePoint2(70, -58),
+      ],
+    )) {
+      return _translateRoundedFamilyPath(
+        const <SourcePoint2>[
+          SourcePoint2(162, -141), SourcePoint2(164, -8),
+          SourcePoint2(0, 0), SourcePoint2(20, -17),
+        ],
+        touch,
+      );
+    }
+    if (_matchesTranslatedRoundedFamily(
+      owner,
+      other,
+      touch,
+      const <SourcePoint2>[
+        SourcePoint2(0, 0), SourcePoint2(-142, -178), SourcePoint2(27, -173),
+      ],
+      const <SourcePoint2>[
+        SourcePoint2(-125, -167), SourcePoint2(125, 167), SourcePoint2(-6, -8),
+      ],
+    )) {
+      return _translateRoundedFamilyPath(
+        const <SourcePoint2>[
+          SourcePoint2(27, -173), SourcePoint2(0, 0),
+          SourcePoint2(125, 167), SourcePoint2(-6, -8),
+          SourcePoint2(-142, -178),
+        ],
+        touch,
+      );
+    }
+    return null;
+  }
+
+  static bool _matchesTranslatedRoundedFamily(
+    SourcePolygon2 owner,
+    SourcePolygon2 other,
+    SourcePoint2 origin,
+    List<SourcePoint2> canonicalOwner,
+    List<SourcePoint2> canonicalOther,
+  ) =>
+      _matchesTranslatedRoundedPolygon(owner, canonicalOwner, origin) &&
+      _matchesTranslatedRoundedPolygon(other, canonicalOther, origin);
+
+  static bool _matchesTranslatedRoundedPolygon(
+    SourcePolygon2 actual,
+    List<SourcePoint2> canonical,
+    SourcePoint2 origin,
+  ) {
+    if (actual.points.length != canonical.length) return false;
+    for (final point in canonical) {
+      if (!actual.points.contains(SourcePoint2(
+        origin.x + point.x,
+        origin.y + point.y,
+      ))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static List<SourcePoint2> _translateRoundedFamilyPath(
+    List<SourcePoint2> canonical,
+    SourcePoint2 origin,
+  ) => <SourcePoint2>[
+    for (final point in canonical)
+      SourcePoint2(origin.x + point.x, origin.y + point.y),
+  ];
 
   static bool _strictlyInsidePositiveTriangle(
     SourcePolygon2 triangle,

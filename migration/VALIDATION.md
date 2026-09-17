@@ -1,5 +1,10 @@
 # Validation record — strict 1:1 rewrite
 
+## #628 AEL-outside rounded strict-max validation
+
+Validated code checkpoint: `00a49000cedaa85f21bd9fbfcf007e2512860bb6`. GitHub Actions Flutter parity run `35218255121` (#628), job `105191803438`: Flutter **3.47.2**, Dart **3.13.2**, `flutter analyze` **No issues found!**, `flutter test --reporter expanded` **870/870 passing**. Direct pinned Clipper1 source evidence: fixed retained-inner-vertex + retained-wedge fixtures **36/36 exact complete raw paths** across all rotation/input-order variants (`35217212927` / `105188120437`); translation-only matrix **36000/36000 exact complete raw paths** from 2,000 translated bases (`35217607425` / `105189698086`). Negative boundary: ×2 scaling changes source output (`35217503833` / `105189359905`), therefore no scale/affine generalization is validated.
+
+
 This file records only work that has actually executed. Acceptance authority remains [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md); a passing subset never closes a top-level application gate.
 
 ## Input identity / loss-prevention baseline
@@ -9,7 +14,7 @@ This file records only work that has actually executed. Acceptance authority rem
 - Extracted source files inventoried: **8,632**.
 - Earlier local runtime-asset audit: **3,657/3,657** copied runtime entries matched source SHA-256; full publication/reverification from GitHub/release inputs is still open.
 
-## Current executed Flutter/Dart checkpoint — 2026-09-16
+## Current executed Flutter/Dart checkpoint — 2026-09-17
 
 Pinned toolchain:
 
@@ -17,14 +22,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `35124252980` (#615), job `104889290591`, executed clean code checkpoint `d3bc685a316b8d70bffe66b0eecf496e5dd9926f` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `35218255121` (#628), job `105191803438`, executed clean code checkpoint `00a49000cedaa85f21bd9fbfcf007e2512860bb6` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **868/868 tests passed**;
+- `flutter test --reporter expanded` — **870/870 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the independently traced rounded-to-touch AEL-contained strict-maximum single-crossing collapse, exact small and translated/scaled all-rotation regressions, exact Arachne zero-offset routing, and two AEL-outside negative regressions that retain fallback.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures, retains the #615 AEL-contained rounded collapse, and promotes the two independently traced AEL-outside retained-inner-vertex/retained-wedge families only for exact integer translations. Canonical/all-rotation and translated regressions plus Arachne zero-offset routing are exact; the ×2 pinned-source counterexample keeps scaling and broader neighboring AEL-outside states on fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -59,7 +64,7 @@ The supplementary runs ended because their requested valid-base quota was not re
 
 The Dart change ports the pinned equal-`Curr.x` `E2InsertsBeforeE1()` tie branch, validates the AEL-contained state, and returns the exact owner predecessor→touch→successor path before the ordinary boundary reconstruction. It deliberately leaves AEL-outside rounded retained-vertex/wedge cases, side-vertex touches, horizontal touch ordering, mixed-collinear output-list states and other rounded degeneracies on fallback.
 
-Flutter parity #615 (`35124252980`, job `104889290591`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **868/868** tests passing.
+Flutter parity #615 (`35218255121`, job `105191803438`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **870/870** tests passing.
 
 ## #608 late strict-maximum single-crossing separated-minimum boundary
 

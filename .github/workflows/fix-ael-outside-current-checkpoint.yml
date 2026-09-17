@@ -1,0 +1,27 @@
+name: Fix AEL-outside current checkpoint
+
+on:
+  push:
+    branches:
+      - chatgpt/ael-outside-rounded-fixtures
+    paths:
+      - .github/workflows/fix-ael-outside-current-checkpoint.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/ael-outside-rounded-fixtures
+      - run: python3 tools/fix_ael_outside_current_checkpoint.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/HANDOFF.md migration/MIGRATION_STATUS.md migration/VALIDATION.md migration/TRACEABILITY.md
+          git commit -m 'docs: fix translated AEL-outside checkpoint labels'
+          git push origin HEAD:chatgpt/ael-outside-rounded-fixtures
+# rerun after traceability target correction
