@@ -22,6 +22,20 @@ static int orient(const IntPoint &a, const IntPoint &b, const IntPoint &c) {
 static bool same(const IntPoint &a, const IntPoint &b) {
   return a.x() == b.x() && a.y() == b.y();
 }
+static long long extended_gcd(long long a, long long b,
+                              long long &x, long long &y) {
+  if (b == 0) {
+    x = a >= 0 ? 1 : -1;
+    y = 0;
+    return std::llabs(a);
+  }
+  long long x1 = 0, y1 = 0;
+  const long long g = extended_gcd(b, a % b, x1, y1);
+  x = y1;
+  y = x1 - (a / b) * y1;
+  return g;
+}
+
 static long long area2(const Path &p) {
   long long result = 0;
   for (size_t i = 0; i < p.size(); ++i) {
@@ -201,9 +215,28 @@ int main() {
     Path owner{touch,p,q}; make_positive(owner);
     if (!strict_positive_triangle(owner)) continue;
 
-    int ex = coord(rng), ey = coord(rng);
-    if (ex == 0 || ey == 0) continue;
-    Path other{IntPoint(-ex,-ey), IntPoint(ex,ey), IntPoint(coord(rng),coord(rng))};
+    // Rounded-to-touch AEL-outside states live on an intentionally skinny
+    // other triangle. Construct a primitive touch-line vector and a third
+    // vertex with determinant 1..3 via Bezout instead of relying on an
+    // astronomically sparse random near-collinearity.
+    int ex = coord(rng), ey = std::uniform_int_distribution<int>(8, 220)(rng);
+    if (ex == 0) continue;
+    long long bezout_x = 0, bezout_y = 0;
+    if (extended_gcd(ex, ey, bezout_x, bezout_y) != 1) continue;
+    const int before = std::uniform_int_distribution<int>(1, 4)(rng);
+    const int after = std::uniform_int_distribution<int>(1, 4)(rng);
+    const int determinant = std::uniform_int_distribution<int>(1, 3)(rng);
+    // ex * wy - ey * wx = determinant.
+    const long long wx0 = -bezout_y * determinant;
+    const long long wy0 = bezout_x * determinant;
+    const int along = std::uniform_int_distribution<int>(-1, 1)(rng);
+    const IntPoint third(wx0 + (long long)along * ex,
+                         wy0 + (long long)along * ey);
+    Path other{
+      IntPoint(-(long long)before * ex, -(long long)before * ey),
+      IntPoint((long long)after * ex, (long long)after * ey),
+      third,
+    };
     if (same(other[2],other[0]) || same(other[2],other[1]) || cross(other[0],other[1],other[2])==0) continue;
     make_positive(other);
     if (!strict_positive_triangle(other)) continue;
