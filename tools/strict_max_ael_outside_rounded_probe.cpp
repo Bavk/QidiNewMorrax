@@ -206,19 +206,27 @@ int main() {
   std::mt19937_64 rng(0xA3100751ULL);
   std::uniform_int_distribution<int> coord(-220, 220), neg_y(-220, -1);
   const IntPoint touch(0, 0);
-  const int target_each = 1200;
+#if defined(PROBE_WEDGE_ONLY)
+  const int target_retained = 0;
+  const int target_wedge = 1200;
+#elif defined(PROBE_RETAINED_ONLY)
+  const int target_retained = 1200;
+  const int target_wedge = 0;
+#else
+#error "Define exactly one probe mode"
+#endif
   int retained = 0, wedge = 0;
   long long attempts = 0;
-  while (attempts++ < 240000000LL && (retained < target_each || wedge < target_each)) {
+  while (attempts++ < 240000000LL &&
+         (retained < target_retained || wedge < target_wedge)) {
     IntPoint p(coord(rng), neg_y(rng)), q(coord(rng), neg_y(rng));
     if (same(p,q) || cross(touch,p,q)==0 || p.y()==q.y()) continue;
     Path owner{touch,p,q}; make_positive(owner);
     if (!strict_positive_triangle(owner)) continue;
 
-    // Rounded-to-touch AEL-outside states live on an intentionally skinny
-    // other triangle. Construct a primitive touch-line vector and a third
-    // vertex with determinant 1..3 via Bezout instead of relying on an
-    // astronomically sparse random near-collinearity.
+#if defined(PROBE_WEDGE_ONLY)
+    // Retained-wedge states are extremely skinny. Construct a primitive
+    // touch-line vector and a third vertex with determinant 1..3 via Bezout.
     int ex = coord(rng), ey = std::uniform_int_distribution<int>(8, 220)(rng);
     if (ex == 0) continue;
     long long bezout_x = 0, bezout_y = 0;
@@ -237,7 +245,22 @@ int main() {
       IntPoint((long long)after * ex, (long long)after * ey),
       third,
     };
-    if (same(other[2],other[0]) || same(other[2],other[1]) || cross(other[0],other[1],other[2])==0) continue;
+    if (same(other[2],other[0]) || same(other[2],other[1]) ||
+        cross(other[0],other[1],other[2])==0) continue;
+#else
+    // Retained-inner states are common enough under the broad independent
+    // random matrix; keep this generator deliberately unrelated to the fixed
+    // regression.
+    int ex = coord(rng), ey = coord(rng);
+    if (ex == 0 || ey == 0) continue;
+    Path other{
+      IntPoint(-ex, -ey),
+      IntPoint(ex, ey),
+      IntPoint(coord(rng), coord(rng)),
+    };
+    if (same(other[2],other[0]) || same(other[2],other[1]) ||
+        cross(other[0],other[1],other[2])==0) continue;
+#endif
     make_positive(other);
     if (!strict_positive_triangle(other)) continue;
 
@@ -294,10 +317,10 @@ int main() {
 
     Path expected;
     if (retained_state) {
-      if (retained >= target_each) continue;
+      if (retained >= target_retained) continue;
       expected = {owner[1], owner[2], touch, touch_end};
     } else {
-      if (wedge >= target_each) continue;
+      if (wedge >= target_wedge) continue;
       expected = rebase_rightmost_min_successor(
           Path{owner[2], touch, touch_end, other_third, owner[1]});
     }
@@ -312,8 +335,9 @@ int main() {
     }
     if (retained_state) ++retained; else ++wedge;
   }
-  std::cout << "generated retained=" << retained << "/" << target_each
-            << " wedge=" << wedge << "/" << target_each << " bases\n";
-  std::cout << "generated raw paths=" << (retained+wedge)*18 << "/" << (target_each*2*18) << " exact\n";
-  return retained == target_each && wedge == target_each ? 0 : 4;
+  std::cout << "generated retained=" << retained << "/" << target_retained
+            << " wedge=" << wedge << "/" << target_wedge << " bases\n";
+  std::cout << "generated raw paths=" << (retained+wedge)*18 << "/"
+            << (target_retained+target_wedge)*18 << " exact\n";
+  return retained == target_retained && wedge == target_wedge ? 0 : 4;
 }
