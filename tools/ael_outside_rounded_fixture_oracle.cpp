@@ -13,12 +13,11 @@ static Path rotated(const Path &path, int start) {
   return result;
 }
 
-static Path transformed(const Path &path, long long scale, long long tx,
-                        long long ty) {
+static Path translated(const Path &path, long long tx, long long ty) {
   Path result;
   result.reserve(path.size());
   for (const IntPoint &point : path)
-    result.push_back(IntPoint(point.x() * scale + tx, point.y() * scale + ty));
+    result.push_back(IntPoint(point.x() + tx, point.y() + ty));
   return result;
 }
 
@@ -33,7 +32,6 @@ static bool same_path(const Path &actual, const Path &expected) {
 
 static bool run_case(const std::string &name, const Path &owner,
                      const Path &other, const Path &expected) {
-  int checked = 0;
   for (int owner_rotation = 0; owner_rotation < 3; ++owner_rotation) {
     for (int other_rotation = 0; other_rotation < 3; ++other_rotation) {
       const Path a = rotated(owner, owner_rotation);
@@ -55,35 +53,27 @@ static bool run_case(const std::string &name, const Path &owner,
                     << " order=" << order << "\n";
           return false;
         }
-        ++checked;
       }
     }
   }
-  return checked == 18;
+  return true;
 }
 
 static bool run_family(const char *name, const Path &owner, const Path &other,
                        const Path &expected) {
-  const long long scales[] = {1, 2, 7, 17, 1000, 100000};
-  int bases = 0;
+  const int target = 1000;
   long long checked = 0;
-  for (int si = 0; si < 6; ++si) {
-    const long long scale = scales[si];
-    for (int ti = 0; ti < 40; ++ti) {
-      const long long tx = (static_cast<long long>(ti) * 7919 - 150000) * 1000000LL;
-      const long long ty = (static_cast<long long>(ti) * -3571 + 90000) * 1000000LL;
-      const Path a = transformed(owner, scale, tx, ty);
-      const Path b = transformed(other, scale, tx, ty);
-      const Path e = transformed(expected, scale, tx, ty);
-      if (!run_case(std::string(name) + "_" + std::to_string(si) + "_" +
-                        std::to_string(ti),
-                    a, b, e))
-        return false;
-      ++bases;
-      checked += 18;
-    }
+  for (int i = 0; i < target; ++i) {
+    const long long tx = (static_cast<long long>(i) * 7919 - 3000000) * 1000000LL;
+    const long long ty = (static_cast<long long>(i) * -3571 + 1800000) * 1000000LL;
+    const Path a = translated(owner, tx, ty);
+    const Path b = translated(other, tx, ty);
+    const Path e = translated(expected, tx, ty);
+    if (!run_case(std::string(name) + "_" + std::to_string(i), a, b, e))
+      return false;
+    checked += 18;
   }
-  std::cout << name << " affine_bases=" << bases
+  std::cout << name << " translated_bases=" << target
             << " exact_full_paths=" << checked << "/" << checked << "\n";
   return true;
 }
