@@ -112,12 +112,32 @@ void main() {
     ]);
   });
 
-  test('rounded retained inner first-scanbeam divergence stays fallback', () {
-    final values = [
+  test('rounded first-scanbeam early second touch is exact', () {
+    _expectExactAllRotations(
       _poly([(0, 0), (217, -158), (63, -17)]),
       _poly([(-25, 18), (25, -18), (71, -51)]),
-    ];
-    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+      const [
+        SourcePoint2(63, -17),
+        SourcePoint2(0, 0),
+        SourcePoint2(217, -158),
+      ],
+    );
+  });
+
+  test('Arachne zero offset routes early second touch exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(0, 0), (217, -158), (63, -17)]),
+        _poly([(-25, 18), (25, -18), (71, -51)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(63, -17),
+      SourcePoint2(0, 0),
+      SourcePoint2(217, -158),
+    ]);
   });
 
   test('rounded retained inner extra-TopX scanbeam stays fallback', () {
