@@ -39,8 +39,10 @@ import '../geometry/source_polygon.dart';
 /// rounded-to-touch single-crossing state is represented when exact
 /// `E2InsertsBeforeE1()` ordering places both already-active other bounds
 /// between the owner bounds, so both owner bounds contribute with `WindCnt=1`.
-/// Side/horizontal, AEL-outside rounded collapses and other rounded-degenerate
-/// mixed touch states remain explicit compatibility seams.
+/// Independently proved AEL-outside retained-wedge and retained-inner
+/// no-extra-scanbeam branches are also represented. Side/horizontal, extra-
+/// TopX and other rounded-degenerate mixed touch states remain explicit
+/// compatibility seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -357,21 +359,61 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       other.points[collapsedOtherEdgeIndex],
       other.points[(collapsedOtherEdgeIndex + 1) % 3],
     );
-    for (final active in <_MixedClipperEdge2>[touchedEdge, crossingEdge]) {
+    int? activePosition(_MixedClipperEdge2 active) {
       if (!(active.top.y < touch.y && active.bot.y > touch.y) ||
           active.topX(touch.y) != touch.x) {
         return null;
       }
-      if (!_e2InsertsBeforeE1(active, leftBound, touch.y) ||
-          _e2InsertsBeforeE1(active, rightBound, touch.y)) {
-        return null;
-      }
+      final beforeLeft = _e2InsertsBeforeE1(active, leftBound, touch.y);
+      final beforeRight = _e2InsertsBeforeE1(active, rightBound, touch.y);
+      if (!beforeLeft && !beforeRight) return 0;
+      if (beforeLeft && !beforeRight) return 1;
+      if (beforeLeft && beforeRight) return 2;
+      return null;
     }
 
-    // Pinned source trace: both owner bounds have WindCnt=1 here. The two
-    // same-coordinate events remove the rounded-away sliver and BuildResult()
-    // starts at the positive-order owner vertex immediately preceding touch.
-    return <SourcePoint2>[previous, touch, next];
+    final touchedPosition = activePosition(touchedEdge);
+    final crossingPosition = activePosition(crossingEdge);
+    if (touchedPosition == null || crossingPosition == null) return null;
+
+    if (touchedPosition == 1 && crossingPosition == 1) {
+      // #615 pinned source trace: both owner bounds have WindCnt=1 here. The
+      // two same-coordinate events remove the rounded-away sliver and
+      // BuildResult() starts at the positive-order owner predecessor.
+      return <SourcePoint2>[previous, touch, next];
+    }
+
+    if (touchedPosition == 0 &&
+        crossingPosition == 1 &&
+        _strictlyInsidePositiveTriangle(owner, touchEnd) &&
+        touchEnd.y < previous.y &&
+        otherThird.y < touchEnd.y &&
+        touchedEdge.topX(previous.y) == outgoingOwner.topX(previous.y)) {
+      // AEL-outside retained-inner source state. The touched bound remains
+      // integer-TopX tied with the outgoing owner bound through the first
+      // owner-predecessor scanbeam, so Clipper does not process the second
+      // same-coordinate touch intersection early. The positive-order touched
+      // endpoint is retained in OutRec::Pts and BuildResult() starts at the
+      // outgoing owner vertex for this traced output-list state.
+      return <SourcePoint2>[next, previous, touch, touchEnd];
+    }
+
+    if (touchedPosition == 1 &&
+        crossingPosition == 0 &&
+        !_strictlyInsidePositiveTriangle(owner, touchEnd) &&
+        touchStart.y > previous.y &&
+        otherThird.y > previous.y) {
+      // AEL-outside retained-wedge source state with no later inner-other edge
+      // crossing the owner-predecessor scanbeam. If that scanbeam is crossed,
+      // pinned Clipper inserts an additional TopX output vertex and the state
+      // stays on fallback. In this narrower state the raw cycle uses the
+      // ordinary rightmost-minimum BuildResult() anchor.
+      return _rebaseBuildResult(
+        <SourcePoint2>[previous, touch, touchEnd, otherThird, next],
+      );
+    }
+
+    return null;
   }
 
   static bool _strictlyInsidePositiveTriangle(

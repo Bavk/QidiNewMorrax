@@ -9,7 +9,7 @@ This file records only work that has actually executed. Acceptance authority rem
 - Extracted source files inventoried: **8,632**.
 - Earlier local runtime-asset audit: **3,657/3,657** copied runtime entries matched source SHA-256; full publication/reverification from GitHub/release inputs is still open.
 
-## Current executed Flutter/Dart checkpoint — 2026-09-16
+## Current executed Flutter/Dart checkpoint — 2026-09-18
 
 Pinned toolchain:
 
@@ -17,14 +17,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `35124252980` (#615), job `104889290591`, executed clean code checkpoint `d3bc685a316b8d70bffe66b0eecf496e5dd9926f` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `35284252825` (#639), job `105412942943`, executed clean code checkpoint `9f04863ea904552d8edd7034067630bd82f8be98` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **868/868 tests passed**;
+- `flutter test --reporter expanded` — **874/874 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the independently traced rounded-to-touch AEL-contained strict-maximum single-crossing collapse, exact small and translated/scaled all-rotation regressions, exact Arachne zero-offset routing, and two AEL-outside negative regressions that retain fallback.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds exact AEL-outside retained-wedge and retained-inner rounded strict-max regressions, Arachne zero-offset routing for both, an alternate source `BuildResult()` start, and negative early-second-touch / extra-`TopX` scanbeam neighbors that remain on fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -57,9 +57,26 @@ Independent pinned-source matrices at commit `f2b55a5a83f266cf56e06c7943a81a08be
 
 The supplementary runs ended because their requested valid-base quota was not reached inside the attempt cap; neither produced a source mismatch. Aggregate represented evidence is **9,174 bases / 165132/165132 exact complete raw-path comparisons**, each base checked over all 3×3 cyclic rotations and both input/AddPath orders.
 
-The Dart change ports the pinned equal-`Curr.x` `E2InsertsBeforeE1()` tie branch, validates the AEL-contained state, and returns the exact owner predecessor→touch→successor path before the ordinary boundary reconstruction. It deliberately leaves AEL-outside rounded retained-vertex/wedge cases, side-vertex touches, horizontal touch ordering, mixed-collinear output-list states and other rounded degeneracies on fallback.
+The Dart change ports the pinned equal-`Curr.x` `E2InsertsBeforeE1()` tie branch, validates the AEL-contained state, and returns the exact owner predecessor→touch→successor path before the ordinary boundary reconstruction. #615 deliberately left AEL-outside rounded retained-output cases for separate classification; #639 below promotes only two independently proved sub-branches. Side-vertex touches, horizontal touch ordering, mixed-collinear output-list states and other rounded degeneracies remain fallback.
 
 Flutter parity #615 (`35124252980`, job `104889290591`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **868/868** tests passing.
+
+## #639 AEL-outside retained-output rounded strict-maximum branches
+
+`SourceClipper1TwoConvexMixedPointUnion2` now represents two AEL-outside `WindCnt == 2` rounded-to-touch states that were explicit #615 counterclasses, without promoting the surrounding family.
+
+The **retained-wedge** branch is accepted only when the touched other bound is between the owner bounds, the crossing-side other bound is outside, the positive-order touched endpoint is outside owner, and the inner other edge does **not** cross the owner-predecessor scanbeam. Under that bounded source state the raw contour is the traced five-point cycle and uses the ordinary rightmost-global-minimum `BuildResult()` anchor. A generated counterstate where the inner other edge spans that scanbeam produces an additional source `TopX` output vertex and remains fallback.
+
+The **retained-inner** branch is accepted only when the positive-order touched endpoint is strictly inside owner, it occurs below the owner predecessor, the other third vertex occurs below that endpoint, and the active touched bound remains integer-`TopX` tied with the outgoing owner bound at the first owner-predecessor scanbeam. Direct source event trace run `35283858278`, job `105411701842`, proves this discriminator: the retained fixture does not process the second same-coordinate touch intersection at `touch.y`; the traced owner-only counterstate has divergent `TopX` values on that first scanbeam, processes the second intersection at the touch, and loses the inner endpoint.
+
+Independent pinned-source oracle run `35284009243` at source commit `f2b55a5a83f266cf56e06c7943a81a08bebb7fad` produced:
+
+- wedge job `105412173334`: fixed fixture **18/18 exact complete raw paths**, plus **1,200/1,200** independently generated bases × all 18 cyclic-rotation/input-order variants = **21600/21600 exact complete raw paths**;
+- retained-inner job `105412173551`: fixed fixture **18/18 exact complete raw paths**, plus **1,200/1,200** independently generated bases × all 18 variants = **21600/21600 exact complete raw paths**.
+
+The committed Dart regressions additionally lock the alternate wedge `BuildResult()` start, exact Arachne zero-offset routing for both represented states, the retained-inner first-scanbeam-divergence owner-only counterstate, and both retained/wedge extra-`TopX` scanbeam neighbors as fallback.
+
+Flutter parity #639 (`35284252825`, job `105412942943`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **874/874** tests passing.
 
 ## #608 late strict-maximum single-crossing separated-minimum boundary
 

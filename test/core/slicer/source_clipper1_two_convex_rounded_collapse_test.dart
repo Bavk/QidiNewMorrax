@@ -82,19 +82,103 @@ void main() {
     ]);
   });
 
-  test('rounded strict-max retained inner vertex stays fallback', () {
-    final values = [
+  test('rounded strict-max retained inner vertex is exact', () {
+    _expectExactAllRotations(
       _poly([(0, 0), (162, -141), (164, -8)]),
       _poly([(-20, 17), (20, -17), (70, -58)]),
+      const [
+        SourcePoint2(162, -141),
+        SourcePoint2(164, -8),
+        SourcePoint2(0, 0),
+        SourcePoint2(20, -17),
+      ],
+    );
+  });
+
+  test('Arachne zero offset routes rounded retained inner exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(0, 0), (162, -141), (164, -8)]),
+        _poly([(-20, 17), (20, -17), (70, -58)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(162, -141),
+      SourcePoint2(164, -8),
+      SourcePoint2(0, 0),
+      SourcePoint2(20, -17),
+    ]);
+  });
+
+  test('rounded retained inner first-scanbeam divergence stays fallback', () {
+    final values = [
+      _poly([(0, 0), (217, -158), (63, -17)]),
+      _poly([(-25, 18), (25, -18), (71, -51)]),
     ];
     expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
   });
 
-  test('rounded strict-max retained wedge stays fallback', () {
+  test('rounded retained inner extra-TopX scanbeam stays fallback', () {
     final values = [
-      _poly([(0, 0), (-142, -178), (27, -173)]),
-      _poly([(-125, -167), (125, 167), (-6, -8)]),
+      _poly([(0, 0), (-95, -138), (204, -70)]),
+      _poly([(41, 60), (-41, -60), (-67, -100)]),
     ];
     expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+  });
+
+  test('rounded strict-max retained wedge is exact', () {
+    _expectExactAllRotations(
+      _poly([(0, 0), (-142, -178), (27, -173)]),
+      _poly([(-125, -167), (125, 167), (-6, -8)]),
+      const [
+        SourcePoint2(27, -173),
+        SourcePoint2(0, 0),
+        SourcePoint2(125, 167),
+        SourcePoint2(-6, -8),
+        SourcePoint2(-142, -178),
+      ],
+    );
+  });
+
+  test('rounded retained wedge rebases from the source minimum anchor', () {
+    _expectExactAllRotations(
+      _poly([(0, 0), (-170, -122), (183, -155)]),
+      _poly([(142, 107), (-4, -3), (-142, -107)]),
+      const [
+        SourcePoint2(0, 0),
+        SourcePoint2(142, 107),
+        SourcePoint2(-4, -3),
+        SourcePoint2(-170, -122),
+        SourcePoint2(183, -155),
+      ],
+    );
+  });
+
+  test('rounded retained wedge extra-TopX scanbeam remains fallback', () {
+    final values = [
+      _poly([(0, 0), (-28, -212), (192, -3)]),
+      _poly([(3, -135), (-4, 180), (0, -1)]),
+    ];
+    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+  });
+
+  test('Arachne zero offset routes rounded retained wedge exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(0, 0), (-142, -178), (27, -173)]),
+        _poly([(-125, -167), (125, 167), (-6, -8)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(27, -173),
+      SourcePoint2(0, 0),
+      SourcePoint2(125, 167),
+      SourcePoint2(-6, -8),
+      SourcePoint2(-142, -178),
+    ]);
   });
 }
