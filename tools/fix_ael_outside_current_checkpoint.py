@@ -19,8 +19,7 @@ replacements = {
         'The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the independently traced rounded-to-touch AEL-contained strict-maximum single-crossing collapse, exact small and translated/scaled all-rotation regressions, exact Arachne zero-offset routing, and two AEL-outside negative regressions that retain fallback.': 'The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures, retains the #615 AEL-contained rounded collapse, and promotes the two independently traced AEL-outside retained-inner-vertex/retained-wedge families only for exact integer translations. Canonical/all-rotation and translated regressions plus Arachne zero-offset routing are exact; the ×2 pinned-source counterexample keeps scaling and broader neighboring AEL-outside states on fallback.',
     },
     Path('migration/TRACEABILITY.md'): {
-        '## Current validated checkpoint — 2026-09-16': '## Current validated checkpoint — 2026-09-17',
-        'run `35218255121` (#615)': 'run `35218255121` (#628)',
+        '- workflow: `.github/workflows/flutter-parity.yml` run `35218255121` (#615), job `105191803438`;': '- workflow: `.github/workflows/flutter-parity.yml` run `35218255121` (#628), job `105191803438`;',
     },
 }
 
