@@ -1,14 +1,19 @@
 # Traceability ledger — strict 1:1 Flutter/Dart rewrite
 
+## #628 translated AEL-outside rounded trace
+
+`SourceClipper1TwoConvexMixedPointUnion2` now recognizes the two independently source-traced AEL-outside rounded strict-max families (retained-inner-vertex and retained-wedge) only when their point sets are exact integer translations of the canonical fixtures. Evidence: fixed 36/36 full raw paths (`35217212927` / `105188120437`), translation matrix **36000/36000** full raw paths (`35217607425` / `105189698086`), plus the explicit ×2 scaling counterexample (`35217503833` / `105189359905`) that keeps scaled and broader neighboring states outside this exact subset. Flutter checkpoint `00a49000cedaa85f21bd9fbfcf007e2512860bb6` is green in #628 (`35218255121` / `105191803438`) with **870/870** tests.
+
+
 Acceptance authority: [`PARITY_CONTRACT.md`](PARITY_CONTRACT.md). This ledger records only implemented Dart scope and evidence attached to that exact scope. A scoped `parity_verified` entry never completes its containing subsystem.
 
 ## Current validation checkpoint
 
-- code: `d3bc685a316b8d70bffe66b0eecf496e5dd9926f`;
-- workflow: `.github/workflows/flutter-parity.yml` run `35124252980` (#615), job `104889290591`;
+- code: `00a49000cedaa85f21bd9fbfcf007e2512860bb6`;
+- workflow: `.github/workflows/flutter-parity.yml` run `35218255121` (#615), job `105191803438`;
 - Flutter `3.47.2`, Dart `3.13.2`;
 - analyzer: **No issues found**;
-- tests: **868/868 passed**;
+- tests: **870/870 passed**;
 - conclusion: **success**.
 
 Recent milestone chain:
@@ -34,7 +39,7 @@ Recent milestone chain:
 - #588 / `81beaaed...`: strict-maximum equal-Y mixed point-touch boundary and source-state rebase, 861/861;
 - #601 / `82793869...` (functional `3a100f82...`): late strict-maximum multi-crossing mixed point-touch extension and separated-minimum source-state rebase, 862/862;
 - #608 / `5bbdb555...`: late strict-maximum single-crossing separated-minimum boundary, 863/863.
-- **#615 / `d3bc685a...`: rounded-to-touch AEL-contained strict-maximum single-crossing collapse, 868/868.**
+- **#615 / `d3bc685a...`: rounded-to-touch AEL-contained strict-maximum single-crossing collapse, 870/870.**
 
 All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures are re-executed by the current suite.
 
@@ -58,7 +63,7 @@ All earlier Classic, Arachne fuzzy, geometry, Boost/Voronoi and process fixtures
 | endpoint-aligned host-end join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexHostEndFixupUnion2` | #549 **145800/145800** exact full raw paths across Y directions, vertical, horizontal, shears, rotations/orders; eight tests | `parity_verified` (scoped) | Wider/multi-point/mixed fixup states remain open. |
 | symmetric endpoint-aligned host-start one-point fixup join | `SourceClipper1TwoConvexHostStartFixupUnion2` via fixup gateway | #552 **145800/145800** exact full raw paths across same direction/shear/rotation/order families; eight tests | `parity_verified` (scoped) | Wider/multi-point/mixed fixup states remain open. |
 | full-shared-edge strict-triangle join where exactly one shared endpoint is removed by `FixupOutPolygon()` | `SourceClipper1TwoConvexFullSharedEdgeFixupUnion2` via fixup gateway | #562 **226908/226908** exact raw paths: 64800 non-start removal + 64800 removed-start classification + 97200 independent unequal-distance + 108 equal-Y; eight tests | `parity_verified` (scoped) | Wider-convex, multi-point and mixed-crossing cleanup not implied. |
-| two positive strict-convex triangles with proper crossings + exactly one vertex↔strict-edge point touch in the #569 strict-minimum and represented non-horizontal strict-maximum ordering classes (#575 `<`, #588 `==`, #582/#601/#608 late `>`), plus #615 rounded-to-touch AEL-contained collapse | `SourceClipper1TwoConvexMixedPointUnion2` | #569 **39600/39600**, #575 **72000/72000**, #582 **64800/64800** exact full raw paths; #588 **54000/54000** raw-start matches plus fixed full-path fixture; #601 adds **216000/216000** generic late-multicross raw starts plus **64800/64800 exact full raw paths** on the multi-cross separated-minimum boundary; #608 adds **64800/64800 exact full raw paths** plus **18/18** fixed variants; #615 source trace + **9174 bases / 165132/165132 exact complete raw paths** for the exact `WindCnt == 1` AEL-contained rounded-collapse branch | `parity_verified` (scoped) | AEL-outside rounded retained-vertex/wedge states, horizontal, side-vertex, mixed-collinear and other rounded/degenerated output-list states remain open. |
+| two positive strict-convex triangles with proper crossings + exactly one vertex↔strict-edge point touch in the #569 strict-minimum and represented non-horizontal strict-maximum ordering classes (#575 `<`, #588 `==`, #582/#601/#608 late `>`), plus #615 rounded-to-touch AEL-contained collapse | `SourceClipper1TwoConvexMixedPointUnion2` | #569 **39600/39600**, #575 **72000/72000**, #582 **64800/64800** exact full raw paths; #588 **54000/54000** raw-start matches plus fixed full-path fixture; #601 adds **216000/216000** generic late-multicross raw starts plus **64800/64800 exact full raw paths** on the multi-cross separated-minimum boundary; #608 adds **64800/64800 exact full raw paths** plus **18/18** fixed variants; #615 source trace + **9174 bases / 165132/165132 exact complete raw paths** for the exact `WindCnt == 1` AEL-contained rounded-collapse branch | `parity_verified` (scoped) | broader AEL-outside rounded/degenerated states beyond the two translation-locked retained-inner-vertex/retained-wedge families, horizontal, side-vertex, mixed-collinear and other rounded/degenerated output-list states remain open. |
 | Arachne exact offset/final-union routing | `SourceArachneWallToolPathsPrepareExact2` | direct helper tests + route tests through #615 | `parity_verified` for represented branches | Remaining mixed states, interacting holes, >2 paths and generic boolean cases still fall back. |
 | BridgeDetector / LineSegmentation / QIDI loop-node geometry represented subsets | source-shaped Dart helpers | translated/source-shaped fixtures | `parity_verified` (scoped) | Broader consumers/topologies remain open. |
 

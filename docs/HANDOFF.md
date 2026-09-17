@@ -1,5 +1,10 @@
 # Handoff — Qidi Flow strict Flutter/Dart rewrite
 
+## #628 translated AEL-outside rounded strict-max extension
+
+PR #6 independently locks the two source-traced AEL-outside rounded-collapse output-list families that #615 deliberately left on fallback: retained-inner-vertex and retained-wedge. The runtime matcher accepts only integer translations of the two canonical coordinate-difference patterns; it does not infer a scale/affine family. Pinned-source run `35217212927`, job `105188120437`, matched both fixed families across all 18 cyclic-rotation/input-order variants (36/36 complete raw paths combined). Translation matrix run `35217607425`, job `105189698086`, matched 1,000 translations per topology × 18 variants = **36000/36000 exact complete raw paths**. A deliberate scale probe, run `35217503833`, job `105189359905`, changed the pinned source output already at ×2 for both topologies, so scaling remains an explicit compatibility seam. Flutter parity run `35218255121` (#628), job `105191803438`, on code checkpoint `00a49000cedaa85f21bd9fbfcf007e2512860bb6` is green with Flutter 3.47.2 / Dart 3.13.2, clean analyze and **870/870** tests.
+
+
 This repository is a **strict 1:1 reimplementation** of Qidi Flow 2.07.02.60 Pass28 in Flutter + Dart. The legacy C++/wxWidgets/React application is reference material only and must not remain a runtime backend through FFI, subprocesses, native shared libraries, hidden services or embedded legacy WebViews.
 
 ## Read first
@@ -16,12 +21,12 @@ Do not infer completion from visual similarity, compilation or common-case tests
 
 Latest validated code checkpoint:
 
-- code commit `d3bc685a316b8d70bffe66b0eecf496e5dd9926f` (`chore: remove rounded collapse patch workflow`; clean two-file functional tree for the rounded-collapse change);
-- `.github/workflows/flutter-parity.yml` run `35124252980` (#615), job `104889290591`;
+- code commit `00a49000cedaa85f21bd9fbfcf007e2512860bb6` (`chore: remove rounded collapse patch workflow`; clean two-file functional tree for the rounded-collapse change);
+- `.github/workflows/flutter-parity.yml` run `35218255121` (#615), job `105191803438`;
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **868/868 passed**;
+- `flutter test --reporter expanded` → **870/870 passed**;
 - job conclusion → **success**.
 
 The suite retains every earlier represented Classic/Arachne/geometry fixture and adds one independently traced **rounded-to-touch AEL-contained strict-maximum single-crossing collapse**. The accepted state uses exact pinned `E2InsertsBeforeE1()` / `TopX()` ordering: both already-active bounds from the touched triangle lie between the two owner bounds at the strict-max touch, both owner bounds contribute with `WindCnt == 1`, and the same-coordinate crossing/touch events collapse the rounded-away sliver to the owner triangle. AEL-outside `WindCnt == 2` retained-vertex/wedge states, side-vertex touches, horizontal touches and mixed-collinear states remain explicit fallback.
@@ -105,7 +110,7 @@ PR CI #594 correctly caught that the first Dart extension still rejected the val
 
 #615 isolates a different rounded/degenerated state rather than widening #608. Exactly one proper crossing rounds to the strict-max touch coordinate. A direct pinned-source event trace (`35122390233`, job `104883098941`) showed that source output splits on AEL ordering: the represented branch has both already-active other bounds between the owner bounds at `touch.y`, so both owner bounds enter output with `WindCnt == 1`; AEL-outside counterstates instead give the owner `WindCnt == 2` and retain an inner vertex or wedge. The Dart classifier ports the pinned `E2InsertsBeforeE1()` equal-`Curr.x` / `TopX()` tie rule and accepts only the first branch.
 
-Pinned-source matrices for that exact AEL-contained branch matched **165132/165132 exact complete raw paths** across **9,174** generated bases and all 18 cyclic-rotation/input-order variants: the primary matrix `35122592466` / `104883775222` contributed **5000 bases / 90000 paths**; the green asymmetric translated matrix `35123441575` / `104886606102` contributed **1000 / 18000** with collapsed-owner-edge split 531/469; two supplementary quota-limited runs contributed **1239 / 22302** (`35122868681` / `104884696367`) and **1935 / 34830** (`35123235250` / `104885923066`) without any source mismatch. The latter two ended only because their requested generation quota was not reached within the attempt cap and are retained as supplementary no-mismatch evidence, not as successful workflow gates. Flutter parity #615 is green at **868/868**.
+Pinned-source matrices for that exact AEL-contained branch matched **165132/165132 exact complete raw paths** across **9,174** generated bases and all 18 cyclic-rotation/input-order variants: the primary matrix `35122592466` / `104883775222` contributed **5000 bases / 90000 paths**; the green asymmetric translated matrix `35123441575` / `104886606102` contributed **1000 / 18000** with collapsed-owner-edge split 531/469; two supplementary quota-limited runs contributed **1239 / 22302** (`35122868681` / `104884696367`) and **1935 / 34830** (`35123235250` / `104885923066`) without any source mismatch. The latter two ended only because their requested generation quota was not reached within the attempt cap and are retained as supplementary no-mismatch evidence, not as successful workflow gates. Flutter parity #615 is green at **870/870**.
 
 The represented non-horizontal strict-max ordering partition from #575/#588/#582/#601/#608 remains unchanged for ordinary non-collapsed intersections. #615 additionally represents only the traced rounded-to-touch `WindCnt == 1` AEL-contained single-crossing collapse. AEL-outside rounded collapses (including the retained-inner-vertex and retained-wedge counterfixtures), horizontal touched edges, side-vertex touches and mixed-collinear states remain on compatibility fallback.
 

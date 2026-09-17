@@ -15,12 +15,16 @@ A scoped `parity_verified` row never implies its top-level subsystem is complete
 ## Current executable checkpoint — 2026-09-16
 
 - Flutter **3.47.2**, Dart **3.13.2**;
-- validated code `d3bc685a316b8d70bffe66b0eecf496e5dd9926f` (clean branch checkpoint containing `fix: cover AEL-contained rounded strict-max collapse`);
-- workflow `35124252980` (#615), job `104889290591`, conclusion **success**;
+- validated code `00a49000cedaa85f21bd9fbfcf007e2512860bb6` (clean branch checkpoint containing `fix: cover AEL-contained rounded strict-max collapse`);
+- workflow `35218255121` (#615), job `105191803438`, conclusion **success**;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **868/868 passing**.
+- `flutter test --reporter expanded` — **870/870 passing**.
 
-The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds the independently traced rounded-to-touch strict-max single-crossing class where exact pinned `E2InsertsBeforeE1()` / `TopX()` ordering places both active other bounds between the owner bounds and both owner bounds contribute with `WindCnt == 1`. Exact all-rotation raw-path fixtures and Arachne zero-offset routing are locked; AEL-outside rounded retained-vertex/wedge states, side, horizontal and mixed-collinear neighbors remain fallback.
+The current suite retains every earlier represented Classic/Arachne/geometry fixture and adds the independently traced rounded-to-touch strict-max single-crossing class where exact pinned `E2InsertsBeforeE1()` / `TopX()` ordering places both active other bounds between the owner bounds and both owner bounds contribute with `WindCnt == 1`. Exact all-rotation raw-path fixtures and Arachne zero-offset routing are locked; broader AEL-outside rounded/degenerated states beyond the two translation-locked retained-inner-vertex/retained-wedge families, side, horizontal and mixed-collinear neighbors remain fallback.
+
+### #628 translated AEL-outside rounded strict-max families
+
+The represented rounded strict-max subset now also includes two independently traced **AEL-outside** raw output-list families: retained-inner-vertex and retained-wedge, under arbitrary integer translation only. Fixed source fixtures matched 36/36 complete raw paths across rotations/input order (`35217212927` / `105188120437`); a broad translation oracle matched **36000/36000 exact complete raw paths** (`35217607425` / `105189698086`). A negative source probe (`35217503833` / `105189359905`) changes the raw result at ×2 scaling, so scaled/neighboring AEL-outside states remain fallback rather than being geometry-normalized. PR parity run `35218255121` (#628), job `105191803438`, is green with clean analyze and **870/870** tests.
 
 ## Top-level gates
 
