@@ -307,7 +307,9 @@ int main() {
     const IntPoint touch_end = other[(touch_edge+1)%3];
     const bool touch_end_inside = strictly_inside(owner, touch_end);
     const bool retained_state = touched_position == 0 && crossing_position == 1 &&
-        touch_end_inside && touch_end.y() < owner[2].y();
+        touch_end_inside &&
+        touch_end.y() < owner[2].y() &&
+        other_third.y() < touch_end.y();
     const IntPoint touch_start = other[touch_edge];
     const bool wedge_state = touched_position == 1 && crossing_position == 0 &&
         !touch_end_inside &&
