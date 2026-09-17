@@ -118,6 +118,14 @@ void main() {
     );
   });
 
+  test('rounded retained wedge extra-TopX scanbeam remains fallback', () {
+    final values = [
+      _poly([(0, 0), (-28, -212), (192, -3)]),
+      _poly([(3, -135), (-4, 180), (0, -1)]),
+    ];
+    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+  });
+
   test('Arachne zero offset routes rounded retained wedge exactly', () {
     final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
       [
