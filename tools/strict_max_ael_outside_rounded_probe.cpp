@@ -219,10 +219,26 @@ int main() {
   long long attempts = 0;
   while (attempts++ < 240000000LL &&
          (retained < target_retained || wedge < target_wedge)) {
+#if defined(PROBE_WEDGE_ONLY)
     IntPoint p(coord(rng), neg_y(rng)), q(coord(rng), neg_y(rng));
     if (same(p,q) || cross(touch,p,q)==0 || p.y()==q.y()) continue;
     Path owner{touch,p,q}; make_positive(owner);
     if (!strict_positive_triangle(owner)) continue;
+#else
+    // Retained-inner source events require the outgoing owner bound to remain
+    // active far below touch while the positive-order predecessor scanbeam is
+    // close to touch. Generate that event shape directly; the acceptance
+    // predicate below still decides whether the case belongs to the class.
+    const IntPoint p(
+        std::uniform_int_distribution<int>(80, 240)(rng),
+        -std::uniform_int_distribution<int>(80, 220)(rng));
+    const IntPoint q(
+        std::uniform_int_distribution<int>(60, 240)(rng),
+        -std::uniform_int_distribution<int>(1, 30)(rng));
+    if (cross(touch, p, q) <= 0 || p.y() == q.y()) continue;
+    Path owner{touch, p, q};
+    if (!strict_positive_triangle(owner)) continue;
+#endif
 
 #if defined(PROBE_WEDGE_ONLY)
     // Retained-wedge states are extremely skinny. Construct a primitive
@@ -253,9 +269,8 @@ int main() {
     // near-collinear ray inside owner, while the opposite touch endpoint stays
     // outside. Keep the determinant small so the separate crossing rounds to
     // the touch under pinned Clipper1 arithmetic.
-    int ex = coord(rng);
-    int ey = -std::uniform_int_distribution<int>(8, 90)(rng);
-    if (ex == 0) continue;
+    int ex = std::uniform_int_distribution<int>(8, 80)(rng);
+    int ey = -std::uniform_int_distribution<int>(8, 80)(rng);
     long long bezout_x = 0, bezout_y = 0;
     if (extended_gcd(ex, ey, bezout_x, bezout_y) != 1) continue;
     const int before = std::uniform_int_distribution<int>(1, 3)(rng);
