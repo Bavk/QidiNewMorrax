@@ -39,9 +39,10 @@ import '../geometry/source_polygon.dart';
 /// rounded-to-touch single-crossing state is represented when exact
 /// `E2InsertsBeforeE1()` ordering places both already-active other bounds
 /// between the owner bounds, so both owner bounds contribute with `WindCnt=1`.
-/// The independently proved AEL-outside retained-wedge branch is also
-/// represented. Retained-inner, side/horizontal and other rounded-degenerate
-/// mixed touch states remain explicit compatibility seams.
+/// Independently proved AEL-outside retained-wedge and retained-inner
+/// no-extra-scanbeam branches are also represented. Side/horizontal, extra-
+/// TopX and other rounded-degenerate mixed touch states remain explicit
+/// compatibility seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
 
@@ -380,6 +381,21 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       // two same-coordinate events remove the rounded-away sliver and
       // BuildResult() starts at the positive-order owner predecessor.
       return <SourcePoint2>[previous, touch, next];
+    }
+
+    if (touchedPosition == 0 &&
+        crossingPosition == 1 &&
+        _strictlyInsidePositiveTriangle(owner, touchEnd) &&
+        touchEnd.y < previous.y &&
+        otherThird.y < touchEnd.y &&
+        touchedEdge.topX(previous.y) == outgoingOwner.topX(previous.y)) {
+      // AEL-outside retained-inner source state. The touched bound remains
+      // integer-TopX tied with the outgoing owner bound through the first
+      // owner-predecessor scanbeam, so Clipper does not process the second
+      // same-coordinate touch intersection early. The positive-order touched
+      // endpoint is retained in OutRec::Pts and BuildResult() starts at the
+      // outgoing owner vertex for this traced output-list state.
+      return <SourcePoint2>[next, previous, touch, touchEnd];
     }
 
     if (touchedPosition == 1 &&
