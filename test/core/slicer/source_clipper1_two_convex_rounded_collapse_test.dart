@@ -82,10 +82,48 @@ void main() {
     ]);
   });
 
-  test('rounded strict-max retained inner vertex stays fallback', () {
-    final values = [
+  test('rounded strict-max retained inner vertex is exact', () {
+    _expectExactAllRotations(
       _poly([(0, 0), (162, -141), (164, -8)]),
       _poly([(-20, 17), (20, -17), (70, -58)]),
+      const [
+        SourcePoint2(162, -141),
+        SourcePoint2(164, -8),
+        SourcePoint2(0, 0),
+        SourcePoint2(20, -17),
+      ],
+    );
+  });
+
+  test('Arachne zero offset routes rounded retained inner exactly', () {
+    final result = SourceArachneWallToolPathsPrepareExact2.offsetPolygons(
+      [
+        _poly([(0, 0), (162, -141), (164, -8)]),
+        _poly([(-20, 17), (20, -17), (70, -58)]),
+      ],
+      0,
+    );
+    expect(result, hasLength(1));
+    expect(result.single.points, const [
+      SourcePoint2(162, -141),
+      SourcePoint2(164, -8),
+      SourcePoint2(0, 0),
+      SourcePoint2(20, -17),
+    ]);
+  });
+
+  test('rounded retained inner first-scanbeam divergence stays fallback', () {
+    final values = [
+      _poly([(0, 0), (217, -158), (63, -17)]),
+      _poly([(-25, 18), (25, -18), (71, -51)]),
+    ];
+    expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
+  });
+
+  test('rounded retained inner extra-TopX scanbeam stays fallback', () {
+    final values = [
+      _poly([(0, 0), (-95, -138), (204, -70)]),
+      _poly([(41, 60), (-41, -60), (-67, -100)]),
     ];
     expect(SourceClipper1TwoConvexMixedPointUnion2.supports(values), isFalse);
   });
