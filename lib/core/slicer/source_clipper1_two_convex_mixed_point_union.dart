@@ -384,11 +384,14 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
 
     if (touchedPosition == 1 &&
         crossingPosition == 0 &&
-        !_strictlyInsidePositiveTriangle(owner, touchEnd)) {
-      // AEL-outside retained-wedge source state. The crossing-side other bound
-      // sits outside the owner interval, so Clipper keeps the positive-order
-      // touched-edge endpoint and the other triangle's third vertex. The raw
-      // cycle still uses the ordinary rightmost-minimum BuildResult() anchor.
+        !_strictlyInsidePositiveTriangle(owner, touchEnd) &&
+        touchStart.y > previous.y &&
+        otherThird.y > previous.y) {
+      // AEL-outside retained-wedge source state with no later inner-other edge
+      // crossing the owner-predecessor scanbeam. If that scanbeam is crossed,
+      // pinned Clipper inserts an additional TopX output vertex and the state
+      // stays on fallback. In this narrower state the raw cycle uses the
+      // ordinary rightmost-minimum BuildResult() anchor.
       return _rebaseBuildResult(
         <SourcePoint2>[previous, touch, touchEnd, otherThird, next],
       );
