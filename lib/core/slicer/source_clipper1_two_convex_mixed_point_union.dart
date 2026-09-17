@@ -39,7 +39,8 @@ import '../geometry/source_polygon.dart';
 /// rounded-to-touch single-crossing state is represented when exact
 /// `E2InsertsBeforeE1()` ordering places both already-active other bounds
 /// between the owner bounds, so both owner bounds contribute with `WindCnt=1`.
-/// Side/horizontal, AEL-outside rounded collapses and other rounded-degenerate
+/// The independently proved AEL-outside retained-wedge branch is also
+/// represented. Retained-inner, side/horizontal and other rounded-degenerate
 /// mixed touch states remain explicit compatibility seams.
 class SourceClipper1TwoConvexMixedPointUnion2 {
   const SourceClipper1TwoConvexMixedPointUnion2._();
@@ -357,21 +358,43 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       other.points[collapsedOtherEdgeIndex],
       other.points[(collapsedOtherEdgeIndex + 1) % 3],
     );
-    for (final active in <_MixedClipperEdge2>[touchedEdge, crossingEdge]) {
+    int? activePosition(_MixedClipperEdge2 active) {
       if (!(active.top.y < touch.y && active.bot.y > touch.y) ||
           active.topX(touch.y) != touch.x) {
         return null;
       }
-      if (!_e2InsertsBeforeE1(active, leftBound, touch.y) ||
-          _e2InsertsBeforeE1(active, rightBound, touch.y)) {
-        return null;
-      }
+      final beforeLeft = _e2InsertsBeforeE1(active, leftBound, touch.y);
+      final beforeRight = _e2InsertsBeforeE1(active, rightBound, touch.y);
+      if (!beforeLeft && !beforeRight) return 0;
+      if (beforeLeft && !beforeRight) return 1;
+      if (beforeLeft && beforeRight) return 2;
+      return null;
     }
 
-    // Pinned source trace: both owner bounds have WindCnt=1 here. The two
-    // same-coordinate events remove the rounded-away sliver and BuildResult()
-    // starts at the positive-order owner vertex immediately preceding touch.
-    return <SourcePoint2>[previous, touch, next];
+    final touchedPosition = activePosition(touchedEdge);
+    final crossingPosition = activePosition(crossingEdge);
+    if (touchedPosition == null || crossingPosition == null) return null;
+
+    if (touchedPosition == 1 && crossingPosition == 1) {
+      // #615 pinned source trace: both owner bounds have WindCnt=1 here. The
+      // two same-coordinate events remove the rounded-away sliver and
+      // BuildResult() starts at the positive-order owner predecessor.
+      return <SourcePoint2>[previous, touch, next];
+    }
+
+    if (touchedPosition == 1 &&
+        crossingPosition == 0 &&
+        !_strictlyInsidePositiveTriangle(owner, touchEnd)) {
+      // AEL-outside retained-wedge source state. The crossing-side other bound
+      // sits outside the owner interval, so Clipper keeps the positive-order
+      // touched-edge endpoint and the other triangle's third vertex. The raw
+      // cycle still uses the ordinary rightmost-minimum BuildResult() anchor.
+      return _rebaseBuildResult(
+        <SourcePoint2>[previous, touch, touchEnd, otherThird, next],
+      );
+    }
+
+    return null;
   }
 
   static bool _strictlyInsidePositiveTriangle(
