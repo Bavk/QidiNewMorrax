@@ -248,15 +248,28 @@ int main() {
     if (same(other[2],other[0]) || same(other[2],other[1]) ||
         cross(other[0],other[1],other[2])==0) continue;
 #else
-    // Retained-inner states are common enough under the broad independent
-    // random matrix; keep this generator deliberately unrelated to the fixed
-    // regression.
-    int ex = coord(rng), ey = coord(rng);
-    if (ex == 0 || ey == 0) continue;
+    // Retained-inner states use the mirrored skinny source geometry: the
+    // positive-order touch endpoint and third vertex continue down the same
+    // near-collinear ray inside owner, while the opposite touch endpoint stays
+    // outside. Keep the determinant small so the separate crossing rounds to
+    // the touch under pinned Clipper1 arithmetic.
+    int ex = coord(rng);
+    int ey = -std::uniform_int_distribution<int>(8, 90)(rng);
+    if (ex == 0) continue;
+    long long bezout_x = 0, bezout_y = 0;
+    if (extended_gcd(ex, ey, bezout_x, bezout_y) != 1) continue;
+    const int before = std::uniform_int_distribution<int>(1, 3)(rng);
+    const int after = std::uniform_int_distribution<int>(1, 3)(rng);
+    const int determinant = std::uniform_int_distribution<int>(1, 4)(rng);
+    const int along = after + std::uniform_int_distribution<int>(1, 4)(rng);
+    const long long wx0 = -bezout_y * determinant;
+    const long long wy0 = bezout_x * determinant;
+    const IntPoint third((long long)along * ex + wx0,
+                         (long long)along * ey + wy0);
     Path other{
-      IntPoint(-ex, -ey),
-      IntPoint(ex, ey),
-      IntPoint(coord(rng), coord(rng)),
+      IntPoint(-(long long)before * ex, -(long long)before * ey),
+      IntPoint((long long)after * ex, (long long)after * ey),
+      third,
     };
     if (same(other[2],other[0]) || same(other[2],other[1]) ||
         cross(other[0],other[1],other[2])==0) continue;
