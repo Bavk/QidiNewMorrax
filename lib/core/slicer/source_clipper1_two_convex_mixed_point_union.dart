@@ -455,7 +455,9 @@ class SourceClipper1TwoConvexMixedPointUnion2 {
       if (!actual.points.contains(SourcePoint2(
         origin.x + point.x,
         origin.y + point.y,
-      ))) return false;
+      ))) {
+        return false;
+      }
     }
     return true;
   }
