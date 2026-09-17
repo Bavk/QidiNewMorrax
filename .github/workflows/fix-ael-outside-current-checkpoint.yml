@@ -24,3 +24,4 @@ jobs:
           git add docs/HANDOFF.md migration/MIGRATION_STATUS.md migration/VALIDATION.md migration/TRACEABILITY.md
           git commit -m 'docs: fix translated AEL-outside checkpoint labels'
           git push origin HEAD:chatgpt/ael-outside-rounded-fixtures
+# rerun after traceability target correction
