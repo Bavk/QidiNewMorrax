@@ -1,0 +1,20 @@
+name: Trigger AEL-outside rounded patch
+
+on:
+  push:
+    branches:
+      - chatgpt/ael-outside-rounded-fixtures
+    paths:
+      - .github/workflows/trigger-ael-outside-patch.yml
+
+permissions:
+  actions: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch patch workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run apply-ael-outside-rounded-patch.yml --repo "$GITHUB_REPOSITORY" --ref chatgpt/ael-outside-rounded-fixtures
