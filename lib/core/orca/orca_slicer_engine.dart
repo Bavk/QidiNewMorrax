@@ -144,15 +144,35 @@ class OrcaSlicerEngine {
       }
 
       _activeProcess = process;
-      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
-      final stderrFuture = process.stderr.transform(utf8.decoder).join();
-      exitCode = await process.exitCode;
-      stdoutText = await stdoutFuture;
-      stderrText = await stderrFuture;
+      final stdoutBuffer = StringBuffer();
+      final stderrBuffer = StringBuffer();
+      final stdoutDone = Completer<void>();
+      final stderrDone = Completer<void>();
+      final stdoutSubscription = process.stdout
+          .transform(utf8.decoder)
+          .listen(
+            stdoutBuffer.write,
+            onDone: stdoutDone.complete,
+            onError: stdoutDone.completeError,
+          );
+      final stderrSubscription = process.stderr
+          .transform(utf8.decoder)
+          .listen(
+            stderrBuffer.write,
+            onDone: stderrDone.complete,
+            onError: stderrDone.completeError,
+          );
 
+      exitCode = await process.exitCode;
       if (_cancelRequested) {
+        await stdoutSubscription.cancel();
+        await stderrSubscription.cancel();
         throw const OrcaSlicerCancelledException();
       }
+
+      await Future.wait([stdoutDone.future, stderrDone.future]);
+      stdoutText = stdoutBuffer.toString();
+      stderrText = stderrBuffer.toString();
       if (exitCode != 0) {
         throw OrcaSlicerException(
           'OrcaSlicer exited with code $exitCode.\n'
