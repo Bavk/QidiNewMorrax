@@ -165,10 +165,7 @@ class OrcaSlicerEngine {
       _activeProcess = null;
       await progressSubscription?.cancel();
       if (pipePath != null) {
-        final pipe = File(pipePath);
-        if (await pipe.exists()) {
-          await pipe.delete();
-        }
+        await _deleteIfPresent(pipePath);
       }
     }
 
@@ -224,8 +221,7 @@ class OrcaSlicerEngine {
   }
 
   Future<void> _createFifo(String path) async {
-    final file = File(path);
-    if (await file.exists()) await file.delete();
+    await _deleteIfPresent(path);
     final result = await Process.run('mkfifo', [path]);
     if (result.exitCode != 0) {
       throw OrcaSlicerException(
@@ -233,6 +229,13 @@ class OrcaSlicerEngine {
         '${_asText(result.stderr)}',
         exitCode: result.exitCode,
       );
+    }
+  }
+
+  Future<void> _deleteIfPresent(String path) async {
+    final type = await FileSystemEntity.type(path, followLinks: false);
+    if (type != FileSystemEntityType.notFound) {
+      await File(path).delete();
     }
   }
 
