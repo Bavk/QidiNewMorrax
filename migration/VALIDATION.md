@@ -17,14 +17,14 @@ Pinned toolchain:
 - Dart `3.13.2`;
 - Ubuntu 24.04 hosted runner.
 
-GitHub Actions `.github/workflows/flutter-parity.yml` run `35284252825` (#639), job `105412942943`, executed clean code checkpoint `9f04863ea904552d8edd7034067630bd82f8be98` and completed successfully:
+GitHub Actions `.github/workflows/flutter-parity.yml` run `35362020769` (#647), job `105655340480`, executed clean code checkpoint `81691379c94382e5218c3feb22ff182e9f36bd98` and completed successfully:
 
 - `flutter pub get` — completed;
 - `flutter analyze` — **`No issues found!`**;
-- `flutter test --reporter expanded` — **874/874 tests passed**;
+- `flutter test --reporter expanded` — **875/875 tests passed**;
 - job conclusion — **success**.
 
-The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds exact AEL-outside retained-wedge and retained-inner rounded strict-max regressions, Arachne zero-offset routing for both, an alternate source `BuildResult()` start, and negative early-second-touch / extra-`TopX` scanbeam neighbors that remain on fallback.
+The suite re-executes all earlier represented Classic/Arachne/geometry/Boost/Clipper fixtures and adds the exact first-scanbeam-divergent early-second-touch owner-only rounded strict-max regression plus Arachne zero-offset routing. The corresponding extra-`TopX` scanbeam neighbors remain on fallback.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -61,6 +61,18 @@ The Dart change ports the pinned equal-`Curr.x` `E2InsertsBeforeE1()` tie branch
 
 Flutter parity #615 (`35124252980`, job `104889290591`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **868/868** tests passing.
 
+## #647 AEL-outside early-second-touch owner-only rounded strict-maximum branch
+
+`SourceClipper1TwoConvexMixedPointUnion2` now represents the first remaining AEL-outside rounded strict-max neighbor after #639: the retained-inner-shaped state where the active touched bound and outgoing owner bound **diverge** in integer `TopX` at the first owner-predecessor scanbeam.
+
+The geometry and AEL classifier remain deliberately narrow: exactly one proper crossing rounds to the strict-max touch; `touchedPosition == 0` and `crossingPosition == 1`; the positive-order touched endpoint lies strictly inside owner below the owner predecessor; the other third vertex lies below that endpoint; and the first predecessor scanbeam has `touchedEdge.topX(previous.y) != outgoingOwner.topX(previous.y)`. The earlier direct source-event trace `35283858278`, job `105411701842`, shows the mechanism on the fixed fixture: once the integer `TopX` tie breaks, Clipper processes the second same-coordinate intersection at `touch.y`, the inner endpoint is not retained in `OutRec::Pts`, and the raw result collapses to the owner-only cycle.
+
+An independent pinned-source Clipper1 oracle was compiled from BambuStudio commit `f2b55a5a83f266cf56e06c7943a81a08bebb7fad` in run `35361763642`, job `105654487004`. It generated **1,200/1,200** valid first-scanbeam-divergent bases and checked all 3×3 cyclic source rotations and both input/AddPath orders: **21600/21600 exact complete raw paths** matched the owner-only `BuildResult()` result.
+
+The Dart regression locks the fixed source path across all 18 rotation/input-order variants and separately locks Arachne zero-offset routing. This does **not** promote neighboring states that insert an additional scanbeam `TopX` output vertex.
+
+Flutter parity #647 (`35362020769`, job `105655340480`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **875/875** tests passing.
+
 ## #639 AEL-outside retained-output rounded strict-maximum branches
 
 `SourceClipper1TwoConvexMixedPointUnion2` now represents two AEL-outside `WindCnt == 2` rounded-to-touch states that were explicit #615 counterclasses, without promoting the surrounding family.
@@ -74,7 +86,7 @@ Independent pinned-source oracle run `35284009243` at source commit `f2b55a5a83f
 - wedge job `105412173334`: fixed fixture **18/18 exact complete raw paths**, plus **1,200/1,200** independently generated bases × all 18 cyclic-rotation/input-order variants = **21600/21600 exact complete raw paths**;
 - retained-inner job `105412173551`: fixed fixture **18/18 exact complete raw paths**, plus **1,200/1,200** independently generated bases × all 18 variants = **21600/21600 exact complete raw paths**.
 
-The committed Dart regressions additionally lock the alternate wedge `BuildResult()` start, exact Arachne zero-offset routing for both represented states, the retained-inner first-scanbeam-divergence owner-only counterstate, and both retained/wedge extra-`TopX` scanbeam neighbors as fallback.
+The committed Dart regressions additionally lock the alternate wedge `BuildResult()` start, exact Arachne zero-offset routing for both represented states, and both retained/wedge extra-`TopX` scanbeam neighbors as fallback. The retained-inner first-scanbeam-divergence owner-only counterstate is promoted separately by #647 above.
 
 Flutter parity #639 (`35284252825`, job `105412942943`) is green on Flutter **3.47.2** / Dart **3.13.2**, analyzer clean, **874/874** tests passing.
 
@@ -299,7 +311,7 @@ The suite also retains independent pinned compiled-BambuStudio process fixtures 
 
 For the current Clipper1/Arachne priority, independent or complete representation is still missing for:
 
-- remaining **mixed proper-crossing + point-touch/collinear cases**: rounded/degenerated strict-max states beyond the proved separated-minimum endpoint-Y boundary, side-vertex touches, horizontal touch ordering and mixed collinear states;
+- remaining **mixed proper-crossing + point-touch/collinear cases**: rounded/degenerated strict-max states that emit additional scanbeam `TopX` vertices, side-vertex touches, horizontal touch ordering and mixed collinear states;
 - wider-convex zero-area/contact/collinear and fixup output-list state;
 - multi-point or otherwise unrepresented `FixupOutPolygon()` cleanup;
 - interacting positive/negative hole boundaries and deeper/multiple surviving hole hierarchy;
@@ -312,7 +324,7 @@ Product-wide work also remains for later fill/support/seam/bridge/adaptive/ironi
 
 ## Next validation boundary
 
-1. Derive exact raw-ELF/source scanline/output-list state for remaining **mixed proper-crossing + point-touch/collinear** cases beyond #569/#575/#588/#582/#601/#608: rounded/degenerated strict-max states beyond the separated-minimum endpoint-Y boundary, side-vertex, horizontal ordering, then mixed collinear cases. Do not widen the proper-only or mixed rebase rules without independent proof.
+1. Derive exact raw-ELF/source scanline/output-list state for remaining **mixed proper-crossing + point-touch/collinear** cases beyond #569/#575/#588/#582/#601/#608/#615/#639/#647: first rounded AEL-outside states that emit additional scanbeam `TopX` vertices, then side-vertex, horizontal ordering and mixed collinear cases. Do not widen the proper-only or mixed rebase rules without independent proof.
 2. Keep wider-convex and multi-point/non-triangle fixup states on explicit compatibility fallback until their `OutRec`/`BuildResult()` behavior is independently proved.
 3. Extend the final-union oracle matrix to **interacting holes**, then **more than two interacting paths**.
 4. Continue generic/per-path Clipper1 execution only with exact source-order/rounding evidence.
