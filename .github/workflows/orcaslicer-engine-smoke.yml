@@ -16,6 +16,7 @@ jobs:
     env:
       ORCA_VERSION: '2.4.2'
       ORCA_PIN: '8500fcdccaa10b5099ac20d252af3a7c560046f1'
+      ORCA_APPIMAGE_SHA256: 'd12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,6 +32,7 @@ jobs:
         run: |
           set -euxo pipefail
           curl -fL --retry 3             "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${ORCA_VERSION}/OrcaSlicer_Linux_AppImage_Ubuntu2404_V${ORCA_VERSION}.AppImage"             -o OrcaSlicer.AppImage
+          echo "${ORCA_APPIMAGE_SHA256}  OrcaSlicer.AppImage" | sha256sum -c -
           chmod +x OrcaSlicer.AppImage
           ./OrcaSlicer.AppImage --appimage-extract >/dev/null
           test -x squashfs-root/AppRun
