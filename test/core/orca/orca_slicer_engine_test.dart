@@ -112,7 +112,7 @@ void main() {
     final script = File(
       '${temp.path}${Platform.pathSeparator}fake_orca.sh',
     );
-    await script.writeAsString('#!/bin/sh\nsleep 30\n');
+    await script.writeAsString('#!/bin/sh\nexec sleep 30\n');
     final chmod = await Process.run('chmod', ['+x', script.path]);
     expect(chmod.exitCode, 0);
 
