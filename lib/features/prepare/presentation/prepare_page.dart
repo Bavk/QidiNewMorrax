@@ -965,7 +965,14 @@ class _PreparePageState extends State<PreparePage> {
   }
 
   Widget _workspace() {
-    final currentMesh = mesh;
+    final project = editableProject;
+    final currentMesh =
+        project?.mergedMeshForPlate(activePlateIndex) ?? mesh;
+    final canTransform = project == null
+        ? currentMesh != null
+        : selectedObjectIndex != null;
+    final plateObjectCount =
+        project?.objectIndicesForPlate(activePlateIndex).length ?? 0;
     return Column(
       children: [
         SizedBox(
@@ -978,28 +985,39 @@ class _PreparePageState extends State<PreparePage> {
                 icon: const Icon(Icons.add_box_outlined),
                 tooltip: 'Add model',
               ),
-              const IconButton(
-                onPressed: null,
-                icon: Icon(Icons.grid_on_outlined),
-                tooltip: 'Multi-plate parity pending',
+              IconButton(
+                onPressed: sourceProject == null ? _addPlate : null,
+                icon: const Icon(Icons.grid_on_outlined),
+                tooltip: sourceProject == null
+                    ? 'Add plate'
+                    : 'Imported vendor 3MF is in lossless mode',
               ),
+              if (project != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ActionChip(
+                    avatar: const Icon(Icons.layers_outlined, size: 16),
+                    label: Text(project.plates[activePlateIndex].name),
+                    onPressed: _editActivePlate,
+                  ),
+                ),
               const VerticalDivider(indent: 8, endIndent: 8),
               IconButton(
-                onPressed: currentMesh == null
+                onPressed: !canTransform
                     ? null
                     : () => _transformModel(_TransformKind.move),
                 icon: const Icon(Icons.open_with),
                 tooltip: 'Move',
               ),
               IconButton(
-                onPressed: currentMesh == null
+                onPressed: !canTransform
                     ? null
                     : () => _transformModel(_TransformKind.rotate),
                 icon: const Icon(Icons.rotate_right),
                 tooltip: 'Rotate',
               ),
               IconButton(
-                onPressed: currentMesh == null
+                onPressed: !canTransform
                     ? null
                     : () => _transformModel(_TransformKind.scale),
                 icon: const Icon(Icons.aspect_ratio),
@@ -1011,7 +1029,7 @@ class _PreparePageState extends State<PreparePage> {
                 tooltip: 'Cut parity pending',
               ),
               IconButton(
-                onPressed: currentMesh == null ? null : _resetModelToBed,
+                onPressed: canTransform ? _resetModelToBed : null,
                 icon: const Icon(Icons.vertical_align_bottom),
                 tooltip: 'Center on bed',
               ),
@@ -1048,7 +1066,19 @@ class _PreparePageState extends State<PreparePage> {
                         vertical: 9,
                       ),
                       child: Text(
-                        '${currentMesh.name} • ${currentMesh.triangles.length} triangles • ${currentMesh.bounds.width.toStringAsFixed(1)} × ${currentMesh.bounds.depth.toStringAsFixed(1)} × ${currentMesh.bounds.height.toStringAsFixed(1)} mm',
+                        project == null
+                            ? '${currentMesh.name} • '
+                              '${currentMesh.triangles.length} triangles • '
+                              '${currentMesh.bounds.width.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.depth.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.height.toStringAsFixed(1)} mm'
+                            : '${project.plates[activePlateIndex].name} • '
+                              '$plateObjectCount object'
+                              '${plateObjectCount == 1 ? '' : 's'} • '
+                              '${currentMesh.triangles.length} triangles • '
+                              '${currentMesh.bounds.width.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.depth.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.height.toStringAsFixed(1)} mm',
                       ),
                     ),
                   ),
