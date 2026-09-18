@@ -20,6 +20,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Orca runtime libraries
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libopengl0
+
       - name: Download pinned OrcaSlicer AppImage
         shell: bash
         run: |
