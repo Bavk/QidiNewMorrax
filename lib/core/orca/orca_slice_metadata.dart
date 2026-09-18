@@ -464,16 +464,13 @@ double _durationSeconds(String? value) {
   ).allMatches(value);
   for (final match in matches) {
     final amount = double.tryParse(match.group(1) ?? '') ?? 0;
-    switch ((match.group(2) ?? '').toLowerCase()) {
-      case 'd':
-        total += amount * 86400;
-      case 'h':
-        total += amount * 3600;
-      case 'm':
-        total += amount * 60;
-      case 's':
-        total += amount;
-    }
+    final multiplier = switch ((match.group(2) ?? '').toLowerCase()) {
+      'd' => 86400,
+      'h' => 3600,
+      'm' => 60,
+      _ => 1,
+    };
+    total += amount * multiplier;
   }
   return total;
 }
