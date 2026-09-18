@@ -44,10 +44,10 @@ class ThreeMfProjectObject {
         ThreeMfProjectVolume(
           name: mesh.name,
           mesh: mesh,
-          settings: {'extruder': '$extruder'},
         ),
       ],
       instances: [ThreeMfProjectInstance(transform: transform)],
+      settings: {'extruder': '$extruder'},
     );
   }
 
