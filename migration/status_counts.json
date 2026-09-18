@@ -15,11 +15,13 @@
   "port_started: lib/core/geometry/polygon.dart": 2,
   "port_started: lib/core/profiles/profile_repository.dart": 2,
   "port_started: lib/core/model_io/mesh.dart": 2,
-  "port_started: lib/core/slicer/mesh_slicer.dart": 2,
   "pending_flutter_ui_port": 97,
   "port_started: lib/features/device/domain/printer_commands.dart": 1,
   "port_started: lib/features/device/data/moonraker_client.dart + printer_state.dart": 1,
   "port_started: lib/features/device/domain/printer_device.dart + printer_state.dart": 1,
   "port_started: lib/features/device/presentation/device_page.dart": 2,
-  "pending_test_port": 182
+  "pending_test_port": 182,
+  "external_engine: OrcaSlicer v2.4.2": 1,
+  "integration_verified: lib/core/orca": 2,
+  "implemented_unverified: Orca gcode -> Moonraker upload/start": 1
 }

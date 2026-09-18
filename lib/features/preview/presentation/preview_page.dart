@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 import '../../../core/gcode/gcode_parser.dart';
 
 class PreviewPage extends StatefulWidget {
-  const PreviewPage({super.key});
+  const PreviewPage({super.key, this.gcodePath});
+
+  final String? gcodePath;
 
   @override
   State<PreviewPage> createState() => _PreviewPageState();
@@ -21,6 +23,50 @@ class _PreviewPageState extends State<PreviewPage> {
   String? fileName;
   Object? error;
   bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final path = widget.gcodePath;
+    if (path != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openPath(path));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PreviewPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final path = widget.gcodePath;
+    if (path != null && path != oldWidget.gcodePath) {
+      _openPath(path);
+    }
+  }
+
+  Future<void> _openPath(String path) async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final file = File(path);
+      final bytes = await file.readAsBytes();
+      _loadBytes(bytes, file.uri.pathSegments.last);
+    } catch (e) {
+      error = e;
+    } finally {
+      loading = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _loadBytes(List<int> bytes, String name) {
+    final text = utf8.decode(bytes, allowMalformed: true);
+    const parser = GCodeParser();
+    stats = parser.stats(text);
+    layers = _buildLayers(parser, text);
+    layerIndex = layers.isEmpty ? 0 : layers.length - 1;
+    fileName = name;
+  }
 
   Future<void> _open() async {
     final result = await FilePicker.platform.pickFiles(
@@ -39,12 +85,7 @@ class _PreviewPageState extends State<PreviewPage> {
           file.bytes ??
           (file.path == null ? null : await File(file.path!).readAsBytes());
       if (bytes == null) throw StateError('Could not read ${file.name}');
-      final text = utf8.decode(bytes, allowMalformed: true);
-      const parser = GCodeParser();
-      stats = parser.stats(text);
-      layers = _buildLayers(parser, text);
-      layerIndex = layers.isEmpty ? 0 : layers.length - 1;
-      fileName = file.name;
+      _loadBytes(bytes, file.name);
     } catch (e) {
       error = e;
     } finally {

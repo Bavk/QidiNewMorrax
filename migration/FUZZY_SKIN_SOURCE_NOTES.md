@@ -1,5 +1,8 @@
 # Fuzzy skin source contract — pinned Qidi/Bambu source
 
+> **Historical note after OrcaSlicer cutover:** this file documents evidence gathered for the retired custom Dart slicer. It is not a production implementation contract anymore. Fuzzy-skin slicing is now owned by the pinned OrcaSlicer engine; do not recreate the removed Dart Arachne/fuzzy stack from this note.
+
+
 Reference commit: `bambulab/BambuStudio@f2b55a5a83f266cf56e06c7943a81a08bebb7fad`.
 Structured noise dependency: `bambulab/libnoise@v1.0.0`.
 
