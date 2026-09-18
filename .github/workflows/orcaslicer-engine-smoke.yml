@@ -126,7 +126,7 @@ jobs:
           base="https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/${ORCA_PIN}/resources/profiles/Qidi"
           curl -fL "$base/machine/Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/machine.json
           curl -fL "$base/process/0.20mm%20Standard%20@Qidi%20XPlus4.json" -o fixture/process.json
-          curl -fL "$base/filament/Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
+          curl -fL "$base/filament/Qidi%20Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
 
       - name: Slice through real OrcaSlicer
         shell: bash
