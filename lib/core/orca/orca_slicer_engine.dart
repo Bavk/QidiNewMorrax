@@ -82,7 +82,7 @@ class OrcaSlicerEngine {
 
   Future<OrcaSlicerResult> slice(
     OrcaSlicerRequest request, {
-    ValueChanged<OrcaSlicerProgress>? onProgress,
+    void Function(OrcaSlicerProgress progress)? onProgress,
   }) async {
     if (_activeProcess != null) {
       throw StateError('An OrcaSlicer process is already running.');
