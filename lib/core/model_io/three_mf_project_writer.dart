@@ -211,7 +211,10 @@ class ThreeMfProjectWriter {
         'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
         'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">',
       )
-      ..writeln(' <metadata name="Application">QidiNewMorrax</metadata>')
+      ..writeln(
+        ' <metadata name="Application">BambuStudio-02.06.00.51</metadata>',
+      )
+      ..writeln(' <metadata name="OrcaSlicer">2.4.2</metadata>')
       ..writeln(' <metadata name="BambuStudio:3mfVersion">1</metadata>');
     for (final entry in project.metadata.entries) {
       out.writeln(
