@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../domain/printer_device.dart';
@@ -129,6 +131,56 @@ class MoonrakerClient {
       request<dynamic>('printer.print.start', {'filename': filename});
   Future<void> deleteFile(String path) async =>
       request<dynamic>('server.files.delete_file', {'path': path});
+
+  Future<String> uploadGcodeFile(
+    String localPath, {
+    String? remoteName,
+  }) async {
+    final file = File(localPath);
+    if (!await file.exists()) {
+      throw StateError('G-code file does not exist: $localPath');
+    }
+
+    final name = remoteName ?? file.uri.pathSegments.last;
+    final upload = http.MultipartRequest(
+      'POST',
+      Uri.parse('${device.moonrakerBaseUrl}/server/files/upload'),
+    )
+      ..fields['root'] = 'gcodes'
+      ..files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          filename: name,
+        ),
+      );
+
+    final streamed = await upload.send().timeout(const Duration(minutes: 2));
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+      throw StateError(
+        'Moonraker upload failed (${streamed.statusCode}): $body',
+      );
+    }
+
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        final result = decoded['result'];
+        if (result is Map) {
+          final item = result['item'];
+          if (item is Map && item['path'] != null) {
+            return item['path'].toString();
+          }
+          if (result['path'] != null) return result['path'].toString();
+        }
+      }
+    } catch (_) {
+      // A successful Moonraker response without JSON path still means the
+      // requested filename was accepted in the gcodes root.
+    }
+    return name;
+  }
 
   Future<List<Map<String, dynamic>>> listFiles({String root = 'gcodes'}) async {
     final result = await request<dynamic>('server.files.list', {'root': root});
