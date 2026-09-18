@@ -118,6 +118,9 @@ class OrcaPlateMetadata {
   final List<OrcaSliceFilament> filaments;
   final List<OrcaSliceWarning> warnings;
 
+  double get totalFilamentMeters =>
+      filaments.fold(0, (sum, filament) => sum + filament.usedMeters);
+
   factory OrcaPlateMetadata.empty(int index) => OrcaPlateMetadata(
         index: index,
         printerModelId: '',
