@@ -2,7 +2,7 @@ name: OrcaSlicer engine smoke
 
 on:
   push:
-    branches: [chatgpt/orcaslicer-engine-cutover]
+    branches: [main, chatgpt/orcaslicer-engine-cutover]
   pull_request:
     branches: [main]
 
