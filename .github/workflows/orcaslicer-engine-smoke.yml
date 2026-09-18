@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq libopengl0
+          sudo apt-get install -y -qq libopengl0 libwebkit2gtk-4.1-0 libjavascriptcoregtk-4.1-0
 
       - name: Download pinned OrcaSlicer AppImage
         shell: bash
