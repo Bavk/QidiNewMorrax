@@ -35,6 +35,17 @@ GitHub Actions run `35392469054` (#27), job `105753727522`, executed the same fu
 
 This verifies the production engine process boundary, QIDI preset acceptance for the fixture, sliced 3MF production and G-code extraction used by Preview.
 
+## Sliced metadata checkpoint — 2026-09-19
+
+Functional code `a69646d98fbc07de7004cda6b62ad78757a8d61a`:
+
+- Flutter run `35400170625` (#746), job `105778026686` — analyzer **No issues found**, **131/131 tests passed**;
+- Orca smoke `35400170623` (#173), job `105778021824` — **success**;
+- the pinned two-plate QIDI fixture produced two `plate_N.gcode` entries and `Metadata/slice_info.config`;
+- each plate exposed **1167 s** prediction;
+- Orca CLI left gram-based mass at zero for this fixture, while its own G-code statistics reported **1.335 m** filament per plate;
+- validation therefore locks the production rule: use positive XML values first, then fill only missing/zero fields from Orca-authored G-code statistics, and do not synthesize mass from length/density.
+
 ## Dart boundary tests
 
 The Flutter suite additionally covers:
@@ -43,16 +54,18 @@ The Flutter suite additionally covers:
 - Orca progress JSON parsing for messages/warnings and overall/plate percentages;
 - managed-process cancellation without waiting for inherited stdout/stderr descriptors;
 - sliced 3MF `Metadata/plate_N.gcode` extraction and missing-plate failure;
+- `Metadata/slice_info.config` headers, per-plate estimates/flags/objects/filaments/warnings;
+- Orca G-code time/gram/millimeter fallback, including the real length-only case where mass stays unknown;
 - selected QIDI profile JSON materialization;
 - project 3MF serialization, lossless vendor repack and virtual-bed coordinate mapping.
 
 ## Device integration
 
-The latest generated Orca G-code is routed into the Dart Device surface. `MoonrakerClient` now uploads it through `/server/files/upload`, and `DeviceController.uploadAndStart()` can start the returned remote filename. This path is analyzer/test clean but still requires printer-backed validation before it is marked integration-verified.
+The latest generated Orca G-code and selected-plate estimate are routed into the Dart Device surface. `MoonrakerClient` uploads G-code through `/server/files/upload`, and `DeviceController.uploadAndStart()` can start the returned remote filename. This path is analyzer/test clean but still requires printer-backed validation before it is marked integration-verified.
 
 ## Remaining validation gates
 
-- richer sliced 3MF metadata/estimate/warning consumption;
+- sliced thumbnails and additional vendor printer-payload metadata where useful;
 - packaged macOS/Windows progress behavior and process-tree cancellation validation;
 - Moonraker upload/start on representative QIDI hardware;
 - packaged Windows/macOS/Linux engine artifacts and exact-version verification;

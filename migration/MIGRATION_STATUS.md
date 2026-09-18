@@ -11,14 +11,14 @@ Pinned engine:
 - Ubuntu 24.04 AppImage SHA-256 `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
 - license: GNU AGPL-3.0
 
-## Validated checkpoint — 2026-09-18
+## Validated checkpoint — 2026-09-19
 
-- functional code `70e6919eaad04199738c09b682f8bdad5ec0d67f`;
-- Flutter CI `35392468990` (#670), job `105753727204`;
+- functional code `a69646d98fbc07de7004cda6b62ad78757a8d61a`;
+- Flutter CI `35400170625` (#746), job `105778026686`;
 - analyzer: **No issues found**;
-- tests: **114/114 passed**;
-- Orca smoke `35392469054` (#27), job `105753727522`, conclusion **success**;
-- real QIDI X-Plus 4 cube slice produced a sliced 3MF with `Metadata/plate_1.gcode` (**385515 bytes**) and printable G0/G1 moves.
+- tests: **131/131 passed**;
+- Orca smoke `35400170623` (#173), job `105778021824`, conclusion **success**;
+- real QIDI X-Plus 4 two-plate slice validates `slice_info.config`, G-code statistics fallback, **1167 s** prediction and **1.335 m** filament on each plate.
 
 ## Implemented in this cutover
 
@@ -30,6 +30,8 @@ Pinned engine:
 - Orca virtual-bed offsets for multi-plate projects;
 - `Slice plate` routes through Orca instead of a Dart slicer;
 - extraction of every sliced 3MF `Metadata/plate_N.gcode` entry;
+- sliced `Metadata/slice_info.config` parsing with source-shaped G-code statistics fallback for fields Orca CLI leaves empty/zero;
+- selected-plate estimates, warnings, support/material data in Preview and Device without fabricating unavailable mass;
 - Linux Orca `--pipe` JSON progress streaming and managed-process cancellation;
 - live progress/cancel control in the Flutter workspace;
 - automatic handoff of generated G-code to Dart Preview;
@@ -44,7 +46,7 @@ Pinned engine:
 |---|---|---|
 | Orca engine process boundary | `integration_verified` | package same pinned engine on all desktop targets |
 | Prepare/project -> Orca 3MF handoff | `integration_verified` | wire richer editor state into the project model |
-| sliced G-code extraction -> Dart Preview | `integration_verified` including multi-plate output | consume richer sliced metadata |
+| sliced G-code + estimates/warnings/material -> Dart Preview | `integration_verified` including multi-plate metadata fallback | thumbnails / additional vendor payload metadata remain |
 | QIDI profile materialization | `integration_verified` for X-Plus 4 fixture | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
 | multi-plate / modifiers / paint / per-object settings | `handoff_verified` | editor creation/editing UI still pending |
@@ -55,8 +57,8 @@ Pinned engine:
 
 ## Immediate priority
 
-1. Consume sliced 3MF metadata for Preview estimates/warnings and printer delivery.
-2. Wire the verified project model into richer multi-plate/modifier/paint/per-object Prepare editing UI.
+1. Wire the verified project model into richer multi-plate/modifier/paint/filament/per-object Prepare editing UI.
+2. Consume remaining sliced-package thumbnails and additional vendor printer-payload metadata where useful.
 3. Verify Moonraker upload/start against a real QIDI printer.
 4. Package the pinned engine for Windows/macOS/Linux with exact artifact/version checks, native progress behavior and AGPL compliance.
 5. Continue Flutter Device/calibration/UI work around the stable engine boundary.
