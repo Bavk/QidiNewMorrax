@@ -154,8 +154,17 @@ class _MainShellState extends State<MainShell> {
               index: _index,
               children: [
                 PreparePage(controller: _workspace),
-                PreviewPage(gcodePath: _workspace.lastGcodePath),
-                DevicePage(gcodePath: _workspace.lastGcodePath),
+                PreviewPage(
+                  gcodePath: _workspace.lastGcodePath,
+                  gcodePathsByPlate: _workspace.lastGcodePathsByPlate,
+                  selectedPlate: _workspace.lastSelectedPlate,
+                  sliceMetadata: _workspace.lastSelectedPlateMetadata,
+                  onPlateChanged: _workspace.selectLastPlate,
+                ),
+                DevicePage(
+                  gcodePath: _workspace.lastGcodePath,
+                  sliceMetadata: _workspace.lastSelectedPlateMetadata,
+                ),
                 const ProjectPage(),
                 const CalibrationPage(),
               ],
