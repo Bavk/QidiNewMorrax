@@ -550,9 +550,29 @@ class ThreeMfProjectWriter {
     double? maxX;
     double? minY;
     double? maxY;
-    final pattern = RegExp(
-      r'^\s*(-?(?:\d+(?:\.\d*)?|\.\d+))x'
-      r'(-?(?:\d+(?:\.\d*)?|\.\d+))\s*
+    for (final value in raw) {
+      final parts = value.toString().trim().split('x');
+      if (parts.length != 2) continue;
+      final x = double.tryParse(parts[0].trim());
+      final y = double.tryParse(parts[1].trim());
+      if (x == null || y == null) continue;
+      minX = minX == null || x < minX ? x : minX;
+      maxX = maxX == null || x > maxX ? x : maxX;
+      minY = minY == null || y < minY ? y : minY;
+      maxY = maxY == null || y > maxY ? y : maxY;
+    }
+    if (minX == null || maxX == null || minY == null || maxY == null) {
+      return null;
+    }
+    return (maxX - minX, maxY - minY);
+  }
+
+  int _columnCount(int count) {
+    if (count <= 1) return 1;
+    final root = math.sqrt(count);
+    final rounded = root.round();
+    return root > rounded ? rounded + 1 : rounded;
+  }
 
   String _modelSettingsXml(ThreeMfProject project, List<_ObjectIds> ids) {
     final out = StringBuffer()
