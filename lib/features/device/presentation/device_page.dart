@@ -435,8 +435,9 @@ class _OverviewTab extends StatelessWidget {
                 Tooltip(
                   message: sliceMetadata == null
                       ? 'Upload latest Orca G-code and start printing'
-                      : 'Orca estimate: ${_formatDuration(sliceMetadata!.predictionSeconds)}, '
-                        '${sliceMetadata!.weightGrams.toStringAsFixed(2)} g',
+                      : 'Orca estimate: '
+                        '${_formatDuration(sliceMetadata!.predictionSeconds)}, '
+                        '${_materialUsage(sliceMetadata!)}',
                   child: FilledButton.icon(
                     onPressed: state.connected && gcodePath != null
                         ? () => run(() => controller.uploadAndStart(gcodePath!))
@@ -456,6 +457,16 @@ class _OverviewTab extends StatelessWidget {
       ],
     );
   }
+}
+
+String _materialUsage(OrcaPlateMetadata metadata) {
+  if (metadata.weightGrams > 0) {
+    return '${metadata.weightGrams.toStringAsFixed(2)} g';
+  }
+  if (metadata.totalFilamentMeters > 0) {
+    return '${metadata.totalFilamentMeters.toStringAsFixed(2)} m filament';
+  }
+  return 'material estimate unavailable';
 }
 
 String _formatDuration(double seconds) {
