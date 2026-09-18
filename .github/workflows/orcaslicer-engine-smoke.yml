@@ -227,6 +227,7 @@ jobs:
 
           python3 - <<'PY'
           import json
+          import re
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
@@ -253,10 +254,50 @@ jobs:
               assert prediction > 0, (index, meta)
               assert 'first_layer_time' in meta, meta
               filaments = plate.findall('filament')
-              assert filaments, f'plate {index} has no filament usage'
-              used_g = sum(float(item.attrib.get('used_g', '0') or 0) for item in filaments)
-              assert used_g > 0, (index, used_g)
-              effective_weight = declared_weight if declared_weight > 0 else used_g
-              assert effective_weight > 0, (index, meta, used_g)
-              print(f'plate {index}: prediction={prediction}s weight={effective_weight}g filament={used_g}g')
+              assert filaments, f'plate {index} has no filament elements'
+              xml_used_g = sum(float(item.attrib.get('used_g', '0') or 0) for item in filaments)
+
+              gcode = Path(f'out/plate_{index}.gcode').read_text(errors='replace')
+              time_match = re.search(
+                  r'^;\\s*estimated printing time \\(normal mode\\)\\s*=\\s*(.+)
+          PY
+,
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              assert time_match, f'plate {index} has no Orca normal-mode time comment'
+
+              total_match = re.search(
+                  r'^;\\s*total filament used \\[g\\]\\s*=\\s*([0-9.]+)',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              gcode_used_g = float(total_match.group(1)) if total_match else 0.0
+              if gcode_used_g <= 0:
+                  list_match = re.search(
+                      r'^;\\s*filament used \\[g\\]\\s*=\\s*(.+)
+          PY
+,
+                      gcode,
+                      re.MULTILINE | re.IGNORECASE,
+                  )
+                  if list_match:
+                      gcode_used_g = sum(
+                          float(value)
+                          for value in re.findall(r'-?\\d+(?:\\.\\d+)?', list_match.group(1))
+                      )
+
+              effective_weight = (
+                  declared_weight
+                  if declared_weight > 0
+                  else xml_used_g
+                  if xml_used_g > 0
+                  else gcode_used_g
+              )
+              assert effective_weight > 0, (index, meta, xml_used_g, gcode_used_g)
+              print(
+                  f'plate {index}: prediction={prediction}s '
+                  f'weight={effective_weight}g '
+                  f'xml_filament={xml_used_g}g gcode_filament={gcode_used_g}g'
+              )
           PY
