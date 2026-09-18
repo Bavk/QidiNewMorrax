@@ -26,7 +26,7 @@ void main() {
 
     expect(text, contains('solid qidi_new_morrax'));
     expect(text, contains('facet normal'));
-    expect(text, contains('vertex 10 0 0'));
+    expect(text, contains('vertex 10.0000000000000 0 0'));
     expect(text, contains('endsolid qidi_new_morrax'));
   });
 }
