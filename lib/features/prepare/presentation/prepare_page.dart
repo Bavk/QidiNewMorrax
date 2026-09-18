@@ -316,6 +316,271 @@ class _PreparePageState extends State<PreparePage> {
     });
   }
 
+  void _addPlate() {
+    if (sourceProject != null) {
+      setState(() {
+        error = StateError(
+          'Lossless imported 3MF editing is not enabled yet. '
+          'Generated plates are available for generated projects.',
+        );
+      });
+      return;
+    }
+    final updated = (editableProject ?? WorkspaceEditableProject.empty())
+        .addPlate();
+    setState(() {
+      editableProject = updated;
+      activePlateIndex = updated.plates.length - 1;
+      selectedObjectIndex = null;
+      mesh = null;
+      sourceProject = null;
+      _publishSelection();
+    });
+  }
+
+  void _removeActivePlate() {
+    final project = editableProject;
+    if (project == null || project.plates.length <= 1) return;
+    final updated = project.removePlate(activePlateIndex);
+    final nextPlate = activePlateIndex.clamp(0, updated.plates.length - 1);
+    final indices = updated.objectIndicesForPlate(nextPlate);
+    setState(() {
+      editableProject = updated;
+      activePlateIndex = nextPlate;
+      selectedObjectIndex = indices.firstOrNull;
+      mesh = selectedObjectIndex == null
+          ? updated.mergedMeshForPlate(nextPlate)
+          : updated.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  Future<void> _editActivePlate() async {
+    final project = editableProject;
+    if (project == null) return;
+    final plate = project.plates[activePlateIndex];
+    final name = TextEditingController(text: plate.name);
+    var locked = plate.locked;
+    final result = await showDialog<({String name, bool locked})>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Plate settings'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Plate name'),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Lock plate'),
+                  value: locked,
+                  onChanged: (value) =>
+                      setDialogState(() => locked = value),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                context,
+                (name: name.text, locked: locked),
+              ),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    name.dispose();
+    if (result == null) return;
+    var updated = project.renamePlate(activePlateIndex, result.name);
+    updated = updated.setPlateLocked(activePlateIndex, result.locked);
+    setState(() {
+      editableProject = updated;
+      _publishSelection();
+    });
+  }
+
+  void _removeSelectedObject() {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (project == null || objectIndex == null) return;
+    final updated = project.removeObject(objectIndex);
+    final indices = updated.objectIndicesForPlate(activePlateIndex);
+    setState(() {
+      editableProject = updated;
+      selectedObjectIndex = indices.firstOrNull;
+      mesh = selectedObjectIndex == null
+          ? updated.mergedMeshForPlate(activePlateIndex)
+          : updated.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  Future<void> _editSelectedObject() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (project == null || objectIndex == null) return;
+    final object = project.objects[objectIndex];
+    final name = TextEditingController(text: object.name);
+    final extruder = TextEditingController(text: object.extruder.toString());
+    final wallLoops = TextEditingController(
+      text: object.settings['wall_loops'] ?? '',
+    );
+    final infill = TextEditingController(
+      text: object.settings['sparse_infill_density'] ?? '',
+    );
+    var plateIndex = object.plateIndex;
+
+    final result = await showDialog<
+        ({
+          String name,
+          int plateIndex,
+          int extruder,
+          String wallLoops,
+          String infill,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Object settings'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Object name'),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  initialValue: plateIndex,
+                  decoration: const InputDecoration(labelText: 'Plate'),
+                  items: [
+                    for (var i = 0; i < project.plates.length; i++)
+                      DropdownMenuItem(
+                        value: i,
+                        child: Text(project.plates[i].name),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => plateIndex = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: extruder,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Extruder / filament slot',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: wallLoops,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Wall loops override',
+                          hintText: 'inherit',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: infill,
+                        decoration: const InputDecoration(
+                          labelText: 'Sparse infill override',
+                          hintText: 'inherit (e.g. 20%)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final slot = int.tryParse(extruder.text.trim());
+                if (slot == null || slot < 1) return;
+                Navigator.pop(
+                  context,
+                  (
+                    name: name.text,
+                    plateIndex: plateIndex,
+                    extruder: slot,
+                    wallLoops: wallLoops.text,
+                    infill: infill.text,
+                  ),
+                );
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    name.dispose();
+    extruder.dispose();
+    wallLoops.dispose();
+    infill.dispose();
+    if (result == null) return;
+
+    final settings = <String, String>{...object.settings};
+    final loops = result.wallLoops.trim();
+    final density = result.infill.trim();
+    if (loops.isEmpty) {
+      settings.remove('wall_loops');
+    } else {
+      settings['wall_loops'] = loops;
+    }
+    if (density.isEmpty) {
+      settings.remove('sparse_infill_density');
+    } else {
+      settings['sparse_infill_density'] = density;
+    }
+
+    final updated = project.updateObject(
+      objectIndex,
+      name: result.name.trim().isEmpty ? object.name : result.name.trim(),
+      plateIndex: result.plateIndex,
+      extruder: result.extruder,
+      settings: settings,
+    );
+    setState(() {
+      editableProject = updated;
+      activePlateIndex = result.plateIndex;
+      selectedObjectIndex = objectIndex;
+      mesh = updated.objects[objectIndex].mesh;
+      _publishSelection();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
