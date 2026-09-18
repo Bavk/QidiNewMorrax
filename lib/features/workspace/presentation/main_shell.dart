@@ -5,6 +5,8 @@ import '../../device/presentation/device_page.dart';
 import '../../prepare/presentation/prepare_page.dart';
 import '../../preview/presentation/preview_page.dart';
 import '../../project/presentation/project_page.dart';
+import '../../../core/orca/orca_slicer_engine.dart';
+import '../application/workspace_controller.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -15,6 +17,37 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   var _index = 0;
+  final _workspace = WorkspaceController();
+
+  @override
+  void initState() {
+    super.initState();
+    _workspace.addListener(_workspaceChanged);
+  }
+
+  @override
+  void dispose() {
+    _workspace.removeListener(_workspaceChanged);
+    _workspace.dispose();
+    super.dispose();
+  }
+
+  void _workspaceChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _slicePlate() async {
+    try {
+      await _workspace.slice();
+      if (!mounted) return;
+      setState(() => _index = 1);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
 
   static const _destinations = [
     (Icons.layers_outlined, 'Prepare'),
@@ -74,11 +107,23 @@ class _MainShellState extends State<MainShell> {
                     ),
                     if (_index == 0) ...[
                       Tooltip(
-                        message: 'Production slicer pipeline parity pending',
+                        message: _workspace.canSlice
+                            ? 'Slice with OrcaSlicer ${OrcaSlicerEngine.pinnedVersion}'
+                            : 'Select a model, printer, process and filament',
                         child: FilledButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.content_cut_outlined, size: 18),
-                          label: const Text('Slice plate'),
+                          onPressed: _workspace.canSlice && !_workspace.slicing
+                              ? _slicePlate
+                              : null,
+                          icon: _workspace.slicing
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.content_cut_outlined, size: 18),
+                          label: Text(
+                            _workspace.slicing ? 'Slicing…' : 'Slice plate',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -92,12 +137,12 @@ class _MainShellState extends State<MainShell> {
           Expanded(
             child: IndexedStack(
               index: _index,
-              children: const [
-                PreparePage(),
-                PreviewPage(),
-                DevicePage(),
-                ProjectPage(),
-                CalibrationPage(),
+              children: [
+                PreparePage(controller: _workspace),
+                PreviewPage(gcodePath: _workspace.lastGcodePath),
+                const DevicePage(),
+                const ProjectPage(),
+                const CalibrationPage(),
               ],
             ),
           ),
