@@ -201,7 +201,8 @@ class OrcaSlicerEngine {
 
     final bundleBytes = await bundle.readAsBytes();
     final plateGcodes = extractPlateGcodes(bundleBytes);
-    final sliceMetadata = OrcaSliceMetadata.fromBundle(bundleBytes);
+    final sliceMetadata = OrcaSliceMetadata.fromBundle(bundleBytes)
+        .withPlateGcodes(plateGcodes);
     if (plateGcodes.isEmpty) {
       throw const OrcaSlicerException(
         'Sliced 3MF contains no Metadata/plate_N.gcode entries.',
