@@ -2,7 +2,7 @@ name: OrcaSlicer engine smoke
 
 on:
   push:
-    branches: [main, chatgpt/orcaslicer-engine-cutover]
+    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff]
   pull_request:
     branches: [main]
 
@@ -37,114 +37,111 @@ jobs:
           ./OrcaSlicer.AppImage --appimage-extract >/dev/null
           test -x squashfs-root/AppRun
 
-      - name: Prepare QIDI X-Plus 4 fixture
+      - name: Prepare multi-plate QIDI 3MF fixture
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p fixture out
-          cat > fixture/cube.stl <<'STL'
-          solid cube
-            facet normal 0 0 -1
-              outer loop
-                vertex 0 0 0
-                vertex 20 20 0
-                vertex 20 0 0
-              endloop
-            endfacet
-            facet normal 0 0 -1
-              outer loop
-                vertex 0 0 0
-                vertex 0 20 0
-                vertex 20 20 0
-              endloop
-            endfacet
-            facet normal 0 0 1
-              outer loop
-                vertex 0 0 20
-                vertex 20 0 20
-                vertex 20 20 20
-              endloop
-            endfacet
-            facet normal 0 0 1
-              outer loop
-                vertex 0 0 20
-                vertex 20 20 20
-                vertex 0 20 20
-              endloop
-            endfacet
-            facet normal 0 -1 0
-              outer loop
-                vertex 0 0 0
-                vertex 20 0 0
-                vertex 20 0 20
-              endloop
-            endfacet
-            facet normal 0 -1 0
-              outer loop
-                vertex 0 0 0
-                vertex 20 0 20
-                vertex 0 0 20
-              endloop
-            endfacet
-            facet normal 1 0 0
-              outer loop
-                vertex 20 0 0
-                vertex 20 20 0
-                vertex 20 20 20
-              endloop
-            endfacet
-            facet normal 1 0 0
-              outer loop
-                vertex 20 0 0
-                vertex 20 20 20
-                vertex 20 0 20
-              endloop
-            endfacet
-            facet normal 0 1 0
-              outer loop
-                vertex 20 20 0
-                vertex 0 20 0
-                vertex 0 20 20
-              endloop
-            endfacet
-            facet normal 0 1 0
-              outer loop
-                vertex 20 20 0
-                vertex 0 20 20
-                vertex 20 20 20
-              endloop
-            endfacet
-            facet normal -1 0 0
-              outer loop
-                vertex 0 20 0
-                vertex 0 0 0
-                vertex 0 0 20
-              endloop
-            endfacet
-            facet normal -1 0 0
-              outer loop
-                vertex 0 20 0
-                vertex 0 0 20
-                vertex 0 20 20
-              endloop
-            endfacet
-          endsolid cube
-          STL
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          vertices = [
+              (0,0,0),(20,0,0),(20,20,0),(0,20,0),
+              (0,0,20),(20,0,20),(20,20,20),(0,20,20),
+          ]
+          triangles = [
+              (0,2,1),(0,3,2),(4,5,6),(4,6,7),
+              (0,1,5),(0,5,4),(1,2,6),(1,6,5),
+              (2,3,7),(2,7,6),(3,0,4),(3,4,7),
+          ]
+          def mesh_object(object_id):
+              vs = ''.join(
+                  f'<vertex x="{x}" y="{y}" z="{z}"/>'
+                  for x,y,z in vertices
+              )
+              ts = ''.join(
+                  f'<triangle v1="{a}" v2="{b}" v3="{c}"/>'
+                  for a,b,c in triangles
+              )
+              return (
+                  f'<object id="{object_id}" type="model"><mesh>'
+                  f'<vertices>{vs}</vertices><triangles>{ts}</triangles>'
+                  f'</mesh></object>'
+              )
+
+          model = f'''<?xml version="1.0" encoding="UTF-8"?>
+          <model unit="millimeter" xml:lang="en-US"
+            xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+            xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">
+            <metadata name="Application">QidiNewMorrax CI</metadata>
+            <metadata name="BambuStudio:3mfVersion">1</metadata>
+            <resources>
+              {mesh_object(1)}
+              <object id="2" type="model"><components><component objectid="1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/></components></object>
+              {mesh_object(3)}
+              <object id="4" type="model"><components><component objectid="3" transform="1 0 0 0 1 0 0 0 1 0 0 0"/></components></object>
+            </resources>
+            <build>
+              <item objectid="2" transform="1 0 0 0 1 0 0 0 1 0 0 0" printable="1"/>
+              <item objectid="4" transform="1 0 0 0 1 0 0 0 1 0 0 0" printable="1"/>
+            </build>
+          </model>'''
+
+          settings = '''<?xml version="1.0" encoding="UTF-8"?>
+          <config>
+            <object id="2"><metadata key="name" value="Cube A"/><part id="1" subtype="normal_part"><metadata key="name" value="Cube A"/><metadata key="extruder" value="1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part></object>
+            <object id="4"><metadata key="name" value="Cube B"/><part id="3" subtype="normal_part"><metadata key="name" value="Cube B"/><metadata key="extruder" value="1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part></object>
+            <plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value="Plate 1"/><metadata key="locked" value="false"/><model_instance><metadata key="object_id" value="2"/><metadata key="instance_id" value="0"/><metadata key="identify_id" value="1"/></model_instance></plate>
+            <plate><metadata key="plater_id" value="2"/><metadata key="plater_name" value="Plate 2"/><metadata key="locked" value="false"/><model_instance><metadata key="object_id" value="4"/><metadata key="instance_id" value="0"/><metadata key="identify_id" value="2"/></model_instance></plate>
+            <assemble></assemble>
+          </config>'''
+
+          content_types = '''<?xml version="1.0" encoding="UTF-8"?>
+          <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+            <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+            <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+            <Default Extension="config" ContentType="application/octet-stream"/>
+          </Types>'''
+          rels = '''<?xml version="1.0" encoding="UTF-8"?>
+          <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+            <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+          </Relationships>'''
+
+          path = Path('fixture/project.3mf')
+          with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as z:
+              z.writestr('[Content_Types].xml', content_types)
+              z.writestr('_rels/.rels', rels)
+              z.writestr('3D/3dmodel.model', model)
+              z.writestr('Metadata/model_settings.config', settings)
+          PY
 
           base="https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/${ORCA_PIN}/resources/profiles/Qidi"
           curl -fL "$base/machine/Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/machine.json
           curl -fL "$base/process/0.20mm%20Standard%20@Qidi%20XPlus4.json" -o fixture/process.json
           curl -fL "$base/filament/Qidi%20Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
 
-      - name: Slice through real OrcaSlicer
+      - name: Slice multi-plate project through real OrcaSlicer
         shell: bash
         run: |
           set -euxo pipefail
           export ORCA_SLICER_BIN="$PWD/squashfs-root/AppRun"
-          "$ORCA_SLICER_BIN"             "$PWD/fixture/cube.stl"             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json"             --load-filaments "$PWD/fixture/filament.json"             --arrange 1             --ensure-on-bed             --slice 0             --export-3mf "cube.gcode.3mf"             --outputdir "$PWD/out"             --debug 2
+          "$ORCA_SLICER_BIN" \
+            "$PWD/fixture/project.3mf" \
+            --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
+            --load-filaments "$PWD/fixture/filament.json" \
+            --arrange 0 \
+            --ensure-on-bed \
+            --slice 0 \
+            --export-3mf "project.gcode.3mf" \
+            --outputdir "$PWD/out" \
+            --debug 2
 
-          test -s out/cube.gcode.3mf
-          unzip -l out/cube.gcode.3mf | tee out/archive.txt
-          unzip -p out/cube.gcode.3mf Metadata/plate_1.gcode > out/plate_1.gcode
+          test -s out/project.gcode.3mf
+          unzip -l out/project.gcode.3mf | tee out/archive.txt
+          unzip -p out/project.gcode.3mf Metadata/plate_1.gcode > out/plate_1.gcode
+          unzip -p out/project.gcode.3mf Metadata/plate_2.gcode > out/plate_2.gcode
           test -s out/plate_1.gcode
+          test -s out/plate_2.gcode
           grep -Eq '^(G0|G1) ' out/plate_1.gcode
+          grep -Eq '^(G0|G1) ' out/plate_2.gcode
