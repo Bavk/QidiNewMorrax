@@ -104,36 +104,35 @@ class OrcaPlateMetadata {
     final warnings = <OrcaSliceWarning>[];
 
     for (final child in element.childElements) {
-      switch (child.localName) {
-        case 'metadata':
-          final key = child.getAttribute('key');
-          if (key != null) values[key] = child.getAttribute('value') ?? '';
-        case 'object':
-          objects.add(OrcaSliceObject(
-            identifyId: _int(child.getAttribute('identify_id')),
-            name: child.getAttribute('name') ?? '',
-            skipped: _bool(child.getAttribute('skipped')),
-          ));
-        case 'filament':
-          filaments.add(OrcaSliceFilament(
-            id: _int(child.getAttribute('id')),
-            trayInfoId: child.getAttribute('tray_info_idx') ?? '',
-            type: child.getAttribute('type') ?? '',
-            color: child.getAttribute('color') ?? '',
-            usedMeters: _double(child.getAttribute('used_m')),
-            usedGrams: _double(child.getAttribute('used_g')),
-            nozzleGroupIds: _intList(child.getAttribute('group_id')),
-            nozzleDiameter: _double(child.getAttribute('nozzle_diameter')),
-            nozzleVolumeType: child.getAttribute('volume_type') ?? '',
-            usedForObject: _bool(child.getAttribute('used_for_object')),
-            usedForSupport: _bool(child.getAttribute('used_for_support')),
-          ));
-        case 'warning':
-          warnings.add(OrcaSliceWarning(
-            message: child.getAttribute('msg') ?? '',
-            level: _int(child.getAttribute('level')),
-            errorCode: child.getAttribute('error_code') ?? '',
-          ));
+      if (child.localName == 'metadata') {
+        final key = child.getAttribute('key');
+        if (key != null) values[key] = child.getAttribute('value') ?? '';
+      } else if (child.localName == 'object') {
+        objects.add(OrcaSliceObject(
+          identifyId: _int(child.getAttribute('identify_id')),
+          name: child.getAttribute('name') ?? '',
+          skipped: _bool(child.getAttribute('skipped')),
+        ));
+      } else if (child.localName == 'filament') {
+        filaments.add(OrcaSliceFilament(
+          id: _int(child.getAttribute('id')),
+          trayInfoId: child.getAttribute('tray_info_idx') ?? '',
+          type: child.getAttribute('type') ?? '',
+          color: child.getAttribute('color') ?? '',
+          usedMeters: _double(child.getAttribute('used_m')),
+          usedGrams: _double(child.getAttribute('used_g')),
+          nozzleGroupIds: _intList(child.getAttribute('group_id')),
+          nozzleDiameter: _double(child.getAttribute('nozzle_diameter')),
+          nozzleVolumeType: child.getAttribute('volume_type') ?? '',
+          usedForObject: _bool(child.getAttribute('used_for_object')),
+          usedForSupport: _bool(child.getAttribute('used_for_support')),
+        ));
+      } else if (child.localName == 'warning') {
+        warnings.add(OrcaSliceWarning(
+          message: child.getAttribute('msg') ?? '',
+          level: _int(child.getAttribute('level')),
+          errorCode: child.getAttribute('error_code') ?? '',
+        ));
       }
     }
 
