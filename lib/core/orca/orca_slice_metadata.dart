@@ -39,7 +39,7 @@ class OrcaSliceMetadata {
     for (final entry in gcodes.entries) {
       final stats = _OrcaGcodeStatistics.parse(entry.value);
       final existing = updated[entry.key] ?? OrcaPlateMetadata.empty(entry.key);
-      updated[entry.key] = existing.withGcodeStatistics(stats);
+      updated[entry.key] = existing._withGcodeStatistics(stats);
     }
     return OrcaSliceMetadata(
       header: header,
@@ -136,7 +136,7 @@ class OrcaPlateMetadata {
         warnings: const [],
       );
 
-  OrcaPlateMetadata withGcodeStatistics(_OrcaGcodeStatistics stats) {
+  OrcaPlateMetadata _withGcodeStatistics(_OrcaGcodeStatistics stats) {
     final count = [
       filaments.length,
       stats.filamentGrams.length,
