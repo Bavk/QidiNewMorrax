@@ -18,6 +18,7 @@ void main() {
     'print_settings_id': 'Process',
     'filament_settings_id': ['Filament'],
     'nozzle_diameter': ['0.4'],
+    'printable_area': ['0x0', '100x0', '100x100', '0x100'],
     'layer_height': '0.2',
   };
 
@@ -91,6 +92,7 @@ void main() {
     final root = utf8.decode(package.entry('3D/3dmodel.model')!);
     expect(root, contains('p:path="/3D/Objects/object_1.model"'));
     expect(root, contains('requiredextensions="p"'));
+    expect(root, contains('transform="1 0 0 0 1 0 0 0 1 120 0 0"'));
     expect(package.entry('3D/_rels/3dmodel.model.rels'), isNotNull);
 
     final child = utf8.decode(package.entry('3D/Objects/object_1.model')!);
