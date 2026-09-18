@@ -143,38 +143,77 @@ class ThreeMfProjectWriter {
         throw ArgumentError('3MF project object "${object.name}" has no volumes');
       }
       if (object.instances.isEmpty) {
-        throw ArgumentError('3MF project object "${object.name}" has no instances');
+        throw ArgumentError(
+          '3MF project object "${object.name}" has no instances',
+        );
       }
     }
 
     final ids = _allocateIds(project);
     final archive = Archive()
-      ..addFile(ArchiveFile.bytes(
-        '[Content_Types].xml',
-        Uint8List.fromList(utf8.encode(_contentTypes)),
-      ))
-      ..addFile(ArchiveFile.bytes(
-        '_rels/.rels',
-        Uint8List.fromList(utf8.encode(_relationships)),
-      ))
-      ..addFile(ArchiveFile.bytes(
-        '3D/3dmodel.model',
-        Uint8List.fromList(utf8.encode(_modelXml(project, ids))),
-      ))
-      ..addFile(ArchiveFile.bytes(
-        'Metadata/model_settings.config',
-        Uint8List.fromList(utf8.encode(_modelSettingsXml(project, ids))),
-      ));
+      ..addFile(
+        ArchiveFile.bytes(
+          '[Content_Types].xml',
+          Uint8List.fromList(utf8.encode(_contentTypes)),
+        ),
+      )
+      ..addFile(
+        ArchiveFile.bytes(
+          '_rels/.rels',
+          Uint8List.fromList(utf8.encode(_relationships)),
+        ),
+      )
+      ..addFile(
+        ArchiveFile.bytes(
+          '3D/3dmodel.model',
+          Uint8List.fromList(utf8.encode(_modelXml(project, ids))),
+        ),
+      )
+      ..addFile(
+        ArchiveFile.bytes(
+          '3D/_rels/3dmodel.model.rels',
+          Uint8List.fromList(
+            utf8.encode(_modelRelationships(project)),
+          ),
+        ),
+      )
+      ..addFile(
+        ArchiveFile.bytes(
+          'Metadata/model_settings.config',
+          Uint8List.fromList(utf8.encode(_modelSettingsXml(project, ids))),
+        ),
+      );
+
+    for (var objectIndex = 0; objectIndex < project.objects.length; objectIndex++) {
+      archive.addFile(
+        ArchiveFile.bytes(
+          _subModelPath(objectIndex),
+          Uint8List.fromList(
+            utf8.encode(
+              _subModelXml(
+                project.objects[objectIndex],
+                ids[objectIndex],
+                objectIndex,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     if (project.projectSettings.isNotEmpty) {
-      archive.addFile(ArchiveFile.bytes(
-        'Metadata/project_settings.config',
-        Uint8List.fromList(
-          utf8.encode(const JsonEncoder.withIndent('  ').convert(
-            project.projectSettings,
-          )),
+      archive.addFile(
+        ArchiveFile.bytes(
+          'Metadata/project_settings.config',
+          Uint8List.fromList(
+            utf8.encode(
+              const JsonEncoder.withIndent('  ').convert(
+                project.projectSettings,
+              ),
+            ),
+          ),
         ),
-      ));
+      );
     }
     return ZipEncoder().encodeBytes(archive);
   }
