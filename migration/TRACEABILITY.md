@@ -18,7 +18,9 @@ The same functional HEAD is green in OrcaSlicer smoke run `35392469054` (#27), j
 | Prepare/project handoff | Dart `ThreeMfProjectWriter` + lossless `ThreeMfWriter` | split-model/unit tests + real two-plate Orca `--slice 0` smoke |
 | project settings | Dart `OrcaProjectSettingsBuilder` | resolved QIDI config embedded before BBS/Orca import |
 | plate coordinate mapping | Dart `OrcaBedCoordinateMapper` + writer virtual-bed offsets | unit tests + real two-plate Orca smoke |
-| engine invocation | Dart `OrcaSlicerEngine` | CLI contract tests + real pinned executable CI |
+| engine invocation | Dart `OrcaSlicerEngine` managed `Process.start` boundary | CLI contract tests + real pinned executable CI |
+| slicing progress | Linux Orca `--pipe` FIFO -> `OrcaSlicerProgress` | real pinned AppImage progress JSON smoke |
+| cancellation | active Orca process termination + `OrcaSlicerCancelledException` | process lifecycle unit test; packaged-platform process tree validation still pending |
 | sliced result extraction | Dart `OrcaSlicerEngine.extractPlateGcodes` | ZIP tests + two plate G-code entries verified |
 | Preview | Dart `GCodeParser` + Flutter Preview | generated Orca G-code routed automatically |
 | printer upload/start | Dart `DeviceController` + `MoonrakerClient` | implementation complete; printer-backed validation pending |
@@ -37,4 +39,4 @@ The former `lib/core/slicer` source-shaped Dart implementation, custom Clipper s
 
 ## First unfinished integration boundary
 
-The STL boundary is retired. The next engine integration boundary is Orca `--pipe` progress/cancellation, followed by richer sliced-3MF metadata consumption. The project serializer already preserves/encodes multi-plate, modifiers, painted facets, object/volume settings, filament assignment and vendor metadata; richer Prepare UI still needs to expose creation/editing of that state.
+The STL boundary is retired and Linux Orca `--pipe` progress/cancellation is integrated. The next engine boundary is richer sliced-3MF metadata consumption for estimates, warnings, thumbnails and printer payloads. The project serializer already preserves/encodes multi-plate, modifiers, painted facets, object/volume settings, filament assignment and vendor metadata; richer Prepare UI still needs to expose creation/editing of that state.
