@@ -436,7 +436,6 @@ class _PreparePageState extends State<PreparePage> {
     if (project == null || objectIndex == null) return;
     final object = project.objects[objectIndex];
     final name = TextEditingController(text: object.name);
-    final extruder = TextEditingController(text: object.extruder.toString());
     final wallLoops = TextEditingController(
       text: object.settings['wall_loops'] ?? '',
     );
@@ -449,7 +448,6 @@ class _PreparePageState extends State<PreparePage> {
         ({
           String name,
           int plateIndex,
-          int extruder,
           String wallLoops,
           String infill,
         })>(
@@ -483,14 +481,7 @@ class _PreparePageState extends State<PreparePage> {
                     }
                   },
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: extruder,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Extruder / filament slot',
-                  ),
-                ),
+
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -525,20 +516,15 @@ class _PreparePageState extends State<PreparePage> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () {
-                final slot = int.tryParse(extruder.text.trim());
-                if (slot == null || slot < 1) return;
-                Navigator.pop(
-                  context,
-                  (
-                    name: name.text,
-                    plateIndex: plateIndex,
-                    extruder: slot,
-                    wallLoops: wallLoops.text,
-                    infill: infill.text,
-                  ),
-                );
-              },
+              onPressed: () => Navigator.pop(
+                context,
+                (
+                  name: name.text,
+                  plateIndex: plateIndex,
+                  wallLoops: wallLoops.text,
+                  infill: infill.text,
+                ),
+              ),
               child: const Text('Apply'),
             ),
           ],
@@ -547,7 +533,6 @@ class _PreparePageState extends State<PreparePage> {
     );
 
     name.dispose();
-    extruder.dispose();
     wallLoops.dispose();
     infill.dispose();
     if (result == null) return;
@@ -570,7 +555,6 @@ class _PreparePageState extends State<PreparePage> {
       objectIndex,
       name: result.name.trim().isEmpty ? object.name : result.name.trim(),
       plateIndex: result.plateIndex,
-      extruder: result.extruder,
       settings: settings,
     );
     setState(() {
