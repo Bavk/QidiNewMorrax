@@ -67,6 +67,30 @@ void main() {
     expect(utf8.decode(result), 'G90\nG1 X10 Y20\n');
   });
 
+  test('extractPlateGcodes exposes every sliced plate', () {
+    final archive = Archive()
+      ..addFile(
+        ArchiveFile.bytes(
+          'Metadata/plate_1.gcode',
+          Uint8List.fromList(utf8.encode('G1 X1\n')),
+        ),
+      )
+      ..addFile(
+        ArchiveFile.bytes(
+          'Metadata/plate_2.gcode',
+          Uint8List.fromList(utf8.encode('G1 X2\n')),
+        ),
+      );
+
+    final result = OrcaSlicerEngine(executable: 'unused').extractPlateGcodes(
+      ZipEncoder().encodeBytes(archive),
+    );
+
+    expect(result.keys, containsAll([1, 2]));
+    expect(utf8.decode(result[1]!), 'G1 X1\n');
+    expect(utf8.decode(result[2]!), 'G1 X2\n');
+  });
+
   test('extractPlateGcode rejects a sliced bundle without requested plate', () {
     final archive = Archive()
       ..addFile(
