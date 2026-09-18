@@ -32,11 +32,15 @@ void main() {
   <plate>
     <metadata key="index" value="2"/>
     <metadata key="prediction" value="59.5"/>
-    <metadata key="weight" value="1.25"/>
+    <metadata key="weight" value=""/>
     <metadata key="first_layer_time" value="12"/>
     <metadata key="outside" value="true"/>
     <metadata key="support_used" value="false"/>
     <metadata key="label_object_enabled" value="false"/>
+    <filament id="1" tray_info_idx="" type="PLA" color="#FFFFFF"
+      used_m="0.42" used_g="1.25" group_id="0"
+      nozzle_diameter="0.4" volume_type="Standard"
+      used_for_object="true" used_for_support="false"/>
   </plate>
 </config>''';
 
