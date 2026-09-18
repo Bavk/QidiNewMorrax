@@ -11,6 +11,7 @@ import '../../../core/model_io/three_mf_writer.dart';
 import '../../../core/orca/orca_bed_coordinate_mapper.dart';
 import '../../../core/orca/orca_profile_materializer.dart';
 import '../../../core/orca/orca_project_settings_builder.dart';
+import '../../../core/orca/orca_slice_metadata.dart';
 import '../../../core/orca/orca_slicer_engine.dart';
 import '../../../core/profiles/profile_repository.dart';
 
@@ -38,6 +39,7 @@ class WorkspaceController extends ChangeNotifier {
   String? lastGcodePath;
   Map<int, String> lastGcodePathsByPlate = const {};
   int? lastSelectedPlate;
+  OrcaSliceMetadata? lastSliceMetadata;
   String? lastBundlePath;
   String? statusMessage;
   Object? error;
@@ -46,6 +48,20 @@ class WorkspaceController extends ChangeNotifier {
       mesh != null && machine != null && process != null && filament != null;
 
   int? get slicingPercent => progress?.totalPercent;
+
+  OrcaPlateMetadata? get lastSelectedPlateMetadata {
+    final plate = lastSelectedPlate;
+    if (plate == null) return null;
+    return lastSliceMetadata?.plate(plate);
+  }
+
+  void selectLastPlate(int plate) {
+    final path = lastGcodePathsByPlate[plate];
+    if (path == null || lastSelectedPlate == plate) return;
+    lastSelectedPlate = plate;
+    lastGcodePath = path;
+    notifyListeners();
+  }
 
   void cancelSlice() {
     if (!slicing) return;
@@ -182,6 +198,7 @@ class WorkspaceController extends ChangeNotifier {
       lastGcodePath = result.gcodePath;
       lastGcodePathsByPlate = result.gcodePathsByPlate;
       lastSelectedPlate = result.selectedPlate;
+      lastSliceMetadata = result.sliceMetadata;
       lastBundlePath = result.bundlePath;
       progress = const OrcaSlicerProgress(
         plateIndex: 0,
