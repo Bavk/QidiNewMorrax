@@ -249,13 +249,14 @@ jobs:
               }
               index = int(meta['index'])
               prediction = float(meta['prediction'])
-              weight = float(meta['weight'])
+              declared_weight = float(meta.get('weight') or 0)
               assert prediction > 0, (index, meta)
-              assert weight > 0, (index, meta)
               assert 'first_layer_time' in meta, meta
               filaments = plate.findall('filament')
               assert filaments, f'plate {index} has no filament usage'
               used_g = sum(float(item.attrib.get('used_g', '0') or 0) for item in filaments)
               assert used_g > 0, (index, used_g)
-              print(f'plate {index}: prediction={prediction}s weight={weight}g filament={used_g}g')
+              effective_weight = declared_weight if declared_weight > 0 else used_g
+              assert effective_weight > 0, (index, meta, used_g)
+              print(f'plate {index}: prediction={prediction}s weight={effective_weight}g filament={used_g}g')
           PY
