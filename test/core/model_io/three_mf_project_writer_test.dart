@@ -78,9 +78,14 @@ void main() {
     expect(modelSettings, contains('key="extruder" value="2"'));
 
     final root = utf8.decode(package.entry('3D/3dmodel.model')!);
-    expect(root, contains('paint_supports="1"'));
-    expect(root, contains('paint_seam="2"'));
-    expect(root, contains('paint_color="3"'));
+    expect(root, contains('p:path="/3D/Objects/object_1.model"'));
+    expect(root, contains('requiredextensions="p"'));
+    expect(package.entry('3D/_rels/3dmodel.model.rels'), isNotNull);
+
+    final child = utf8.decode(package.entry('3D/Objects/object_1.model')!);
+    expect(child, contains('paint_supports="1"'));
+    expect(child, contains('paint_seam="2"'));
+    expect(child, contains('paint_color="3"'));
   });
 
   test('repack transform preserves vendor entries and transforms build', () {
