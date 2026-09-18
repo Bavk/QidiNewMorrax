@@ -140,7 +140,7 @@ class _MainShellState extends State<MainShell> {
               children: [
                 PreparePage(controller: _workspace),
                 PreviewPage(gcodePath: _workspace.lastGcodePath),
-                const DevicePage(),
+                DevicePage(gcodePath: _workspace.lastGcodePath),
                 const ProjectPage(),
                 const CalibrationPage(),
               ],
