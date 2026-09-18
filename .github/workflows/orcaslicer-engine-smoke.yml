@@ -2,7 +2,7 @@ name: OrcaSlicer engine smoke
 
 on:
   push:
-    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff, chatgpt/orca-progress-cancel]
+    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff, chatgpt/orca-progress-cancel, chatgpt/orca-slice-metadata]
   pull_request:
     branches: [main]
 
@@ -222,8 +222,13 @@ jobs:
             grep -Eq '^(G0|G1) ' "out/plate_${plate}.gcode"
           done
 
+          unzip -p out/project.gcode.3mf Metadata/slice_info.config > out/slice_info.config
+          test -s out/slice_info.config
+
           python3 - <<'PY'
           import json
+          import re
+          import xml.etree.ElementTree as ET
           from pathlib import Path
 
           rows = [json.loads(line) for line in Path('out/orca-progress.jsonl').read_text().splitlines() if line.strip()]
@@ -234,4 +239,98 @@ jobs:
           assert any(int(row.get('plate_count', 0)) >= 2 for row in rows), rows
           assert any(row.get('message') or row.get('warning') for row in rows), rows
           print(f'validated {len(rows)} Orca progress events, max={max(totals)}%')
+
+          root = ET.parse('out/slice_info.config').getroot()
+          plates = root.findall('plate')
+          assert len(plates) == 2, f'expected 2 sliced plates, got {len(plates)}'
+          for plate in plates:
+              meta = {
+                  item.attrib.get('key'): item.attrib.get('value', '')
+                  for item in plate.findall('metadata')
+              }
+              index = int(meta['index'])
+              prediction = float(meta.get('prediction') or 0)
+              declared_weight = float(meta.get('weight') or 0)
+              filaments = plate.findall('filament')
+              assert prediction > 0, (index, meta)
+              assert 'first_layer_time' in meta, meta
+              assert filaments, f'plate {index} has no filament elements'
+
+              xml_used_g = sum(
+                  float(item.attrib.get('used_g', '0') or 0)
+                  for item in filaments
+              )
+              gcode = Path(f'out/plate_{index}.gcode').read_text(errors='replace')
+              time_match = re.search(
+                  r'^;\s*estimated printing time \(normal mode\)\s*=\s*(.+)$',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              assert time_match, f'plate {index} has no Orca normal-mode time comment'
+
+              first_layer_match = re.search(
+                  r'^;\s*estimated first layer printing time '
+                  r'\(normal mode\)\s*=\s*(.+)$',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              assert first_layer_match, (
+                  f'plate {index} has no Orca first-layer time comment'
+              )
+
+              total_match = re.search(
+                  r'^;\s*total filament used \[g\]\s*=\s*([0-9.]+)',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              gcode_used_g = float(total_match.group(1)) if total_match else 0.0
+              if gcode_used_g <= 0:
+                  list_match = re.search(
+                      r'^;\s*filament used \[g\]\s*=\s*(.+)$',
+                      gcode,
+                      re.MULTILINE | re.IGNORECASE,
+                  )
+                  if list_match:
+                      gcode_used_g = sum(
+                          float(value)
+                          for value in re.findall(
+                              r'-?\d+(?:\.\d+)?',
+                              list_match.group(1),
+                          )
+                      )
+
+              mm_match = re.search(
+                  r'^;\s*filament used \[mm\]\s*=\s*(.+)$',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              gcode_used_mm = 0.0
+              if mm_match:
+                  gcode_used_mm = sum(
+                      float(value)
+                      for value in re.findall(
+                          r'-?\d+(?:\.\d+)?',
+                          mm_match.group(1),
+                      )
+                  )
+
+              effective_weight = (
+                  declared_weight
+                  if declared_weight > 0
+                  else xml_used_g
+                  if xml_used_g > 0
+                  else gcode_used_g
+              )
+              assert effective_weight > 0 or gcode_used_mm > 0, (
+                  index,
+                  meta,
+                  xml_used_g,
+                  gcode_used_g,
+                  gcode_used_mm,
+              )
+              print(
+                  f'plate {index}: prediction={prediction}s '
+                  f'weight={effective_weight}g '
+                  f'filament={gcode_used_mm / 1000:.3f}m'
+              )
           PY

@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/orca/orca_slice_metadata.dart';
 import '../application/device_controller.dart';
 import '../domain/printer_device.dart';
 import '../domain/printer_state.dart';
 
 class DevicePage extends StatefulWidget {
-  const DevicePage({super.key, this.gcodePath});
+  const DevicePage({
+    super.key,
+    this.gcodePath,
+    this.sliceMetadata,
+  });
 
   final String? gcodePath;
+  final OrcaPlateMetadata? sliceMetadata;
 
   @override
   State<DevicePage> createState() => _DevicePageState();
@@ -134,6 +140,7 @@ class _DevicePageState extends State<DevicePage> {
                     device: selected,
                     run: _run,
                     gcodePath: widget.gcodePath,
+                    sliceMetadata: widget.sliceMetadata,
                   ),
                   1 => _ControlTab(controller: controller, run: _run),
                   2 => _FilesTab(controller: controller, run: _run),
@@ -334,11 +341,13 @@ class _OverviewTab extends StatelessWidget {
     required this.device,
     required this.run,
     this.gcodePath,
+    this.sliceMetadata,
   });
   final DeviceController controller;
   final PrinterDevice device;
   final Future<void> Function(Future<void> Function()) run;
   final String? gcodePath;
+  final OrcaPlateMetadata? sliceMetadata;
 
   @override
   Widget build(BuildContext context) {
@@ -423,12 +432,23 @@ class _OverviewTab extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   label: const Text('Refresh files'),
                 ),
-                FilledButton.icon(
-                  onPressed: state.connected && gcodePath != null
-                      ? () => run(() => controller.uploadAndStart(gcodePath!))
-                      : null,
-                  icon: const Icon(Icons.print),
-                  label: const Text('Upload & print last slice'),
+                Tooltip(
+                  message: sliceMetadata == null
+                      ? 'Upload latest Orca G-code and start printing'
+                      : 'Orca estimate: '
+                        '${_formatDuration(sliceMetadata!.predictionSeconds)}, '
+                        '${_materialUsage(sliceMetadata!)}',
+                  child: FilledButton.icon(
+                    onPressed: state.connected && gcodePath != null
+                        ? () => run(() => controller.uploadAndStart(gcodePath!))
+                        : null,
+                    icon: const Icon(Icons.print),
+                    label: Text(
+                      sliceMetadata == null
+                          ? 'Upload & print last slice'
+                          : 'Print · ${_formatDuration(sliceMetadata!.predictionSeconds)}',
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -437,6 +457,26 @@ class _OverviewTab extends StatelessWidget {
       ],
     );
   }
+}
+
+String _materialUsage(OrcaPlateMetadata metadata) {
+  if (metadata.weightGrams > 0) {
+    return '${metadata.weightGrams.toStringAsFixed(2)} g';
+  }
+  if (metadata.totalFilamentMeters > 0) {
+    return '${metadata.totalFilamentMeters.toStringAsFixed(2)} m filament';
+  }
+  return 'material estimate unavailable';
+}
+
+String _formatDuration(double seconds) {
+  if (seconds <= 0) return '—';
+  final total = seconds.round();
+  final hours = total ~/ 3600;
+  final minutes = (total % 3600) ~/ 60;
+  if (hours > 0) return '${hours}h ${minutes}m';
+  final secs = total % 60;
+  return minutes > 0 ? '${minutes}m ${secs}s' : '${secs}s';
 }
 
 class _CameraCard extends StatelessWidget {

@@ -2,9 +2,9 @@
 
 ## Current validated checkpoint
 
-Functional code `70e6919eaad04199738c09b682f8bdad5ec0d67f` is green in Flutter CI run `35392468990` (#670), job `105753727204`: analyzer clean, **114/114 tests passed**.
+Functional code `a69646d98fbc07de7004cda6b62ad78757a8d61a` is green in Flutter CI run `35400170625` (#746), job `105778026686`: analyzer clean, **131/131 tests passed**.
 
-The same functional HEAD is green in OrcaSlicer smoke run `35392469054` (#27), job `105753727522`: pinned AppImage digest verified, QIDI X-Plus 4 fixture sliced successfully, `Metadata/plate_1.gcode` extracted and printable moves verified.
+The same functional HEAD is green in OrcaSlicer smoke run `35400170623` (#173), job `105778021824`: pinned AppImage digest verified, the two-plate QIDI fixture sliced successfully, progress reached 100%, and real sliced metadata/G-code statistics were validated. Each plate reported **1167 s** prediction and **1.335 m** filament.
 
 ## Production slicing path
 
@@ -22,7 +22,8 @@ The same functional HEAD is green in OrcaSlicer smoke run `35392469054` (#27), j
 | slicing progress | Linux Orca `--pipe` FIFO -> `OrcaSlicerProgress` | real pinned AppImage progress JSON smoke |
 | cancellation | active Orca process termination + `OrcaSlicerCancelledException` | process lifecycle unit test; packaged-platform process tree validation still pending |
 | sliced result extraction | Dart `OrcaSlicerEngine.extractPlateGcodes` | ZIP tests + two plate G-code entries verified |
-| Preview | Dart `GCodeParser` + Flutter Preview | generated Orca G-code routed automatically |
+| sliced result metadata | Dart `OrcaSliceMetadata` | `slice_info.config` tests + real two-plate Orca smoke; missing/zero fields filled only from Orca G-code statistics |
+| Preview | Dart `GCodeParser` + selected `OrcaPlateMetadata` | generated Orca G-code plus estimates/warnings/support/material usage routed automatically |
 | printer upload/start | Dart `DeviceController` + `MoonrakerClient` | implementation complete; printer-backed validation pending |
 
 ## Engine provenance
@@ -39,4 +40,4 @@ The former `lib/core/slicer` source-shaped Dart implementation, custom Clipper s
 
 ## First unfinished integration boundary
 
-The STL boundary is retired and Linux Orca `--pipe` progress/cancellation is integrated. The next engine boundary is richer sliced-3MF metadata consumption for estimates, warnings, thumbnails and printer payloads. The project serializer already preserves/encodes multi-plate, modifiers, painted facets, object/volume settings, filament assignment and vendor metadata; richer Prepare UI still needs to expose creation/editing of that state.
+The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, and per-plate estimates/warnings/material usage are consumed from the sliced package. The first unfinished application boundary is richer Prepare editing of the project model that already preserves/encodes multi-plate state, modifiers, painted facets, object/volume settings, filament assignment and vendor metadata. Sliced thumbnails and additional vendor payload metadata remain secondary Preview/Device work.

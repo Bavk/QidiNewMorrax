@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
+import 'orca_slice_metadata.dart';
+
 /// Runtime bridge to the pinned OrcaSlicer engine.
 ///
 /// QidiNewMorrax intentionally does not reimplement polygon clipping, Arachne,
@@ -197,7 +199,10 @@ class OrcaSlicerEngine {
       );
     }
 
-    final plateGcodes = extractPlateGcodes(await bundle.readAsBytes());
+    final bundleBytes = await bundle.readAsBytes();
+    final plateGcodes = extractPlateGcodes(bundleBytes);
+    final sliceMetadata = OrcaSliceMetadata.fromBundle(bundleBytes)
+        .withPlateGcodes(plateGcodes);
     if (plateGcodes.isEmpty) {
       throw const OrcaSlicerException(
         'Sliced 3MF contains no Metadata/plate_N.gcode entries.',
@@ -233,6 +238,7 @@ class OrcaSlicerEngine {
       gcodePath: gcodePath,
       gcodePathsByPlate: Map.unmodifiable(gcodePathsByPlate),
       selectedPlate: selectedPlate,
+      sliceMetadata: sliceMetadata,
       stdout: stdoutText,
       stderr: stderrText,
       exitCode: exitCode,
@@ -353,6 +359,7 @@ class OrcaSlicerResult {
     required this.gcodePath,
     required this.gcodePathsByPlate,
     required this.selectedPlate,
+    required this.sliceMetadata,
     required this.stdout,
     required this.stderr,
     required this.exitCode,
@@ -363,6 +370,7 @@ class OrcaSlicerResult {
   final String gcodePath;
   final Map<int, String> gcodePathsByPlate;
   final int selectedPlate;
+  final OrcaSliceMetadata sliceMetadata;
   final String stdout;
   final String stderr;
   final int exitCode;

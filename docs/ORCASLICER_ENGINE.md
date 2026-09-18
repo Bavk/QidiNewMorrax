@@ -21,9 +21,23 @@ Prepare/project state is handed to Orca as:
 1. generated state -> Orca/Bambu production-extension project 3MF; imported vendor 3MF packages are repacked losslessly;
 2. resolved QIDI machine/process/filament settings -> embedded `Metadata/project_settings.config` plus standalone preset JSON;
 3. headless Orca CLI invocation using `--load-settings`, `--load-filaments`, `--slice`, `--export-3mf` and `--outputdir`;
-4. sliced 3MF -> all available `Metadata/plate_N.gcode` entries for Preview and Device.
+4. sliced 3MF -> all available `Metadata/plate_N.gcode` entries plus `Metadata/slice_info.config`;
+5. selected plate G-code + Orca estimates/warnings/material usage -> Preview and Device.
 
 Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job.
+
+## Sliced metadata
+
+`lib/core/orca/orca_slice_metadata.dart` consumes Orca's own sliced-package metadata. For each plate it exposes print-time prediction, first-layer time, build-area/support flags, object records, filament usage and structured warnings.
+
+`Metadata/slice_info.config` is authoritative when it contains a positive value. OrcaSlicer 2.4.2 CLI may leave some material/time fields empty or zero, so only those gaps are filled from Orca-authored statistics comments embedded in the corresponding `Metadata/plate_N.gcode`:
+
+- `estimated printing time (normal mode)`;
+- `estimated first layer printing time (normal mode)`;
+- `total filament used [g]` / `filament used [g]`;
+- `filament used [mm]`.
+
+The application does not infer mass from geometry, density or extrusion replay. If Orca reports no mass but does report filament length, the UI displays length and keeps mass unknown. The real pinned smoke currently exercises exactly this state: **1167 s** and **1.335 m** per plate with zero reported grams.
 
 ## Progress and cancellation
 
@@ -44,11 +58,11 @@ The upstream `--pipe` callback manager is Linux-only in OrcaSlicer 2.4.2, so mac
 
 - OrcaSlicer must currently be installed or configured with `ORCA_SLICER_BIN`.
 - Native progress transport is verified on Linux only; equivalent macOS/Windows progress transport remains a packaging/integration task.
-- Rich sliced-3MF metadata (estimates, warnings, thumbnails and printer payload metadata) is not yet fully consumed by Dart.
+- Estimates, warnings and material usage are consumed; sliced thumbnails and additional vendor printer-payload metadata are not yet fully integrated.
 - Rich Prepare editing for creating multiple plates/modifiers/paint/per-object settings still trails the already verified project serializer.
 - Cross-platform bundled-engine packaging and exact-version/updater verification remain pending.
 
-CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF, validates both plate G-code entries and verifies real FIFO progress JSON.
+CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON.
 
 ## Licensing
 

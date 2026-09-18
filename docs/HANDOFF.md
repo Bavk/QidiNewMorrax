@@ -20,9 +20,9 @@ The cutover now routes the application through:
 1. Prepare model/project state and QIDI machine/process/filament selection in Dart.
 2. Generated state -> Orca/Bambu split-model project 3MF with embedded resolved `project_settings.config`; imported QIDI/Bambu/Orca 3MF is repacked losslessly and keeps vendor entries.
 3. `OrcaSlicerEngine` -> pinned Orca headless CLI.
-4. Orca sliced `.gcode.3mf` -> all available `Metadata/plate_N.gcode` entries.
-5. Selected generated G-code -> Dart Preview.
-6. Latest selected G-code -> Dart Device -> Moonraker `/server/files/upload` -> optional print start.
+4. Orca sliced `.gcode.3mf` -> all available `Metadata/plate_N.gcode` entries plus `Metadata/slice_info.config`.
+5. Selected plate G-code + authoritative Orca estimates/warnings/material usage -> Dart Preview.
+6. Latest selected G-code + selected-plate estimate -> Dart Device -> Moonraker `/server/files/upload` -> optional print start.
 
 The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility layer, custom G-code writer/emitter/extruder implementation, and `clipper2` dependency are removed from production.
 
@@ -63,14 +63,29 @@ PR #11 replaces the temporary STL bridge with an Orca-compatible project 3MF bou
 
 PR #12 moves Orca invocation to a managed process and wires Linux `--pipe` progress into the workspace UI. The pinned Orca smoke validates real FIFO JSON while slicing the two-plate project; cancellation has dedicated process-lifecycle unit coverage. Orca 2.4.2 compiles this pipe callback only on Linux, so equivalent native progress transport for packaged Windows/macOS builds remains open.
 
+## Sliced metadata checkpoint — 2026-09-19
+
+PR #13 consumes Orca's sliced-result metadata instead of inferring estimates in Dart:
+
+- `OrcaSliceMetadata` parses `Metadata/slice_info.config` per plate: prediction, first-layer time, build-area/support flags, objects, filament records and structured warnings;
+- XML values stay authoritative when Orca provides them;
+- when Orca CLI leaves time/material fields empty or zero, Dart fills only those gaps from Orca-authored `plate_N.gcode` statistics comments (`estimated printing time`, `estimated first layer printing time`, `filament used [g]` / `[mm]`);
+- Preview follows the selected plate and displays Orca estimates, support state, warnings and material usage;
+- Device shows the selected Orca time/material estimate on the print action;
+- manually opened G-code does not inherit stale workspace metadata;
+- no mass is fabricated: the real QIDI CLI fixture reports zero grams, so Preview uses Orca's exact filament length instead.
+
+Functional checkpoint `a69646d98fbc07de7004cda6b62ad78757a8d61a` is green in Flutter run `35400170625` (#746), job `105778026686`: analyzer clean, **131/131 tests passed**. Real Orca smoke `35400170623` (#173), job `105778021824`, is also green: both plates report **1167 s** prediction and **1.335 m** filament via the verified fallback path.
+
 ## First unfinished priority
 
-The next engine integration boundary is richer sliced-3MF metadata consumption. Continue in this order:
+The next application boundary is richer editing of the already verified project model. Continue in this order:
 
-1. Consume sliced 3MF metadata for richer Preview, estimates, warnings and printer payloads.
-2. Wire the project model into richer Prepare editor UI for creating/editing multiple plates, modifiers, paint and per-object settings instead of only preserving/serializing them.
-3. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks and platform progress behavior.
-4. Complete AGPL notices/corresponding-source delivery for distributed builds.
-5. Continue Dart/Flutter Device/calibration/UI integration around the stable engine boundary.
+1. Wire the project model into richer Prepare editor UI for creating/editing multiple plates, modifiers, paint, filament assignment and per-object/per-volume settings instead of only preserving/serializing them.
+2. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
+3. Verify Moonraker upload/start against representative QIDI hardware.
+4. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks and platform progress behavior.
+5. Complete AGPL notices/corresponding-source delivery for distributed builds.
+6. Continue Dart/Flutter Device/calibration/UI integration around the stable engine boundary.
 
 Do not reintroduce a parallel custom production slicer or Clipper in Dart.
