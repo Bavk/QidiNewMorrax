@@ -8,6 +8,7 @@ import '../../../core/geometry/point.dart';
 import '../../../core/model_io/mesh.dart';
 import '../../../core/model_io/model_loader.dart';
 import '../../../core/model_io/three_mf_parser.dart';
+import '../../../core/orca/orca_bed_coordinate_mapper.dart';
 import '../../../core/profiles/profile_repository.dart';
 import '../../workspace/application/workspace_controller.dart';
 
@@ -169,9 +170,12 @@ class _PreparePageState extends State<PreparePage> {
     if (current == null) return;
     final bounds = current.bounds;
     if (bounds.isEmpty) return;
+    final target = sourceProject != null && machine != null
+        ? const OrcaBedCoordinateMapper().bedCenter(machine!)
+        : const Point3(0, 0, 0);
     final translation = Point3(
-      -bounds.center.x,
-      -bounds.center.y,
+      target.x - bounds.center.x,
+      target.y - bounds.center.y,
       -bounds.min.z,
     );
     widget.controller.recordModelTransform(translation: translation);
