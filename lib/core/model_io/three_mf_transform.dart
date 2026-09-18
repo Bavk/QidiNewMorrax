@@ -131,6 +131,8 @@ class ThreeMfTransform {
     ].map(_format).join(' ');
   }
 
+  String toMatrixString() => values.map(_format).join(' ');
+
   static String _format(double value) {
     if (value.abs() < 1e-15) return '0';
     final rounded = value.roundToDouble();
