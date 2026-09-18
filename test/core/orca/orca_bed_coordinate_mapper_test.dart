@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:qidi_flow_flutter/core/geometry/point.dart';
 import 'package:qidi_flow_flutter/core/orca/orca_bed_coordinate_mapper.dart';
 import 'package:qidi_flow_flutter/core/profiles/profile_repository.dart';
 
