@@ -6,6 +6,14 @@ The previous pure-Dart slicer/Clipper migration has been retired from production
 
 Pinned engine: OrcaSlicer v2.4.2, commit `8500fcdccaa10b5099ac20d252af3a7c560046f1`, AGPL-3.0.
 
+## Validated Dart checkpoint
+
+- code `099b08ffe1e8e4c3aef61b03a27613d8422b8ab4`;
+- Flutter CI `35389777844` (#655), job `105745161355`;
+- analyzer: **No issues found**;
+- tests: **114/114 passed**;
+- conclusion: **success**.
+
 ## Implemented in this cutover
 
 - Orca CLI bridge in `lib/core/orca/orca_slicer_engine.dart`;
