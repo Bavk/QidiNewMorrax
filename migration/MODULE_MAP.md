@@ -1,39 +1,19 @@
-# Source module map
+# Module map — post-Orca cutover
 
-This map is generated from the supplied source tree. Line counts are audit sizing numbers, not a claim that equal line counts are needed in Dart. `Started` means at least the corresponding source file has an explicit Dart replacement in the migration ledger; it does **not** mean feature parity is complete.
+The application is now divided by ownership rather than by attempts to port the native slicer into Dart.
 
-| Module | Source files | Approx. lines | Started files | Pending files |
-|---|---:|---:|---:|---:|
-| `slic3r/GUI` | 836 | 450,785 | 5 | 831 |
-| `libslic3r/(root)` | 275 | 153,531 | 14 | 261 |
-| `libslic3r/GCode` | 38 | 29,380 | 0 | 38 |
-| `slic3r/Utils` | 76 | 27,511 | 0 | 76 |
-| `libslic3r/Format` | 23 | 18,838 | 12 | 11 |
-| `libslic3r/Support` | 13 | 18,495 | 0 | 13 |
-| `libslic3r/Fill` | 36 | 14,554 | 0 | 36 |
-| `libslic3r/SLA` | 35 | 8,123 | 0 | 35 |
-| `libslic3r/Arachne` | 41 | 7,648 | 0 | 41 |
-| `libslic3r/Geometry` | 17 | 5,582 | 0 | 17 |
-| `libslic3r/TextureToColor` | 8 | 3,167 | 0 | 8 |
-| `slic3r/Config` | 4 | 1,175 | 0 | 4 |
-| `libslic3r/Interlocking` | 4 | 1,102 | 0 | 4 |
-| `libslic3r/CSGMesh` | 7 | 985 | 0 | 7 |
-| `libslic3r/Algorithm` | 2 | 652 | 0 | 2 |
-| `libslic3r/Optimize` | 3 | 556 | 0 | 3 |
-| `libslic3r/Shape` | 2 | 292 | 0 | 2 |
-| `libslic3r/Execution` | 3 | 290 | 0 | 3 |
-| `slic3r/(root)` | 2 | 206 | 0 | 2 |
+| Area | Owner |
+|---|---|
+| slicing geometry / Clipper / walls / Arachne | OrcaSlicer v2.4.2 |
+| infill / support / seam / bridge / travel / G-code | OrcaSlicer v2.4.2 |
+| engine process and artifact boundary | `lib/core/orca` |
+| model/project I/O | `lib/core/model_io` |
+| QIDI profile loading/resolution | `lib/core/profiles` |
+| G-code parsing | `lib/core/gcode/gcode_parser.dart` |
+| Prepare/editor | `lib/features/prepare` |
+| Preview | `lib/features/preview` |
+| Device/cloud/local printer | `lib/features/device` |
+| calibration | `lib/features/calibration` |
+| workspace orchestration | `lib/features/workspace` |
 
-## Current Dart replacement areas
-
-- `lib/core/model_io`: STL, OBJ, AMF/ZIP.AMF and package-aware 3MF import with external component models, build transforms and retention/repacking of every ZIP entry.
-- `lib/core/geometry`: source integer geometry primitives, Clipper compatibility, Polyline/ArcFitter/Circle, ThickPolyline, Boost.Polygon/Voronoi and represented MedialAxis behavior.
-- `lib/core/slicer`: source-shaped classic parity slices now include Flow/Surface/ExtrusionEntity foundations, BridgeDetector, counterbore `process_no_bridge`, conditional surface preprocessing and island ordering, per-surface wall accounting, classic shell/top-one-wall/thin-wall/gap-fill/final fill-boundary composition, overhang traversal, fuzzy/LineSegmentation and represented Arachne fuzzy helpers. This remains far short of full native slicer/toolpath parity.
-- `lib/core/gcode`: source-style formatter/path-emitter subset plus the earlier deterministic basic G-code foundation; the complete native G-code state machine remains open.
-- `lib/core/profiles`: original JSON profile catalog and inheritance loading foundations.
-- `lib/features/device`: local SSDP discovery, Moonraker JSON-RPC, raw+typed printer state, exact local command strings, cloud task contract and Pass28-style Flutter device UI foundations.
-- `lib/features/prepare` / `preview`: model loading/wireframe scene and G-code layer preview foundations.
-
-## Completion rule
-
-A module moves from `port_started` to a completed status only after behavior-level parity tests exist for its full contract. Native C++/wxWidgets/React code is not counted as migrated merely because a Flutter screen resembles it, and a scoped `parity_verified` helper does not close its containing module.
+The former `lib/core/slicer` module has been removed. Do not recreate a parallel production slicer in Dart; extend the Orca engine boundary or application-side project/state integration instead.
