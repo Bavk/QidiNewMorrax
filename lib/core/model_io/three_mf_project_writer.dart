@@ -148,6 +148,7 @@ class ThreeMfProjectWriter {
         );
       }
     }
+    _validateProjectSettings(project.projectSettings);
 
     final ids = _allocateIds(project);
     final archive = Archive()
@@ -227,6 +228,25 @@ class ThreeMfProjectWriter {
     final file = File('${directory.path}${Platform.pathSeparator}$fileName');
     await file.writeAsBytes(encode(project), flush: true);
     return file.path;
+  }
+
+  void _validateProjectSettings(Map<String, dynamic> settings) {
+    const required = <String>{
+      'printer_settings_id',
+      'print_settings_id',
+      'filament_settings_id',
+      'nozzle_diameter',
+    };
+    final missing = [
+      for (final key in required)
+        if (settings[key] == null) key,
+    ];
+    if (missing.isNotEmpty) {
+      throw ArgumentError(
+        'Orca project_settings.config is missing required keys: '
+        '${missing.join(", ")}',
+      );
+    }
   }
 
   List<_ObjectIds> _allocateIds(ThreeMfProject project) {
