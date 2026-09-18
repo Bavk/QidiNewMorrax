@@ -74,7 +74,7 @@ jobs:
           <model unit="millimeter" xml:lang="en-US"
             xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
             xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">
-            <metadata name="Application">QidiNewMorrax CI</metadata>
+            <metadata name="Application">BambuStudio-02.06.00.51</metadata>\n            <metadata name="OrcaSlicer">2.4.2</metadata>
             <metadata name="BambuStudio:3mfVersion">1</metadata>
             <resources>
               {mesh_object(1)}
