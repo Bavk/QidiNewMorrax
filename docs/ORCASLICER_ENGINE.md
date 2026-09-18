@@ -7,6 +7,7 @@ QidiNewMorrax uses OrcaSlicer as its production slicing and G-code engine. Flutt
 - upstream: `OrcaSlicer/OrcaSlicer`
 - release: `v2.4.2`
 - commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
+- Linux Ubuntu 24.04 AppImage SHA-256: `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
 - license: GNU AGPL-3.0
 
 The executable may be supplied with `ORCA_SLICER_BIN`. Platform defaults are used when the environment variable is absent.
@@ -30,7 +31,7 @@ This cutover establishes the engine boundary; it does not yet complete release p
 - OrcaSlicer must currently be installed or configured with `ORCA_SLICER_BIN`.
 - Current Prepare handoff flattens the active Dart mesh to STL; full multi-plate/project/modifier/paint metadata handoff is still pending.
 - Progress-pipe integration, cancellation, multiple plates/extruders, sliced 3MF metadata consumption, and installer bundling remain pending.
-- CI validates the Dart bridge and archive/profile/STL contracts. End-to-end Orca execution must be added to a runner with the pinned Orca binary before release.
+- CI downloads the pinned Ubuntu 24.04 AppImage, verifies its release SHA-256, slices a QIDI X-Plus 4 cube fixture, validates the produced `.gcode.3mf`, extracts `Metadata/plate_1.gcode`, and requires printable G0/G1 moves. Cross-platform packaging and full project/modifier coverage remain pending.
 
 ## Licensing
 
