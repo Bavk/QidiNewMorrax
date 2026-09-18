@@ -188,26 +188,26 @@ jobs:
           test -s fixture/Metadata/project_settings.config
           (cd fixture && zip -q -u project.3mf Metadata/project_settings.config)
           rm -rf fixture/Metadata
-      - name: Slice each project plate through real OrcaSlicer
+      - name: Slice all project plates through real OrcaSlicer
         shell: bash
         run: |
           set -euxo pipefail
           export ORCA_SLICER_BIN="$PWD/squashfs-root/AppRun"
-          for plate in 1 2; do
-            "$ORCA_SLICER_BIN" \
-              "$PWD/fixture/project.3mf" \
-              --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
-              --load-filaments "$PWD/fixture/filament.json" \
-              --arrange 0 \
-              --ensure-on-bed \
-              --slice "$plate" \
-              --export-3mf "project.plate_${plate}.gcode.3mf" \
-              --outputdir "$PWD/out" \
-              --debug 2
+          "$ORCA_SLICER_BIN" \
+            "$PWD/fixture/project.3mf" \
+            --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
+            --load-filaments "$PWD/fixture/filament.json" \
+            --arrange 0 \
+            --ensure-on-bed \
+            --slice 0 \
+            --export-3mf "project.gcode.3mf" \
+            --outputdir "$PWD/out" \
+            --debug 2
 
-            test -s "out/project.plate_${plate}.gcode.3mf"
-            unzip -p "out/project.plate_${plate}.gcode.3mf" \
-              "Metadata/plate_${plate}.gcode" > "out/plate_${plate}.gcode"
+          test -s out/project.gcode.3mf
+          for plate in 1 2; do
+            unzip -p out/project.gcode.3mf "Metadata/plate_${plate}.gcode" \
+              > "out/plate_${plate}.gcode"
             test -s "out/plate_${plate}.gcode"
             grep -Eq '^(G0|G1) ' "out/plate_${plate}.gcode"
           done
