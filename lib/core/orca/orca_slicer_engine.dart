@@ -163,106 +163,19 @@ class OrcaSlicerEngine {
   Map<int, Uint8List> extractPlateGcodes(Uint8List bundleBytes) {
     final archive = ZipDecoder().decodeBytes(bundleBytes, verify: true);
     final result = <int, Uint8List>{};
-    final pattern = RegExp(r'^Metadata/plate_(\d+)\.gcode
-
-  static Future<void> _requireFile(String path, String label) async {
-    if (!await File(path).exists()) {
-      throw OrcaSlicerException('OrcaSlicer $label does not exist: $path');
-    }
-  }
-
-  static String _asText(Object? value) {
-    if (value == null) return '';
-    if (value is String) return value;
-    if (value is List<int>) return utf8.decode(value, allowMalformed: true);
-    return value.toString();
-  }
-
-  static String _fileStem(String path) {
-    final normalized = path.replaceAll('\\', '/');
-    final name = normalized.split('/').last;
-    final dot = name.lastIndexOf('.');
-    final stem = dot <= 0 ? name : name.substring(0, dot);
-    return stem.replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
-  }
-
-  static String _join(String directory, String name) {
-    if (directory.endsWith('/') || directory.endsWith('\\')) {
-      return '$directory$name';
-    }
-    return '$directory${Platform.pathSeparator}$name';
-  }
-}
-
-class OrcaSlicerRequest {
-  const OrcaSlicerRequest({
-    required this.modelPath,
-    required this.machineProfilePath,
-    required this.processProfilePath,
-    required this.filamentProfilePaths,
-    required this.outputDirectory,
-    this.plate = 0,
-    this.arrange = false,
-    this.orient = false,
-    this.ensureOnBed = true,
-    this.debugLevel = 2,
-  });
-
-  final String modelPath;
-  final String machineProfilePath;
-  final String processProfilePath;
-  final List<String> filamentProfilePaths;
-  final String outputDirectory;
-  final int plate;
-  final bool arrange;
-  final bool orient;
-  final bool ensureOnBed;
-  final int debugLevel;
-}
-
-class OrcaSlicerResult {
-  const OrcaSlicerResult({
-    required this.bundlePath,
-    required this.gcodePath,
-    required this.gcodePathsByPlate,
-    required this.selectedPlate,
-    required this.stdout,
-    required this.stderr,
-    required this.exitCode,
-    required this.elapsed,
-  });
-
-  final String bundlePath;
-  final String gcodePath;
-  final Map<int, String> gcodePathsByPlate;
-  final int selectedPlate;
-  final String stdout;
-  final String stderr;
-  final int exitCode;
-  final Duration elapsed;
-}
-
-class OrcaSlicerException implements Exception {
-  const OrcaSlicerException(
-    this.message, {
-    this.exitCode,
-    this.cause,
-  });
-
-  final String message;
-  final int? exitCode;
-  final Object? cause;
-
-  @override
-  String toString() => message;
-}
-);
+    const prefix = 'Metadata/plate_';
+    const suffix = '.gcode';
     for (final file in archive.files) {
       if (!file.isFile) continue;
-      final normalized = file.name.replaceAll('\\', '/');
-      final match = pattern.firstMatch(normalized);
-      if (match == null) continue;
-      final plate = int.tryParse(match.group(1)!);
+      final normalized = file.name.replaceAll('\\\\', '/');
+      if (!normalized.startsWith(prefix) || !normalized.endsWith(suffix)) {
+        continue;
+      }
+      final digits = normalized.substring(
+        prefix.length,
+        normalized.length - suffix.length,
+      );
+      final plate = int.tryParse(digits);
       if (plate == null || plate <= 0) continue;
       result[plate] = Uint8List.fromList(file.content);
     }
@@ -339,6 +252,8 @@ class OrcaSlicerResult {
   const OrcaSlicerResult({
     required this.bundlePath,
     required this.gcodePath,
+    required this.gcodePathsByPlate,
+    required this.selectedPlate,
     required this.stdout,
     required this.stderr,
     required this.exitCode,
@@ -347,6 +262,8 @@ class OrcaSlicerResult {
 
   final String bundlePath;
   final String gcodePath;
+  final Map<int, String> gcodePathsByPlate;
+  final int selectedPlate;
   final String stdout;
   final String stderr;
   final int exitCode;
