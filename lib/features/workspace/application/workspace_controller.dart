@@ -178,6 +178,7 @@ class WorkspaceController extends ChangeNotifier {
         },
       );
 
+      _throwIfCancelled();
       lastGcodePath = result.gcodePath;
       lastGcodePathsByPlate = result.gcodePathsByPlate;
       lastSelectedPlate = result.selectedPlate;
