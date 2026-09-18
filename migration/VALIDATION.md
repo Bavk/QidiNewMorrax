@@ -8,6 +8,17 @@
 - license: GNU AGPL-3.0
 - supported CLI surface used by the Dart bridge: `--load-settings`, `--load-filaments`, `--arrange`, `--orient`, `--ensure-on-bed`, `--slice`, `--export-3mf`, `--outputdir`.
 
+## Flutter/Dart cutover checkpoint — 2026-09-18
+
+GitHub Actions run `35389777844` (#655), job `105745161355`, executed code `099b08ffe1e8e4c3aef61b03a27613d8422b8ab4`:
+
+- `flutter pub get` — success;
+- `flutter analyze` — **No issues found!**;
+- `flutter test --reporter expanded` — **114/114 passed**;
+- conclusion — **success**.
+
+The lower test count is intentional: the retired custom slicer/Clipper/Arachne test suites were deleted together with that production implementation and replaced by tests at the Orca engine boundary.
+
 ## Cutover validation scope
 
 The new Dart tests validate without needing an Orca executable:
