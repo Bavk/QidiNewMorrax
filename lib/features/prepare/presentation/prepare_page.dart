@@ -113,29 +113,64 @@ class _PreparePageState extends State<PreparePage> {
       type: FileType.custom,
       allowedExtensions: const ['stl', 'obj', '3mf', 'amf', 'xml'],
       withData: true,
+      allowMultiple: true,
     );
     if (picked == null || picked.files.isEmpty) return;
-    final file = picked.files.single;
     setState(() {
       loadingModel = true;
       error = null;
     });
     try {
-      final bytes =
-          file.bytes ??
-          (file.path == null ? null : await File(file.path!).readAsBytes());
-      if (bytes == null) throw StateError('Could not read ${file.name}');
-      if (file.name.toLowerCase().endsWith('.3mf')) {
+      if (sourceProject != null) {
+        throw StateError(
+          'Imported vendor 3MF is kept lossless and is read-only in the '
+          'generated multi-object editor. Start a generated project before '
+          'combining additional models.',
+        );
+      }
+
+      final single = picked.files.length == 1 ? picked.files.single : null;
+      if (editableProject == null &&
+          single != null &&
+          single.name.toLowerCase().endsWith('.3mf')) {
+        final bytes = await _pickedBytes(single);
         sourceProject = const ThreeMfParser().parsePackage(
           bytes,
-          name: file.name,
+          name: single.name,
         );
+        editableProject = null;
+        activePlateIndex = 0;
+        selectedObjectIndex = null;
         mesh = sourceProject!.mesh;
-      } else {
-        sourceProject = null;
-        mesh = const ModelLoader().load(bytes, file.name);
+        modelPath = single.path ?? single.name;
+        _publishSelection();
+        return;
       }
-      modelPath = file.path ?? file.name;
+
+      var project = editableProject ?? WorkspaceEditableProject.empty();
+      for (final file in picked.files) {
+        final bytes = await _pickedBytes(file);
+        final loaded = file.name.toLowerCase().endsWith('.3mf')
+            ? const ThreeMfParser().parsePackage(bytes, name: file.name).mesh
+            : const ModelLoader().load(bytes, file.name);
+        project = project.addObject(
+          loaded,
+          plateIndex: activePlateIndex,
+          name: loaded.name,
+        );
+      }
+
+      sourceProject = null;
+      editableProject = project;
+      selectedObjectIndex = project.objects.isEmpty
+          ? null
+          : project.objects.length - 1;
+      mesh = selectedObjectIndex == null
+          ? project.mergedMeshForPlate(activePlateIndex)
+          : project.objects[selectedObjectIndex!].mesh;
+      modelPath = picked.files.length == 1
+          ? (picked.files.single.path ?? picked.files.single.name)
+          : 'Generated multi-object project';
       _publishSelection();
     } catch (e) {
       error = e;
@@ -143,6 +178,61 @@ class _PreparePageState extends State<PreparePage> {
       loadingModel = false;
       if (mounted) setState(() {});
     }
+  }
+
+  Future<List<int>> _pickedBytes(PlatformFile file) async {
+    final bytes =
+        file.bytes ??
+        (file.path == null ? null : await File(file.path!).readAsBytes());
+    if (bytes == null) {
+      throw StateError('Could not read ${file.name}');
+    }
+    return bytes;
+  }
+
+  WorkspaceEditableObject? get _selectedEditableObject {
+    final project = editableProject;
+    final index = selectedObjectIndex;
+    if (project == null ||
+        index == null ||
+        index < 0 ||
+        index >= project.objects.length) {
+      return null;
+    }
+    return project.objects[index];
+  }
+
+  void _selectPlate(int plateIndex) {
+    final project = editableProject;
+    if (project == null ||
+        plateIndex < 0 ||
+        plateIndex >= project.plates.length) {
+      return;
+    }
+    final indices = project.objectIndicesForPlate(plateIndex);
+    setState(() {
+      activePlateIndex = plateIndex;
+      selectedObjectIndex = indices.firstOrNull;
+      mesh = selectedObjectIndex == null
+          ? project.mergedMeshForPlate(plateIndex)
+          : project.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  void _selectObject(int objectIndex) {
+    final project = editableProject;
+    if (project == null ||
+        objectIndex < 0 ||
+        objectIndex >= project.objects.length) {
+      return;
+    }
+    setState(() {
+      selectedObjectIndex = objectIndex;
+      activePlateIndex = project.objects[objectIndex].plateIndex;
+      mesh = project.objects[objectIndex].mesh;
+      _publishSelection();
+    });
   }
 
   Future<void> _transformModel(_TransformKind kind) async {
