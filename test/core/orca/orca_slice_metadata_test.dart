@@ -139,6 +139,38 @@ G1 X1
     expect(plate.filaments[1].usedMeters, 0.25);
   });
 
+  test('keeps mass unknown but preserves Orca filament length fallback', () {
+    const sparseXml = '''<config>
+  <plate>
+    <metadata key="index" value="1"/>
+    <metadata key="prediction" value="1167"/>
+    <metadata key="weight" value=""/>
+    <metadata key="first_layer_time" value="0"/>
+    <filament id="1" type="PLA" used_m="0" used_g="0"
+      used_for_object="true" used_for_support="false"/>
+  </plate>
+</config>''';
+    final gcode = Uint8List.fromList(utf8.encode('''
+; estimated printing time (normal mode) = 19m 27s
+; estimated first layer printing time (normal mode) = 18s
+; filament used [mm] = 1335.00
+; filament used [g] = 0.00
+; total filament used [g] = 0.00
+G1 X1
+'''));
+
+    final plate = OrcaSliceMetadata.fromXml(sparseXml)
+        .withPlateGcodes({1: gcode})
+        .plate(1)!;
+
+    expect(plate.predictionSeconds, 1167);
+    expect(plate.firstLayerTimeSeconds, 18);
+    expect(plate.weightGrams, 0);
+    expect(plate.totalFilamentMeters, 1.335);
+    expect(plate.filaments.single.usedMeters, 1.335);
+    expect(plate.filaments.single.usedGrams, 0);
+  });
+
   test('slice_info values stay authoritative over G-code fallback', () {
     final gcode = Uint8List.fromList(utf8.encode('''
 ; estimated printing time (normal mode) = 9h 0m 0s
