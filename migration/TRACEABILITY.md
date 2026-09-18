@@ -1,23 +1,33 @@
 # Traceability ledger — OrcaSlicer engine cutover
 
-## Current Dart checkpoint
+## Current validated checkpoint
 
-`099b08ffe1e8e4c3aef61b03a27613d8422b8ab4` is green in Flutter CI run `35389777844` (#655), job `105745161355`: analyzer clean, **114/114 tests passed**.
+Functional code `70e6919eaad04199738c09b682f8bdad5ec0d67f` is green in Flutter CI run `35392468990` (#670), job `105753727204`: analyzer clean, **114/114 tests passed**.
+
+The same functional HEAD is green in OrcaSlicer smoke run `35392469054` (#27), job `105753727522`: pinned AppImage digest verified, QIDI X-Plus 4 fixture sliced successfully, `Metadata/plate_1.gcode` extracted and printable moves verified.
 
 ## Production slicing path
 
 | Behavior | Production implementation | Evidence/status |
 |---|---|---|
-| polygon/offset/boolean geometry | pinned OrcaSlicer engine | external engine; runtime integration pending E2E verification |
-| Classic/Arachne walls | pinned OrcaSlicer engine | external engine; runtime integration pending E2E verification |
-| infill/support/seam/bridge/travel | pinned OrcaSlicer engine | external engine; runtime integration pending E2E verification |
-| G-code generation | pinned OrcaSlicer engine | external engine; runtime integration pending E2E verification |
-| QIDI profile selection/inheritance | Dart `ProfileRepository` + `OrcaProfileMaterializer` | bridge tests + E2E preset validation pending |
-| current Prepare geometry handoff | Dart `MeshStlWriter` | unit test; full project semantics pending |
-| engine invocation | Dart `OrcaSlicerEngine` | CLI argument contract test; executable CI pending |
-| sliced result extraction | Dart `OrcaSlicerEngine.extractPlateGcode` | ZIP contract tests |
-| Preview | Dart `GCodeParser` + Flutter Preview | existing parser/UI coverage; Orca E2E pending |
-| printer delivery | Dart Device/Moonraker foundations | still incomplete |
+| polygon/offset/boolean geometry | pinned OrcaSlicer v2.4.2 | real engine smoke verified |
+| Classic/Arachne walls | pinned OrcaSlicer v2.4.2 | real engine smoke verified through complete slice |
+| infill/support/seam/bridge/travel | pinned OrcaSlicer v2.4.2 | engine-owned; complete fixture slice verified |
+| G-code generation | pinned OrcaSlicer v2.4.2 | sliced 3MF + 385515-byte plate G-code verified |
+| QIDI profile selection/inheritance | Dart `ProfileRepository` + `OrcaProfileMaterializer` | Dart tests + real X-Plus 4 Orca fixture |
+| current Prepare geometry handoff | Dart `MeshStlWriter` | unit test + real Orca slice; richer project semantics pending |
+| engine invocation | Dart `OrcaSlicerEngine` | CLI contract tests + real pinned executable CI |
+| sliced result extraction | Dart `OrcaSlicerEngine.extractPlateGcode` | ZIP tests + real sliced bundle |
+| Preview | Dart `GCodeParser` + Flutter Preview | generated Orca G-code routed automatically |
+| printer upload/start | Dart `DeviceController` + `MoonrakerClient` | implementation complete; printer-backed validation pending |
+
+## Engine provenance
+
+- upstream: `OrcaSlicer/OrcaSlicer`
+- release: `v2.4.2`
+- source commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
+- Ubuntu 24.04 AppImage SHA-256: `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
+- license: GNU AGPL-3.0
 
 ## Retired implementation
 
@@ -25,4 +35,4 @@ The former `lib/core/slicer` source-shaped Dart implementation, custom Clipper s
 
 ## First unfinished integration boundary
 
-Run the pinned OrcaSlicer v2.4.2 binary in CI against a representative QIDI profile/model fixture, verify the sliced 3MF and extracted G-code, then move the handoff from flattened STL to full project/3MF semantics.
+Move the Prepare-to-Orca handoff from flattened single-mesh STL to full project/3MF semantics so multiple plates, modifiers, painted facets, object-level settings, filament assignments and vendor metadata survive intact. After that, add Orca progress/cancellation and richer sliced-metadata consumption.
