@@ -33,7 +33,7 @@ class OrcaSlicerEngine {
 
   List<String> buildArguments(
     OrcaSlicerRequest request, {
-    required String bundlePath,
+    required String bundleFileName,
   }) {
     final settings = <String>[
       request.processProfilePath,
@@ -55,7 +55,7 @@ class OrcaSlicerEngine {
       '--slice',
       request.plate.toString(),
       '--export-3mf',
-      bundlePath,
+      bundleFileName,
       '--outputdir',
       request.outputDirectory,
       '--debug',
@@ -74,8 +74,12 @@ class OrcaSlicerEngine {
     final outputDirectory = Directory(request.outputDirectory);
     await outputDirectory.create(recursive: true);
     final baseName = _fileStem(request.modelPath);
-    final bundlePath = _join(outputDirectory.path, '$baseName.gcode.3mf');
-    final arguments = buildArguments(request, bundlePath: bundlePath);
+    final bundleFileName = '$baseName.gcode.3mf';
+    final bundlePath = _join(outputDirectory.path, bundleFileName);
+    final arguments = buildArguments(
+      request,
+      bundleFileName: bundleFileName,
+    );
 
     final stopwatch = Stopwatch()..start();
     ProcessResult process;
