@@ -317,6 +317,19 @@ class _PreparePageState extends State<PreparePage> {
     });
   }
 
+  void _startGeneratedProject() {
+    setState(() {
+      sourceProject = null;
+      editableProject = WorkspaceEditableProject.empty();
+      activePlateIndex = 0;
+      selectedObjectIndex = null;
+      mesh = null;
+      modelPath = null;
+      error = null;
+      _publishSelection();
+    });
+  }
+
   void _addPlate() {
     if (sourceProject != null) {
       setState(() {
@@ -770,12 +783,23 @@ class _PreparePageState extends State<PreparePage> {
                   const Icon(Icons.lock_outline, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'Imported vendor 3MF is in lossless mode. '
-                      'Transforms are preserved, but structural plate/object '
-                      'editing is disabled until vendor metadata editing is '
-                      'round-trip safe.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Imported vendor 3MF is in lossless mode. '
+                          'Transforms are preserved, but structural plate/object '
+                          'editing is disabled until vendor metadata editing is '
+                          'round-trip safe.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _startGeneratedProject,
+                          icon: const Icon(Icons.note_add_outlined, size: 17),
+                          label: const Text('Start generated project'),
+                        ),
+                      ],
                     ),
                   ),
                 ],
