@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:xml/xml.dart';
 
 import 'three_mf_parser.dart';
+import 'three_mf_transform.dart';
 
 /// Rebuilds a 3MF ZIP package without silently discarding vendor-specific
 /// entries. This intentionally does not pretend that flattened geometry edits
@@ -10,6 +13,45 @@ import 'three_mf_parser.dart';
 /// semantics they fully own.
 class ThreeMfWriter {
   const ThreeMfWriter();
+
+  Uint8List repackWithBuildTransform(
+    ThreeMfPackage package,
+    ThreeMfTransform transform, {
+    Map<String, Uint8List> replacements = const {},
+  }) {
+    if (transform.isIdentity) {
+      return repack(package, replacements: replacements);
+    }
+
+    final rootPath = _rootModelPath(package.entries);
+    if (rootPath == null) {
+      throw const FormatException('3MF has no root model to transform');
+    }
+    final raw = package.entries[rootPath];
+    if (raw == null) {
+      throw FormatException('3MF root model is missing: $rootPath');
+    }
+
+    final document = XmlDocument.parse(utf8.decode(raw, allowMalformed: false));
+    for (final build in document.findAllElements('build')) {
+      for (final item in build.findElements('item')) {
+        final existing = ThreeMfTransform.from3mf(
+          item.getAttribute('transform'),
+        );
+        item.setAttribute('transform', (transform * existing).to3mfString());
+      }
+    }
+
+    return repack(
+      package,
+      replacements: {
+        ...replacements,
+        rootPath: Uint8List.fromList(
+          utf8.encode(document.toXmlString(pretty: false)),
+        ),
+      },
+    );
+  }
 
   Uint8List repack(
     ThreeMfPackage package, {
@@ -34,6 +76,14 @@ class ThreeMfWriter {
       archive.addFile(ArchiveFile.bytes(entry.key, entry.value));
     }
     return ZipEncoder().encodeBytes(archive);
+  }
+
+  String? _rootModelPath(Map<String, Uint8List> entries) {
+    if (entries.containsKey('3D/3dmodel.model')) return '3D/3dmodel.model';
+    for (final key in entries.keys) {
+      if (key.toLowerCase().endsWith('/3dmodel.model')) return key;
+    }
+    return null;
   }
 
   String _normalize(String path) {

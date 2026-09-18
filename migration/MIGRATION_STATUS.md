@@ -24,9 +24,12 @@ Pinned engine:
 
 - Orca CLI bridge in `lib/core/orca/orca_slicer_engine.dart`;
 - QIDI preset materialization for machine/process/filament JSON;
-- current transformed Prepare mesh -> temporary STL handoff;
+- Orca/Bambu-compatible split-model project 3MF handoff with embedded resolved QIDI settings;
+- imported vendor 3MF packages are preserved losslessly while owned build transforms are updated;
+- object/volume settings, modifier/support volume types, painted facet metadata, extruder assignment and plate membership serialization;
+- Orca virtual-bed offsets for multi-plate projects;
 - `Slice plate` routes through Orca instead of a Dart slicer;
-- sliced 3MF `Metadata/plate_N.gcode` extraction;
+- extraction of every sliced 3MF `Metadata/plate_N.gcode` entry;
 - automatic handoff of generated G-code to Dart Preview;
 - latest sliced G-code can be uploaded from Device through Moonraker and started;
 - real pinned Orca binary is exercised in CI with SHA-256 verification and a QIDI profile/model fixture;
@@ -38,11 +41,11 @@ Pinned engine:
 | Area | Status | Next work |
 |---|---|---|
 | Orca engine process boundary | `integration_verified` | package same pinned engine on all desktop targets |
-| single active mesh + one machine/process/filament handoff | `integration_verified` | replace flattened STL with project/3MF semantics |
-| sliced G-code extraction -> Dart Preview | `integration_verified` | consume richer sliced metadata |
+| Prepare/project -> Orca 3MF handoff | `integration_verified` | wire richer editor state into the project model |
+| sliced G-code extraction -> Dart Preview | `integration_verified` including multi-plate output | consume richer sliced metadata |
 | QIDI profile materialization | `integration_verified` for X-Plus 4 fixture | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
-| multi-plate / modifiers / paint / per-object settings | `pending` | full project/3MF handoff |
+| multi-plate / modifiers / paint / per-object settings | `handoff_verified` | editor creation/editing UI still pending |
 | slicing progress / cancellation | `pending` | Orca `--pipe` integration |
 | engine packaging / updater / exact version verification | `pending` | Windows/macOS/Linux packaging |
 | AGPL notices / corresponding source delivery | `pending` release gate | package license/source information |
@@ -50,9 +53,9 @@ Pinned engine:
 
 ## Immediate priority
 
-1. Replace flattened STL handoff with full 3MF/project state so plates, modifiers, paint, per-object settings, filament assignments and metadata reach Orca intact.
-2. Add progress and cancellation using Orca's CLI progress pipe.
-3. Consume sliced 3MF metadata for Preview estimates/warnings and printer delivery.
+1. Add progress and cancellation using Orca's CLI progress pipe.
+2. Consume sliced 3MF metadata for Preview estimates/warnings and printer delivery.
+3. Wire the verified project model into richer multi-plate/modifier/paint/per-object Prepare editing UI.
 4. Verify Moonraker upload/start against a real QIDI printer.
 5. Package the pinned engine for Windows/macOS/Linux with exact artifact/version checks and AGPL compliance.
-6. Continue Flutter editor/project/Device/calibration/UI work around the stable engine boundary.
+6. Continue Flutter Device/calibration/UI work around the stable engine boundary.

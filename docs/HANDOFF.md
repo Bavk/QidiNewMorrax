@@ -17,12 +17,12 @@ Read [ORCASLICER_ENGINE.md](ORCASLICER_ENGINE.md) and [../migration/PARITY_CONTR
 
 The cutover now routes the application through:
 
-1. Prepare model and QIDI machine/process/filament selection in Dart.
-2. Current transformed mesh -> temporary STL and resolved preset JSON.
-3. `OrcaSlicerEngine` -> Orca headless CLI.
-4. Orca sliced `.gcode.3mf` -> `Metadata/plate_N.gcode` extraction.
-5. Generated G-code -> Dart Preview.
-6. Latest generated G-code -> Dart Device -> Moonraker `/server/files/upload` -> optional print start.
+1. Prepare model/project state and QIDI machine/process/filament selection in Dart.
+2. Generated state -> Orca/Bambu split-model project 3MF with embedded resolved `project_settings.config`; imported QIDI/Bambu/Orca 3MF is repacked losslessly and keeps vendor entries.
+3. `OrcaSlicerEngine` -> pinned Orca headless CLI.
+4. Orca sliced `.gcode.3mf` -> all available `Metadata/plate_N.gcode` entries.
+5. Selected generated G-code -> Dart Preview.
+6. Latest selected G-code -> Dart Device -> Moonraker `/server/files/upload` -> optional print start.
 
 The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility layer, custom G-code writer/emitter/extruder implementation, and `clipper2` dependency are removed from production.
 
@@ -46,15 +46,28 @@ Real engine checkpoint on the same functional HEAD:
 - extracted G-code contained printable G0/G1 moves;
 - conclusion — **success**.
 
+## Project/3MF handoff checkpoint — 2026-09-18
+
+PR #11 replaces the temporary STL bridge with an Orca-compatible project 3MF boundary:
+
+- split production-extension 3MF (`3D/3dmodel.model` + `3D/Objects/*.model` + relationships);
+- embedded resolved QIDI `Metadata/project_settings.config`;
+- objects, multiple volumes, modifier/support volume types, facet paint metadata, per-object/per-volume settings and extruder assignment;
+- explicit plate membership plus Orca virtual-bed offsets;
+- lossless pass-through of imported vendor 3MF entries while applying build transforms;
+- all sliced `plate_N.gcode` outputs exposed by the engine;
+- old `MeshStlWriter` bridge removed;
+- real Orca v2.4.2 smoke run `35397155859` (#104) slices both plates in one `--slice 0` invocation successfully.
+
 ## First unfinished priority
 
-The engine boundary itself is now proven. Continue integration in this order:
+The project/3MF engine boundary is now proven. Continue integration in this order:
 
-1. Replace flattened STL handoff with full 3MF/project handoff so multiple plates, modifiers, paint, per-object settings, filament assignments and project metadata survive into Orca.
-2. Add slicing progress and cancellation using Orca's `--pipe` integration.
-3. Consume sliced 3MF metadata for richer Preview, estimates, warnings and printer payloads.
+1. Add slicing progress and cancellation using Orca's `--pipe` integration.
+2. Consume sliced 3MF metadata for richer Preview, estimates, warnings and printer payloads.
+3. Wire the project model into richer Prepare editor UI for creating/editing multiple plates, modifiers, paint and per-object settings instead of only preserving/serializing them.
 4. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks.
 5. Complete AGPL notices/corresponding-source delivery for distributed builds.
-6. Continue Dart/Flutter project/editor/Device/calibration/UI integration around the stable engine boundary.
+6. Continue Dart/Flutter Device/calibration/UI integration around the stable engine boundary.
 
 Do not reintroduce a parallel custom production slicer or Clipper in Dart.

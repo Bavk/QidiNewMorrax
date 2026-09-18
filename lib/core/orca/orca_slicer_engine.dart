@@ -117,16 +117,42 @@ class OrcaSlicerEngine {
       );
     }
 
-    final gcodeBytes = extractPlateGcode(
-      await bundle.readAsBytes(),
-      plate: request.plate == 0 ? 1 : request.plate,
-    );
+    final plateGcodes = extractPlateGcodes(await bundle.readAsBytes());
+    if (plateGcodes.isEmpty) {
+      throw const OrcaSlicerException(
+        'Sliced 3MF contains no Metadata/plate_N.gcode entries.',
+      );
+    }
+
+    final availablePlates = plateGcodes.keys.toList()..sort();
+    final selectedPlate =
+        request.plate == 0 ? availablePlates.first : request.plate;
+    final selectedBytes = plateGcodes[selectedPlate];
+    if (selectedBytes == null) {
+      throw OrcaSlicerException(
+        'Sliced 3MF has no plate $selectedPlate. '
+        'Available plates: ${availablePlates.join(", ")}',
+      );
+    }
+
+    final gcodePathsByPlate = <int, String>{};
+    for (final entry in plateGcodes.entries) {
+      final path = _join(
+        outputDirectory.path,
+        '$baseName.plate_${entry.key}.gcode',
+      );
+      await File(path).writeAsBytes(entry.value, flush: true);
+      gcodePathsByPlate[entry.key] = path;
+    }
+
     final gcodePath = _join(outputDirectory.path, '$baseName.gcode');
-    await File(gcodePath).writeAsBytes(gcodeBytes, flush: true);
+    await File(gcodePath).writeAsBytes(selectedBytes, flush: true);
 
     return OrcaSlicerResult(
       bundlePath: bundlePath,
       gcodePath: gcodePath,
+      gcodePathsByPlate: Map.unmodifiable(gcodePathsByPlate),
+      selectedPlate: selectedPlate,
       stdout: stdoutText,
       stderr: stderrText,
       exitCode: process.exitCode,
@@ -134,24 +160,36 @@ class OrcaSlicerEngine {
     );
   }
 
-  Uint8List extractPlateGcode(Uint8List bundleBytes, {int plate = 1}) {
+  Map<int, Uint8List> extractPlateGcodes(Uint8List bundleBytes) {
     final archive = ZipDecoder().decodeBytes(bundleBytes, verify: true);
-    final wanted = 'Metadata/plate_$plate.gcode';
+    final result = <int, Uint8List>{};
+    const prefix = 'Metadata/plate_';
+    const suffix = '.gcode';
     for (final file in archive.files) {
       if (!file.isFile) continue;
-      final normalized = file.name.replaceAll('\\', '/');
-      if (normalized == wanted) {
-        return Uint8List.fromList(file.content);
+      final normalized = file.name.replaceAll('\\\\', '/');
+      if (!normalized.startsWith(prefix) || !normalized.endsWith(suffix)) {
+        continue;
       }
+      final digits = normalized.substring(
+        prefix.length,
+        normalized.length - suffix.length,
+      );
+      final plate = int.tryParse(digits);
+      if (plate == null || plate <= 0) continue;
+      result[plate] = Uint8List.fromList(file.content);
     }
+    return Map.unmodifiable(result);
+  }
 
-    final available = archive.files
-        .where((file) => file.isFile && file.name.toLowerCase().endsWith('.gcode'))
-        .map((file) => file.name)
-        .toList(growable: false);
+  Uint8List extractPlateGcode(Uint8List bundleBytes, {int plate = 1}) {
+    final plates = extractPlateGcodes(bundleBytes);
+    final value = plates[plate];
+    if (value != null) return value;
+    final available = plates.keys.toList()..sort();
     throw OrcaSlicerException(
-      'Sliced 3MF has no $wanted. '
-      'Available G-code entries: ${available.isEmpty ? "none" : available.join(", ")}',
+      'Sliced 3MF has no Metadata/plate_$plate.gcode. '
+      'Available plates: ${available.isEmpty ? "none" : available.join(", ")}',
     );
   }
 
@@ -214,6 +252,8 @@ class OrcaSlicerResult {
   const OrcaSlicerResult({
     required this.bundlePath,
     required this.gcodePath,
+    required this.gcodePathsByPlate,
+    required this.selectedPlate,
     required this.stdout,
     required this.stderr,
     required this.exitCode,
@@ -222,6 +262,8 @@ class OrcaSlicerResult {
 
   final String bundlePath;
   final String gcodePath;
+  final Map<int, String> gcodePathsByPlate;
+  final int selectedPlate;
   final String stdout;
   final String stderr;
   final int exitCode;

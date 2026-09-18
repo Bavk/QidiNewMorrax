@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import '../../../core/geometry/point.dart';
 import '../../../core/model_io/mesh.dart';
 import '../../../core/model_io/model_loader.dart';
+import '../../../core/model_io/three_mf_parser.dart';
+import '../../../core/orca/orca_bed_coordinate_mapper.dart';
 import '../../../core/profiles/profile_repository.dart';
 import '../../workspace/application/workspace_controller.dart';
 
@@ -30,6 +32,7 @@ class _PreparePageState extends State<PreparePage> {
   QidiProfile? filament;
   QidiProfile? process;
   Mesh? mesh;
+  ThreeMfPackage? sourceProject;
   String? modelPath;
   Object? error;
   bool loadingProfiles = true;
@@ -49,6 +52,7 @@ class _PreparePageState extends State<PreparePage> {
       machine: machine,
       process: process,
       filament: filament,
+      sourceProject: sourceProject,
     );
   }
 
@@ -116,7 +120,16 @@ class _PreparePageState extends State<PreparePage> {
           file.bytes ??
           (file.path == null ? null : await File(file.path!).readAsBytes());
       if (bytes == null) throw StateError('Could not read ${file.name}');
-      mesh = const ModelLoader().load(bytes, file.name);
+      if (file.name.toLowerCase().endsWith('.3mf')) {
+        sourceProject = const ThreeMfParser().parsePackage(
+          bytes,
+          name: file.name,
+        );
+        mesh = sourceProject!.mesh;
+      } else {
+        sourceProject = null;
+        mesh = const ModelLoader().load(bytes, file.name);
+      }
       modelPath = file.path ?? file.name;
       _publishSelection();
     } catch (e) {
@@ -135,6 +148,13 @@ class _PreparePageState extends State<PreparePage> {
       builder: (context) => _TransformDialog(kind: kind),
     );
     if (result == null) return;
+    widget.controller.recordModelTransform(
+      translation:
+          kind == _TransformKind.move ? result : const Point3(0, 0, 0),
+      rotationDegrees:
+          kind == _TransformKind.rotate ? result : const Point3(0, 0, 0),
+      scale: kind == _TransformKind.scale ? result : const Point3(1, 1, 1),
+    );
     setState(() {
       mesh = switch (kind) {
         _TransformKind.move => current.transformed(translation: result),
@@ -150,10 +170,17 @@ class _PreparePageState extends State<PreparePage> {
     if (current == null) return;
     final bounds = current.bounds;
     if (bounds.isEmpty) return;
+    final target = sourceProject != null && machine != null
+        ? const OrcaBedCoordinateMapper().bedCenter(machine!)
+        : const Point3(0, 0, 0);
+    final translation = Point3(
+      target.x - bounds.center.x,
+      target.y - bounds.center.y,
+      -bounds.min.z,
+    );
+    widget.controller.recordModelTransform(translation: translation);
     setState(() {
-      mesh = current.transformed(
-        translation: Point3(-bounds.center.x, -bounds.center.y, -bounds.min.z),
-      );
+      mesh = current.transformed(translation: translation);
       _publishSelection();
     });
   }
