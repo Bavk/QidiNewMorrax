@@ -26,24 +26,24 @@ The cutover now routes the application through:
 
 The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility layer, custom G-code writer/emitter/extruder implementation, and `clipper2` dependency are removed from production.
 
-## Validated checkpoint — 2026-09-18
+## Validated checkpoint — 2026-09-19
 
 Functional code checkpoint:
 
-- code: `70e6919eaad04199738c09b682f8bdad5ec0d67f`;
-- Flutter parity run `35392468990` (#670), job `105753727204`;
+- code: `cbc806db7ecf00c87b6730c4167fa3d3f622223a`;
+- Flutter parity run `35401167437` (#752), job `105781146290`;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **114/114 passed**;
+- `flutter test --reporter expanded` — **134/134 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35392469054` (#27), job `105753727522`;
+- Orca smoke run `35401167530` (#180), job `105781147329`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
 - QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
-- a 20 mm cube was sliced successfully;
-- produced `cube.gcode.3mf` contained `Metadata/plate_1.gcode` (**385515 bytes**);
-- extracted G-code contained printable G0/G1 moves;
+- the real QIDI X-Plus 4 two-plate project fixture sliced successfully;
+- both `Metadata/plate_1.gcode` and `Metadata/plate_2.gcode` were present with printable G0/G1 moves;
+- progress reached **100%**, and each plate retained the verified **1167 s** prediction / **1.335 m** filament metadata fallback;
 - conclusion — **success**.
 
 ## Project/3MF handoff checkpoint — 2026-09-18
@@ -77,11 +77,24 @@ PR #13 consumes Orca's sliced-result metadata instead of inferring estimates in 
 
 Functional checkpoint `a69646d98fbc07de7004cda6b62ad78757a8d61a` is green in Flutter run `35400170625` (#746), job `105778026686`: analyzer clean, **131/131 tests passed**. Real Orca smoke `35400170623` (#173), job `105778021824`, is also green: both plates report **1167 s** prediction and **1.335 m** filament via the verified fallback path.
 
+## Editable Prepare project checkpoint — 2026-09-19
+
+PR #14 wires the verified project serializer into real generated-project editing instead of keeping multi-plate state as a handoff-only capability:
+
+- new immutable `WorkspaceEditableProject` domain state owns generated plates and objects;
+- Prepare can add multiple source models, create/rename/lock/remove plates, select/move/remove objects between plates, and render the active plate as a merged viewport;
+- Move/Rotate/Scale/Center operate on the selected generated object and the same edited state is handed to `WorkspaceController`;
+- object name, plate assignment, wall-loop and sparse-infill overrides are serialized into the existing Orca/Bambu `model_settings.config`;
+- the editor currently keeps the production filament slot at extruder 1 because runtime profile materialization still loads one selected filament;
+- a single imported vendor 3MF intentionally stays on the existing lossless read/repack path; structural editing of imported package internals is not promoted by this batch.
+
+Functional HEAD `cbc806db7ecf00c87b6730c4167fa3d3f622223a` is green in Flutter run `35401167437` (#752), job `105781146290`: analyzer clean, **134/134 tests passed**. Orca smoke `35401167530` (#180), job `105781147329`, is also green on the same HEAD with the pinned AppImage and verified two-plate QIDI fixture.
+
 ## First unfinished priority
 
 The next application boundary is richer editing of the already verified project model. Continue in this order:
 
-1. Wire the project model into richer Prepare editor UI for creating/editing multiple plates, modifiers, paint, filament assignment and per-object/per-volume settings instead of only preserving/serializing them.
+1. Continue the richer Prepare editor beyond the now-wired generated multi-plate/object path: create/edit modifier, support-enforcer and support-blocker volumes; add facet paint editing; add real multi-filament selection/assignment; widen per-object/per-volume overrides; then decide how much structured editing imported vendor 3MF can support without violating lossless preservation.
 2. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
 3. Verify Moonraker upload/start against representative QIDI hardware.
 4. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks and platform progress behavior.

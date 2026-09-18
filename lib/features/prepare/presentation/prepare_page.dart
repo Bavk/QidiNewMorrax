@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../../../core/model_io/three_mf_parser.dart';
 import '../../../core/orca/orca_bed_coordinate_mapper.dart';
 import '../../../core/profiles/profile_repository.dart';
 import '../../workspace/application/workspace_controller.dart';
+import '../../workspace/domain/workspace_editable_project.dart';
 
 class PreparePage extends StatefulWidget {
   const PreparePage({super.key, required this.controller});
@@ -33,6 +35,9 @@ class _PreparePageState extends State<PreparePage> {
   QidiProfile? process;
   Mesh? mesh;
   ThreeMfPackage? sourceProject;
+  WorkspaceEditableProject? editableProject;
+  int activePlateIndex = 0;
+  int? selectedObjectIndex;
   String? modelPath;
   Object? error;
   bool loadingProfiles = true;
@@ -53,6 +58,7 @@ class _PreparePageState extends State<PreparePage> {
       process: process,
       filament: filament,
       sourceProject: sourceProject,
+      editableProject: editableProject,
     );
   }
 
@@ -108,29 +114,64 @@ class _PreparePageState extends State<PreparePage> {
       type: FileType.custom,
       allowedExtensions: const ['stl', 'obj', '3mf', 'amf', 'xml'],
       withData: true,
+      allowMultiple: true,
     );
     if (picked == null || picked.files.isEmpty) return;
-    final file = picked.files.single;
     setState(() {
       loadingModel = true;
       error = null;
     });
     try {
-      final bytes =
-          file.bytes ??
-          (file.path == null ? null : await File(file.path!).readAsBytes());
-      if (bytes == null) throw StateError('Could not read ${file.name}');
-      if (file.name.toLowerCase().endsWith('.3mf')) {
+      if (sourceProject != null) {
+        throw StateError(
+          'Imported vendor 3MF is kept lossless and is read-only in the '
+          'generated multi-object editor. Start a generated project before '
+          'combining additional models.',
+        );
+      }
+
+      final single = picked.files.length == 1 ? picked.files.single : null;
+      if (editableProject == null &&
+          single != null &&
+          single.name.toLowerCase().endsWith('.3mf')) {
+        final bytes = await _pickedBytes(single);
         sourceProject = const ThreeMfParser().parsePackage(
           bytes,
-          name: file.name,
+          name: single.name,
         );
+        editableProject = null;
+        activePlateIndex = 0;
+        selectedObjectIndex = null;
         mesh = sourceProject!.mesh;
-      } else {
-        sourceProject = null;
-        mesh = const ModelLoader().load(bytes, file.name);
+        modelPath = single.path ?? single.name;
+        _publishSelection();
+        return;
       }
-      modelPath = file.path ?? file.name;
+
+      var project = editableProject ?? WorkspaceEditableProject.empty();
+      for (final file in picked.files) {
+        final bytes = await _pickedBytes(file);
+        final loaded = file.name.toLowerCase().endsWith('.3mf')
+            ? const ThreeMfParser().parsePackage(bytes, name: file.name).mesh
+            : const ModelLoader().load(bytes, file.name);
+        project = project.addObject(
+          loaded,
+          plateIndex: activePlateIndex,
+          name: loaded.name,
+        );
+      }
+
+      sourceProject = null;
+      editableProject = project;
+      selectedObjectIndex = project.objects.isEmpty
+          ? null
+          : project.objects.length - 1;
+      mesh = selectedObjectIndex == null
+          ? project.mergedMeshForPlate(activePlateIndex)
+          : project.objects[selectedObjectIndex!].mesh;
+      modelPath = picked.files.length == 1
+          ? (picked.files.single.path ?? picked.files.single.name)
+          : 'Generated multi-object project';
       _publishSelection();
     } catch (e) {
       error = e;
@@ -140,14 +181,89 @@ class _PreparePageState extends State<PreparePage> {
     }
   }
 
+  Future<Uint8List> _pickedBytes(PlatformFile file) async {
+    final bytes =
+        file.bytes ??
+        (file.path == null ? null : await File(file.path!).readAsBytes());
+    if (bytes == null) {
+      throw StateError('Could not read ${file.name}');
+    }
+    return bytes;
+  }
+
+  WorkspaceEditableObject? get _selectedEditableObject {
+    final project = editableProject;
+    final index = selectedObjectIndex;
+    if (project == null ||
+        index == null ||
+        index < 0 ||
+        index >= project.objects.length) {
+      return null;
+    }
+    return project.objects[index];
+  }
+
+  void _selectPlate(int plateIndex) {
+    final project = editableProject;
+    if (project == null ||
+        plateIndex < 0 ||
+        plateIndex >= project.plates.length) {
+      return;
+    }
+    final indices = project.objectIndicesForPlate(plateIndex);
+    setState(() {
+      activePlateIndex = plateIndex;
+      selectedObjectIndex = indices.firstOrNull;
+      mesh = selectedObjectIndex == null
+          ? project.mergedMeshForPlate(plateIndex)
+          : project.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  void _selectObject(int objectIndex) {
+    final project = editableProject;
+    if (project == null ||
+        objectIndex < 0 ||
+        objectIndex >= project.objects.length) {
+      return;
+    }
+    setState(() {
+      selectedObjectIndex = objectIndex;
+      activePlateIndex = project.objects[objectIndex].plateIndex;
+      mesh = project.objects[objectIndex].mesh;
+      _publishSelection();
+    });
+  }
+
   Future<void> _transformModel(_TransformKind kind) async {
-    final current = mesh;
+    final current = _selectedEditableObject?.mesh ?? mesh;
     if (current == null) return;
     final result = await showDialog<Point3>(
       context: context,
       builder: (context) => _TransformDialog(kind: kind),
     );
     if (result == null) return;
+
+    final generated = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (generated != null && objectIndex != null) {
+      final updated = generated.transformObject(
+        objectIndex,
+        translation:
+            kind == _TransformKind.move ? result : const Point3(0, 0, 0),
+        rotationDegrees:
+            kind == _TransformKind.rotate ? result : const Point3(0, 0, 0),
+        scale: kind == _TransformKind.scale ? result : const Point3(1, 1, 1),
+      );
+      setState(() {
+        editableProject = updated;
+        mesh = updated.objects[objectIndex].mesh;
+        _publishSelection();
+      });
+      return;
+    }
+
     widget.controller.recordModelTransform(
       translation:
           kind == _TransformKind.move ? result : const Point3(0, 0, 0),
@@ -166,7 +282,7 @@ class _PreparePageState extends State<PreparePage> {
   }
 
   void _resetModelToBed() {
-    final current = mesh;
+    final current = _selectedEditableObject?.mesh ?? mesh;
     if (current == null) return;
     final bounds = current.bounds;
     if (bounds.isEmpty) return;
@@ -178,9 +294,287 @@ class _PreparePageState extends State<PreparePage> {
       target.y - bounds.center.y,
       -bounds.min.z,
     );
+
+    final generated = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (generated != null && objectIndex != null) {
+      final updated = generated.transformObject(
+        objectIndex,
+        translation: translation,
+      );
+      setState(() {
+        editableProject = updated;
+        mesh = updated.objects[objectIndex].mesh;
+        _publishSelection();
+      });
+      return;
+    }
+
     widget.controller.recordModelTransform(translation: translation);
     setState(() {
       mesh = current.transformed(translation: translation);
+      _publishSelection();
+    });
+  }
+
+  void _startGeneratedProject() {
+    setState(() {
+      sourceProject = null;
+      editableProject = WorkspaceEditableProject.empty();
+      activePlateIndex = 0;
+      selectedObjectIndex = null;
+      mesh = null;
+      modelPath = null;
+      error = null;
+      _publishSelection();
+    });
+  }
+
+  void _addPlate() {
+    if (sourceProject != null) {
+      setState(() {
+        error = StateError(
+          'Lossless imported 3MF editing is not enabled yet. '
+          'Generated plates are available for generated projects.',
+        );
+      });
+      return;
+    }
+    final updated = (editableProject ?? WorkspaceEditableProject.empty())
+        .addPlate();
+    setState(() {
+      editableProject = updated;
+      activePlateIndex = updated.plates.length - 1;
+      selectedObjectIndex = null;
+      mesh = null;
+      sourceProject = null;
+      _publishSelection();
+    });
+  }
+
+  void _removeActivePlate() {
+    final project = editableProject;
+    if (project == null || project.plates.length <= 1) return;
+    final updated = project.removePlate(activePlateIndex);
+    final nextPlate = activePlateIndex.clamp(0, updated.plates.length - 1);
+    final indices = updated.objectIndicesForPlate(nextPlate);
+    setState(() {
+      editableProject = updated;
+      activePlateIndex = nextPlate;
+      selectedObjectIndex = indices.firstOrNull;
+      mesh = selectedObjectIndex == null
+          ? updated.mergedMeshForPlate(nextPlate)
+          : updated.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  Future<void> _editActivePlate() async {
+    final project = editableProject;
+    if (project == null) return;
+    final plate = project.plates[activePlateIndex];
+    final name = TextEditingController(text: plate.name);
+    var locked = plate.locked;
+    final result = await showDialog<({String name, bool locked})>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Plate settings'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Plate name'),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Lock plate'),
+                  value: locked,
+                  onChanged: (value) =>
+                      setDialogState(() => locked = value),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                context,
+                (name: name.text, locked: locked),
+              ),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    name.dispose();
+    if (result == null) return;
+    var updated = project.renamePlate(activePlateIndex, result.name);
+    updated = updated.setPlateLocked(activePlateIndex, result.locked);
+    setState(() {
+      editableProject = updated;
+      _publishSelection();
+    });
+  }
+
+  void _removeSelectedObject() {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (project == null || objectIndex == null) return;
+    final updated = project.removeObject(objectIndex);
+    final indices = updated.objectIndicesForPlate(activePlateIndex);
+    setState(() {
+      editableProject = updated;
+      selectedObjectIndex = indices.firstOrNull;
+      mesh = selectedObjectIndex == null
+          ? updated.mergedMeshForPlate(activePlateIndex)
+          : updated.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  Future<void> _editSelectedObject() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (project == null || objectIndex == null) return;
+    final object = project.objects[objectIndex];
+    final name = TextEditingController(text: object.name);
+    final wallLoops = TextEditingController(
+      text: object.settings['wall_loops'] ?? '',
+    );
+    final infill = TextEditingController(
+      text: object.settings['sparse_infill_density'] ?? '',
+    );
+    var plateIndex = object.plateIndex;
+
+    final result = await showDialog<
+        ({
+          String name,
+          int plateIndex,
+          String wallLoops,
+          String infill,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Object settings'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Object name'),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  initialValue: plateIndex,
+                  decoration: const InputDecoration(labelText: 'Plate'),
+                  items: [
+                    for (var i = 0; i < project.plates.length; i++)
+                      DropdownMenuItem(
+                        value: i,
+                        child: Text(project.plates[i].name),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => plateIndex = value);
+                    }
+                  },
+                ),
+
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: wallLoops,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Wall loops override',
+                          hintText: 'inherit',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: infill,
+                        decoration: const InputDecoration(
+                          labelText: 'Sparse infill override',
+                          hintText: 'inherit (e.g. 20%)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                context,
+                (
+                  name: name.text,
+                  plateIndex: plateIndex,
+                  wallLoops: wallLoops.text,
+                  infill: infill.text,
+                ),
+              ),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    name.dispose();
+    wallLoops.dispose();
+    infill.dispose();
+    if (result == null) return;
+
+    final settings = <String, String>{...object.settings};
+    final loops = result.wallLoops.trim();
+    final density = result.infill.trim();
+    if (loops.isEmpty) {
+      settings.remove('wall_loops');
+    } else {
+      settings['wall_loops'] = loops;
+    }
+    if (density.isEmpty) {
+      settings.remove('sparse_infill_density');
+    } else {
+      settings['sparse_infill_density'] = density;
+    }
+
+    final updated = project.updateObject(
+      objectIndex,
+      name: result.name.trim().isEmpty ? object.name : result.name.trim(),
+      plateIndex: result.plateIndex,
+      settings: settings,
+    );
+    setState(() {
+      editableProject = updated;
+      activePlateIndex = result.plateIndex;
+      selectedObjectIndex = objectIndex;
+      mesh = updated.objects[objectIndex].mesh;
       _publishSelection();
     });
   }
@@ -362,8 +756,196 @@ class _PreparePageState extends State<PreparePage> {
               'mm/s',
             ),
           ],
+          const SizedBox(height: 18),
+          const Divider(),
+          _projectSection(),
         ],
       ),
+    );
+  }
+
+  Widget _projectSection() {
+    if (sourceProject != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            icon: Icons.folder_special_outlined,
+            title: 'Project',
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lock_outline, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Imported vendor 3MF is in lossless mode. '
+                          'Transforms are preserved, but structural plate/object '
+                          'editing is disabled until vendor metadata editing is '
+                          'round-trip safe.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _startGeneratedProject,
+                          icon: const Icon(Icons.note_add_outlined, size: 17),
+                          label: const Text('Start generated project'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final project = editableProject;
+    if (project == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            icon: Icons.dashboard_customize_outlined,
+            title: 'Project',
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add one or more models to create an editable multi-plate project.',
+          ),
+        ],
+      );
+    }
+
+    final plateObjects = project.objectIndicesForPlate(activePlateIndex);
+    final selected = selectedObjectIndex;
+    final selectedOnPlate =
+        selected != null && plateObjects.contains(selected) ? selected : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          icon: Icons.dashboard_customize_outlined,
+          title: 'Project',
+          trailing: Text(
+            '${project.plates.length} plate${project.plates.length == 1 ? '' : 's'} · '
+            '${project.objects.length} object${project.objects.length == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          key: ValueKey('plate-$activePlateIndex-${project.plates.length}'),
+          initialValue: activePlateIndex,
+          decoration: const InputDecoration(labelText: 'Active plate'),
+          items: [
+            for (var i = 0; i < project.plates.length; i++)
+              DropdownMenuItem(
+                value: i,
+                child: Text(
+                  project.plates[i].locked
+                      ? '${project.plates[i].name} · locked'
+                      : project.plates[i].name,
+                ),
+              ),
+          ],
+          onChanged: (value) {
+            if (value != null) _selectPlate(value);
+          },
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _addPlate,
+              icon: const Icon(Icons.add, size: 17),
+              label: const Text('Add plate'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _editActivePlate,
+              icon: const Icon(Icons.edit_outlined, size: 17),
+              label: const Text('Plate settings'),
+            ),
+            OutlinedButton.icon(
+              onPressed: project.plates.length > 1
+                  ? _removeActivePlate
+                  : null,
+              icon: const Icon(Icons.delete_outline, size: 17),
+              label: const Text('Delete plate'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<int>(
+          key: ValueKey(
+            'object-$activePlateIndex-${selectedObjectIndex ?? -1}-'
+            '${project.objects.length}',
+          ),
+          initialValue: selectedOnPlate,
+          decoration: const InputDecoration(labelText: 'Selected object'),
+          items: [
+            for (final index in plateObjects)
+              DropdownMenuItem(
+                value: index,
+                child: Text(
+                  project.objects[index].name,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: plateObjects.isEmpty
+              ? null
+              : (value) {
+                  if (value != null) _selectObject(value);
+                },
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              onPressed: selectedOnPlate == null ? null : _editSelectedObject,
+              icon: const Icon(Icons.tune, size: 17),
+              label: const Text('Object settings'),
+            ),
+            OutlinedButton.icon(
+              onPressed: selectedOnPlate == null ? null : _removeSelectedObject,
+              icon: const Icon(Icons.remove_circle_outline, size: 17),
+              label: const Text('Remove object'),
+            ),
+          ],
+        ),
+        if (selectedOnPlate != null) ...[
+          const SizedBox(height: 10),
+          Builder(
+            builder: (context) {
+              final object = project.objects[selectedOnPlate];
+              final overrides = object.settings.entries
+                  .map((entry) => '${entry.key}=${entry.value}')
+                  .join(' · ');
+              return Text(
+                'Extruder ${object.extruder}'
+                '${overrides.isEmpty ? '' : ' · $overrides'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              );
+            },
+          ),
+        ],
+      ],
     );
   }
 
@@ -392,7 +974,14 @@ class _PreparePageState extends State<PreparePage> {
   }
 
   Widget _workspace() {
-    final currentMesh = mesh;
+    final project = editableProject;
+    final currentMesh =
+        project?.mergedMeshForPlate(activePlateIndex) ?? mesh;
+    final canTransform = project == null
+        ? currentMesh != null
+        : selectedObjectIndex != null;
+    final plateObjectCount =
+        project?.objectIndicesForPlate(activePlateIndex).length ?? 0;
     return Column(
       children: [
         SizedBox(
@@ -405,28 +994,39 @@ class _PreparePageState extends State<PreparePage> {
                 icon: const Icon(Icons.add_box_outlined),
                 tooltip: 'Add model',
               ),
-              const IconButton(
-                onPressed: null,
-                icon: Icon(Icons.grid_on_outlined),
-                tooltip: 'Multi-plate parity pending',
+              IconButton(
+                onPressed: sourceProject == null ? _addPlate : null,
+                icon: const Icon(Icons.grid_on_outlined),
+                tooltip: sourceProject == null
+                    ? 'Add plate'
+                    : 'Imported vendor 3MF is in lossless mode',
               ),
+              if (project != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ActionChip(
+                    avatar: const Icon(Icons.layers_outlined, size: 16),
+                    label: Text(project.plates[activePlateIndex].name),
+                    onPressed: _editActivePlate,
+                  ),
+                ),
               const VerticalDivider(indent: 8, endIndent: 8),
               IconButton(
-                onPressed: currentMesh == null
+                onPressed: !canTransform
                     ? null
                     : () => _transformModel(_TransformKind.move),
                 icon: const Icon(Icons.open_with),
                 tooltip: 'Move',
               ),
               IconButton(
-                onPressed: currentMesh == null
+                onPressed: !canTransform
                     ? null
                     : () => _transformModel(_TransformKind.rotate),
                 icon: const Icon(Icons.rotate_right),
                 tooltip: 'Rotate',
               ),
               IconButton(
-                onPressed: currentMesh == null
+                onPressed: !canTransform
                     ? null
                     : () => _transformModel(_TransformKind.scale),
                 icon: const Icon(Icons.aspect_ratio),
@@ -438,7 +1038,7 @@ class _PreparePageState extends State<PreparePage> {
                 tooltip: 'Cut parity pending',
               ),
               IconButton(
-                onPressed: currentMesh == null ? null : _resetModelToBed,
+                onPressed: canTransform ? _resetModelToBed : null,
                 icon: const Icon(Icons.vertical_align_bottom),
                 tooltip: 'Center on bed',
               ),
@@ -475,7 +1075,19 @@ class _PreparePageState extends State<PreparePage> {
                         vertical: 9,
                       ),
                       child: Text(
-                        '${currentMesh.name} • ${currentMesh.triangles.length} triangles • ${currentMesh.bounds.width.toStringAsFixed(1)} × ${currentMesh.bounds.depth.toStringAsFixed(1)} × ${currentMesh.bounds.height.toStringAsFixed(1)} mm',
+                        project == null
+                            ? '${currentMesh.name} • '
+                              '${currentMesh.triangles.length} triangles • '
+                              '${currentMesh.bounds.width.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.depth.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.height.toStringAsFixed(1)} mm'
+                            : '${project.plates[activePlateIndex].name} • '
+                              '$plateObjectCount object'
+                              '${plateObjectCount == 1 ? '' : 's'} • '
+                              '${currentMesh.triangles.length} triangles • '
+                              '${currentMesh.bounds.width.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.depth.toStringAsFixed(1)} × '
+                              '${currentMesh.bounds.height.toStringAsFixed(1)} mm',
                       ),
                     ),
                   ),

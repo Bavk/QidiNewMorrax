@@ -24,5 +24,6 @@
   "external_engine: OrcaSlicer v2.4.2": 1,
   "integration_verified: lib/core/orca": 2,
   "implemented_unverified: Orca gcode -> Moonraker upload/start": 1,
-  "integration_verified: Orca sliced metadata -> Preview/Device": 1
+  "integration_verified: Orca sliced metadata -> Preview/Device": 1,
+  "integration_verified: generated Prepare multi-plate/object editor": 1
 }

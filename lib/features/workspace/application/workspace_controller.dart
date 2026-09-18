@@ -14,6 +14,7 @@ import '../../../core/orca/orca_project_settings_builder.dart';
 import '../../../core/orca/orca_slice_metadata.dart';
 import '../../../core/orca/orca_slicer_engine.dart';
 import '../../../core/profiles/profile_repository.dart';
+import '../domain/workspace_editable_project.dart';
 
 class WorkspaceController extends ChangeNotifier {
   WorkspaceController({
@@ -31,6 +32,7 @@ class WorkspaceController extends ChangeNotifier {
   QidiProfile? process;
   QidiProfile? filament;
   ThreeMfPackage? sourceProject;
+  WorkspaceEditableProject? editableProject;
   ThreeMfTransform _sourceProjectTransform = ThreeMfTransform.identity;
 
   bool slicing = false;
@@ -45,7 +47,12 @@ class WorkspaceController extends ChangeNotifier {
   Object? error;
 
   bool get canSlice =>
-      mesh != null && machine != null && process != null && filament != null;
+      (sourceProject != null ||
+          editableProject?.objects.isNotEmpty == true ||
+          mesh != null) &&
+      machine != null &&
+      process != null &&
+      filament != null;
 
   int? get slicingPercent => progress?.totalPercent;
 
@@ -84,6 +91,7 @@ class WorkspaceController extends ChangeNotifier {
     QidiProfile? process,
     QidiProfile? filament,
     ThreeMfPackage? sourceProject,
+    WorkspaceEditableProject? editableProject,
   }) {
     if (!identical(this.sourceProject, sourceProject)) {
       _sourceProjectTransform = ThreeMfTransform.identity;
@@ -94,6 +102,7 @@ class WorkspaceController extends ChangeNotifier {
     this.process = process;
     this.filament = filament;
     this.sourceProject = sourceProject;
+    this.editableProject = editableProject;
     error = null;
     notifyListeners();
   }
@@ -264,25 +273,32 @@ class WorkspaceController extends ChangeNotifier {
       return path;
     }
 
-    final project = ThreeMfProject(
-      objects: [
-        ThreeMfProjectObject.fromMesh(
-          mesh!,
-          transform: const OrcaBedCoordinateMapper()
-              .workspaceToPrinter(machineProfile),
-        ),
-      ],
-      plates: const [
-        ThreeMfProjectPlate(
-          name: 'Plate 1',
-          instances: [ThreeMfPlateInstance(objectIndex: 0)],
-        ),
-      ],
-      projectSettings: projectSettings,
-      metadata: const {
-        'QidiNewMorrax:ProjectBoundary': 'generated',
-      },
-    );
+    final generated = editableProject;
+    final project = generated != null
+        ? generated.toThreeMfProject(
+            projectSettings: projectSettings,
+            workspaceToPrinter: const OrcaBedCoordinateMapper()
+                .workspaceToPrinter(machineProfile),
+          )
+        : ThreeMfProject(
+            objects: [
+              ThreeMfProjectObject.fromMesh(
+                mesh!,
+                transform: const OrcaBedCoordinateMapper()
+                    .workspaceToPrinter(machineProfile),
+              ),
+            ],
+            plates: const [
+              ThreeMfProjectPlate(
+                name: 'Plate 1',
+                instances: [ThreeMfPlateInstance(objectIndex: 0)],
+              ),
+            ],
+            projectSettings: projectSettings,
+            metadata: const {
+              'QidiNewMorrax:ProjectBoundary': 'generated-legacy',
+            },
+          );
     return const ThreeMfProjectWriter().write(
       project,
       directory: modelDirectory,

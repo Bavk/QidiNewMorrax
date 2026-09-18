@@ -46,6 +46,18 @@ Functional code `a69646d98fbc07de7004cda6b62ad78757a8d61a`:
 - Orca CLI left gram-based mass at zero for this fixture, while its own G-code statistics reported **1.335 m** filament per plate;
 - validation therefore locks the production rule: use positive XML values first, then fill only missing/zero fields from Orca-authored G-code statistics, and do not synthesize mass from length/density.
 
+## Editable Prepare project checkpoint — 2026-09-19
+
+Functional code `cbc806db7ecf00c87b6730c4167fa3d3f622223a`:
+
+- Flutter run `35401167437` (#752), job `105781146290` — analyzer **No issues found**, **134/134 tests passed**;
+- Orca smoke `35401167530` (#180), job `105781147329` — **success**;
+- generated Prepare state is represented by immutable `WorkspaceEditableProject` plates/objects and is passed through `WorkspaceController` into the existing production `ThreeMfProjectWriter`;
+- unit coverage locks plate creation/removal/reassignment, per-object transforms/settings and serialized multi-plate production 3MF;
+- the real pinned Orca smoke remains green with both `plate_1.gcode` and `plate_2.gcode`, printable G0/G1 moves, **100%** progress and the previously verified **1167 s / 1.335 m** metadata per plate.
+
+This checkpoint verifies the generated multi-plate/object editing boundary only. Modifier/support volumes, facet paint authoring, true multi-filament runtime selection and wider per-volume overrides remain open. Imported vendor 3MF continues through the lossless read/repack path rather than being structurally rewritten by the editor.
+
 ## Dart boundary tests
 
 The Flutter suite additionally covers:
@@ -57,6 +69,7 @@ The Flutter suite additionally covers:
 - `Metadata/slice_info.config` headers, per-plate estimates/flags/objects/filaments/warnings;
 - Orca G-code time/gram/millimeter fallback, including the real length-only case where mass stays unknown;
 - selected QIDI profile JSON materialization;
+- editable generated multi-plate workspace state, object reassignment/transforms/settings and production 3MF serialization;
 - project 3MF serialization, lossless vendor repack and virtual-bed coordinate mapping.
 
 ## Device integration
