@@ -35,12 +35,14 @@ class _PreviewPageState extends State<PreviewPage> {
   String? fileName;
   Object? error;
   bool loading = false;
+  bool workspaceMetadataActive = false;
 
   @override
   void initState() {
     super.initState();
     final path = widget.gcodePath;
     if (path != null) {
+      workspaceMetadataActive = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _openPath(path));
     }
   }
@@ -50,6 +52,7 @@ class _PreviewPageState extends State<PreviewPage> {
     super.didUpdateWidget(oldWidget);
     final path = widget.gcodePath;
     if (path != null && path != oldWidget.gcodePath) {
+      workspaceMetadataActive = true;
       _openPath(path);
     }
   }
@@ -93,6 +96,7 @@ class _PreviewPageState extends State<PreviewPage> {
       error = null;
     });
     try {
+      workspaceMetadataActive = false;
       final bytes =
           file.bytes ??
           (file.path == null ? null : await File(file.path!).readAsBytes());
@@ -170,7 +174,8 @@ class _PreviewPageState extends State<PreviewPage> {
                         stats: stats!,
                         layers: layers.length,
                         current: current!,
-                        sliceMetadata: widget.sliceMetadata,
+                        sliceMetadata:
+                            workspaceMetadataActive ? widget.sliceMetadata : null,
                       ),
                     ),
                     const VerticalDivider(),
