@@ -1,0 +1,142 @@
+name: OrcaSlicer engine smoke
+
+on:
+  push:
+    branches: [chatgpt/orcaslicer-engine-cutover]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  slice-qidi-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      ORCA_VERSION: '2.4.2'
+      ORCA_PIN: '8500fcdccaa10b5099ac20d252af3a7c560046f1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download pinned OrcaSlicer AppImage
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -fL --retry 3             "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${ORCA_VERSION}/OrcaSlicer_Linux_AppImage_Ubuntu2404_V${ORCA_VERSION}.AppImage"             -o OrcaSlicer.AppImage
+          chmod +x OrcaSlicer.AppImage
+          ./OrcaSlicer.AppImage --appimage-extract >/dev/null
+          test -x squashfs-root/AppRun
+
+      - name: Prepare QIDI X-Plus 4 fixture
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p fixture out
+          cat > fixture/cube.stl <<'STL'
+          solid cube
+            facet normal 0 0 -1
+              outer loop
+                vertex 0 0 0
+                vertex 20 20 0
+                vertex 20 0 0
+              endloop
+            endfacet
+            facet normal 0 0 -1
+              outer loop
+                vertex 0 0 0
+                vertex 0 20 0
+                vertex 20 20 0
+              endloop
+            endfacet
+            facet normal 0 0 1
+              outer loop
+                vertex 0 0 20
+                vertex 20 0 20
+                vertex 20 20 20
+              endloop
+            endfacet
+            facet normal 0 0 1
+              outer loop
+                vertex 0 0 20
+                vertex 20 20 20
+                vertex 0 20 20
+              endloop
+            endfacet
+            facet normal 0 -1 0
+              outer loop
+                vertex 0 0 0
+                vertex 20 0 0
+                vertex 20 0 20
+              endloop
+            endfacet
+            facet normal 0 -1 0
+              outer loop
+                vertex 0 0 0
+                vertex 20 0 20
+                vertex 0 0 20
+              endloop
+            endfacet
+            facet normal 1 0 0
+              outer loop
+                vertex 20 0 0
+                vertex 20 20 0
+                vertex 20 20 20
+              endloop
+            endfacet
+            facet normal 1 0 0
+              outer loop
+                vertex 20 0 0
+                vertex 20 20 20
+                vertex 20 0 20
+              endloop
+            endfacet
+            facet normal 0 1 0
+              outer loop
+                vertex 20 20 0
+                vertex 0 20 0
+                vertex 0 20 20
+              endloop
+            endfacet
+            facet normal 0 1 0
+              outer loop
+                vertex 20 20 0
+                vertex 0 20 20
+                vertex 20 20 20
+              endloop
+            endfacet
+            facet normal -1 0 0
+              outer loop
+                vertex 0 20 0
+                vertex 0 0 0
+                vertex 0 0 20
+              endloop
+            endfacet
+            facet normal -1 0 0
+              outer loop
+                vertex 0 20 0
+                vertex 0 0 20
+                vertex 0 20 20
+              endloop
+            endfacet
+          endsolid cube
+          STL
+
+          base="https://raw.githubusercontent.com/OrcaSlicer/OrcaSlicer/${ORCA_PIN}/resources/profiles/Qidi"
+          curl -fL "$base/machine/Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/machine.json
+          curl -fL "$base/process/0.20mm%20Standard%20@Qidi%20XPlus4.json" -o fixture/process.json
+          curl -fL "$base/filament/Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
+
+      - name: Slice through real OrcaSlicer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export ORCA_SLICER_BIN="$PWD/squashfs-root/AppRun"
+          "$ORCA_SLICER_BIN"             "$PWD/fixture/cube.stl"             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json"             --load-filaments "$PWD/fixture/filament.json"             --arrange 1             --ensure-on-bed             --slice 0             --export-3mf "$PWD/out/cube.gcode.3mf"             --outputdir "$PWD/out"             --debug 2
+
+          test -s out/cube.gcode.3mf
+          unzip -l out/cube.gcode.3mf | tee out/archive.txt
+          unzip -p out/cube.gcode.3mf Metadata/plate_1.gcode > out/plate_1.gcode
+          test -s out/plate_1.gcode
+          grep -Eq '^(G0|G1) ' out/plate_1.gcode
