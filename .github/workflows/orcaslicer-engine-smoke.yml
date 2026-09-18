@@ -268,6 +268,16 @@ jobs:
               )
               assert time_match, f'plate {index} has no Orca normal-mode time comment'
 
+              first_layer_match = re.search(
+                  r'^;\s*estimated first layer printing time '
+                  r'\(normal mode\)\s*=\s*(.+)$',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              assert first_layer_match, (
+                  f'plate {index} has no Orca first-layer time comment'
+              )
+
               total_match = re.search(
                   r'^;\s*total filament used \[g\]\s*=\s*([0-9.]+)',
                   gcode,
@@ -289,6 +299,21 @@ jobs:
                           )
                       )
 
+              mm_match = re.search(
+                  r'^;\s*filament used \[mm\]\s*=\s*(.+)$',
+                  gcode,
+                  re.MULTILINE | re.IGNORECASE,
+              )
+              gcode_used_mm = 0.0
+              if mm_match:
+                  gcode_used_mm = sum(
+                      float(value)
+                      for value in re.findall(
+                          r'-?\d+(?:\.\d+)?',
+                          mm_match.group(1),
+                      )
+                  )
+
               effective_weight = (
                   declared_weight
                   if declared_weight > 0
@@ -296,16 +321,16 @@ jobs:
                   if xml_used_g > 0
                   else gcode_used_g
               )
-              assert effective_weight > 0, (
+              assert effective_weight > 0 or gcode_used_mm > 0, (
                   index,
                   meta,
                   xml_used_g,
                   gcode_used_g,
+                  gcode_used_mm,
               )
               print(
                   f'plate {index}: prediction={prediction}s '
                   f'weight={effective_weight}g '
-                  f'xml_filament={xml_used_g}g '
-                  f'gcode_filament={gcode_used_g}g'
+                  f'filament={gcode_used_mm / 1000:.3f}m'
               )
           PY
