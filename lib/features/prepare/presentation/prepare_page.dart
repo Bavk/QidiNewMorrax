@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -180,7 +181,7 @@ class _PreparePageState extends State<PreparePage> {
     }
   }
 
-  Future<List<int>> _pickedBytes(PlatformFile file) async {
+  Future<Uint8List> _pickedBytes(PlatformFile file) async {
     final bytes =
         file.bytes ??
         (file.path == null ? null : await File(file.path!).readAsBytes());
