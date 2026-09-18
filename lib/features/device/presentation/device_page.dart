@@ -5,7 +5,9 @@ import '../domain/printer_device.dart';
 import '../domain/printer_state.dart';
 
 class DevicePage extends StatefulWidget {
-  const DevicePage({super.key});
+  const DevicePage({super.key, this.gcodePath});
+
+  final String? gcodePath;
 
   @override
   State<DevicePage> createState() => _DevicePageState();
@@ -131,6 +133,7 @@ class _DevicePageState extends State<DevicePage> {
                     controller: controller,
                     device: selected,
                     run: _run,
+                    gcodePath: widget.gcodePath,
                   ),
                   1 => _ControlTab(controller: controller, run: _run),
                   2 => _FilesTab(controller: controller, run: _run),
@@ -330,10 +333,12 @@ class _OverviewTab extends StatelessWidget {
     required this.controller,
     required this.device,
     required this.run,
+    this.gcodePath,
   });
   final DeviceController controller;
   final PrinterDevice device;
   final Future<void> Function(Future<void> Function()) run;
+  final String? gcodePath;
 
   @override
   Widget build(BuildContext context) {
@@ -417,6 +422,13 @@ class _OverviewTab extends StatelessWidget {
                       : null,
                   icon: const Icon(Icons.refresh),
                   label: const Text('Refresh files'),
+                ),
+                FilledButton.icon(
+                  onPressed: state.connected && gcodePath != null
+                      ? () => run(() => controller.uploadAndStart(gcodePath!))
+                      : null,
+                  icon: const Icon(Icons.print),
+                  label: const Text('Upload & print last slice'),
                 ),
               ],
             ),
