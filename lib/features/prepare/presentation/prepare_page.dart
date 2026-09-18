@@ -236,13 +236,33 @@ class _PreparePageState extends State<PreparePage> {
   }
 
   Future<void> _transformModel(_TransformKind kind) async {
-    final current = mesh;
+    final current = _selectedEditableObject?.mesh ?? mesh;
     if (current == null) return;
     final result = await showDialog<Point3>(
       context: context,
       builder: (context) => _TransformDialog(kind: kind),
     );
     if (result == null) return;
+
+    final generated = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (generated != null && objectIndex != null) {
+      final updated = generated.transformObject(
+        objectIndex,
+        translation:
+            kind == _TransformKind.move ? result : const Point3(0, 0, 0),
+        rotationDegrees:
+            kind == _TransformKind.rotate ? result : const Point3(0, 0, 0),
+        scale: kind == _TransformKind.scale ? result : const Point3(1, 1, 1),
+      );
+      setState(() {
+        editableProject = updated;
+        mesh = updated.objects[objectIndex].mesh;
+        _publishSelection();
+      });
+      return;
+    }
+
     widget.controller.recordModelTransform(
       translation:
           kind == _TransformKind.move ? result : const Point3(0, 0, 0),
@@ -261,7 +281,7 @@ class _PreparePageState extends State<PreparePage> {
   }
 
   void _resetModelToBed() {
-    final current = mesh;
+    final current = _selectedEditableObject?.mesh ?? mesh;
     if (current == null) return;
     final bounds = current.bounds;
     if (bounds.isEmpty) return;
@@ -273,6 +293,22 @@ class _PreparePageState extends State<PreparePage> {
       target.y - bounds.center.y,
       -bounds.min.z,
     );
+
+    final generated = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (generated != null && objectIndex != null) {
+      final updated = generated.transformObject(
+        objectIndex,
+        translation: translation,
+      );
+      setState(() {
+        editableProject = updated;
+        mesh = updated.objects[objectIndex].mesh;
+        _publishSelection();
+      });
+      return;
+    }
+
     widget.controller.recordModelTransform(translation: translation);
     setState(() {
       mesh = current.transformed(translation: translation);
