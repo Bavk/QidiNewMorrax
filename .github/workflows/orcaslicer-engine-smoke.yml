@@ -121,6 +121,54 @@ jobs:
           curl -fL "$base/process/0.20mm%20Standard%20@Qidi%20XPlus4.json" -o fixture/process.json
           curl -fL "$base/filament/Qidi%20Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
 
+      - name: Capture canonical Orca 3MF schema
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cat > fixture/reference.stl <<'STL'
+          solid tetra
+            facet normal 0 0 -1
+              outer loop
+                vertex 0 0 0
+                vertex 20 0 0
+                vertex 0 20 0
+              endloop
+            endfacet
+            facet normal 0 -1 1
+              outer loop
+                vertex 0 0 0
+                vertex 20 0 0
+                vertex 0 0 20
+              endloop
+            endfacet
+            facet normal 1 1 1
+              outer loop
+                vertex 20 0 0
+                vertex 0 20 0
+                vertex 0 0 20
+              endloop
+            endfacet
+            facet normal -1 0 1
+              outer loop
+                vertex 0 20 0
+                vertex 0 0 0
+                vertex 0 0 20
+              endloop
+            endfacet
+          endsolid tetra
+          STL
+          export ORCA_SLICER_BIN="$PWD/squashfs-root/AppRun"
+          "$ORCA_SLICER_BIN" \
+            "$PWD/fixture/reference.stl" \
+            --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
+            --load-filaments "$PWD/fixture/filament.json" \
+            --arrange 1 --ensure-on-bed --slice 0 \
+            --export-3mf "reference.gcode.3mf" --outputdir "$PWD/out" --debug 2
+          echo '=== CANONICAL 3D MODEL ==='
+          unzip -p out/reference.gcode.3mf 3D/3dmodel.model
+          echo '=== CANONICAL MODEL SETTINGS ==='
+          unzip -p out/reference.gcode.3mf Metadata/model_settings.config
+
       - name: Slice multi-plate project through real OrcaSlicer
         shell: bash
         run: |
