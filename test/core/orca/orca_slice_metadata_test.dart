@@ -104,6 +104,57 @@ void main() {
     expect(metadata.warnings, hasLength(1));
   });
 
+  test('fills missing CLI metadata from Orca G-code statistics comments', () {
+    const sparseXml = '''<config>
+  <plate>
+    <metadata key="index" value="1"/>
+    <metadata key="prediction" value=""/>
+    <metadata key="weight" value=""/>
+    <metadata key="first_layer_time" value=""/>
+    <filament id="1" type="PLA" used_m="0" used_g="0"
+      used_for_object="true" used_for_support="false"/>
+    <filament id="2" type="PETG" used_m="0" used_g="0"
+      used_for_object="true" used_for_support="false"/>
+  </plate>
+</config>''';
+    final gcode = Uint8List.fromList(utf8.encode('''
+; estimated printing time (normal mode) = 1d 2h 3m 4s
+; estimated first layer printing time (normal mode) = 2m 5s
+; filament used [mm] = 1234.50, 250.00
+; filament used [g] = 3.40, 0.75
+; total filament used [g] = 4.15
+G1 X1
+'''));
+
+    final metadata = OrcaSliceMetadata.fromXml(sparseXml)
+        .withPlateGcodes({1: gcode});
+    final plate = metadata.plate(1)!;
+
+    expect(plate.predictionSeconds, 93784);
+    expect(plate.firstLayerTimeSeconds, 125);
+    expect(plate.weightGrams, 4.15);
+    expect(plate.filaments[0].usedGrams, 3.4);
+    expect(plate.filaments[0].usedMeters, 1.2345);
+    expect(plate.filaments[1].usedGrams, 0.75);
+    expect(plate.filaments[1].usedMeters, 0.25);
+  });
+
+  test('slice_info values stay authoritative over G-code fallback', () {
+    final gcode = Uint8List.fromList(utf8.encode('''
+; estimated printing time (normal mode) = 9h 0m 0s
+; estimated first layer printing time (normal mode) = 9m 0s
+; total filament used [g] = 99
+'''));
+
+    final metadata = OrcaSliceMetadata.fromXml(xml)
+        .withPlateGcodes({1: gcode});
+    final plate = metadata.plate(1)!;
+
+    expect(plate.predictionSeconds, 3661);
+    expect(plate.firstLayerTimeSeconds, 42);
+    expect(plate.weightGrams, 12.75);
+  });
+
   test('missing slice_info.config returns empty metadata', () {
     final archive = Archive()
       ..addFile(
