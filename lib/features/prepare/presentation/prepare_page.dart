@@ -8,9 +8,12 @@ import '../../../core/geometry/point.dart';
 import '../../../core/model_io/mesh.dart';
 import '../../../core/model_io/model_loader.dart';
 import '../../../core/profiles/profile_repository.dart';
+import '../../workspace/application/workspace_controller.dart';
 
 class PreparePage extends StatefulWidget {
-  const PreparePage({super.key});
+  const PreparePage({super.key, required this.controller});
+
+  final WorkspaceController controller;
 
   @override
   State<PreparePage> createState() => _PreparePageState();
@@ -39,6 +42,16 @@ class _PreparePageState extends State<PreparePage> {
     _loadProfiles();
   }
 
+  void _publishSelection() {
+    widget.controller.updateSelection(
+      mesh: mesh,
+      sourceModelPath: modelPath,
+      machine: machine,
+      process: process,
+      filament: filament,
+    );
+  }
+
   Future<void> _loadProfiles() async {
     try {
       final all = await profiles.loadAll();
@@ -49,6 +62,7 @@ class _PreparePageState extends State<PreparePage> {
           machines.where((p) => p.name.contains('X-Plus 4')).firstOrNull ??
           machines.firstOrNull;
       _applyMachineCompatibility(resetSelection: true);
+      _publishSelection();
     } catch (e) {
       error = e;
     } finally {
@@ -61,6 +75,7 @@ class _PreparePageState extends State<PreparePage> {
     setState(() {
       machine = value;
       _applyMachineCompatibility(resetSelection: true);
+      _publishSelection();
     });
   }
 
@@ -103,6 +118,7 @@ class _PreparePageState extends State<PreparePage> {
       if (bytes == null) throw StateError('Could not read ${file.name}');
       mesh = const ModelLoader().load(bytes, file.name);
       modelPath = file.path ?? file.name;
+      _publishSelection();
     } catch (e) {
       error = e;
     } finally {
@@ -125,6 +141,7 @@ class _PreparePageState extends State<PreparePage> {
         _TransformKind.rotate => current.transformed(rotationDegrees: result),
         _TransformKind.scale => current.transformed(scale: result),
       };
+      _publishSelection();
     });
   }
 
@@ -137,6 +154,7 @@ class _PreparePageState extends State<PreparePage> {
       mesh = current.transformed(
         translation: Point3(-bounds.center.x, -bounds.center.y, -bounds.min.z),
       );
+      _publishSelection();
     });
   }
 
@@ -201,7 +219,10 @@ class _PreparePageState extends State<PreparePage> {
             'Filament preset',
             filaments,
             filament,
-            (value) => setState(() => filament = value),
+            (value) => setState(() {
+              filament = value;
+              _publishSelection();
+            }),
           ),
           const SizedBox(height: 8),
           if (filament != null)
@@ -238,7 +259,10 @@ class _PreparePageState extends State<PreparePage> {
             'Process preset',
             processes,
             process,
-            (value) => setState(() => process = value),
+            (value) => setState(() {
+              process = value;
+              _publishSelection();
+            }),
           ),
           const SizedBox(height: 14),
           SegmentedButton<String>(
