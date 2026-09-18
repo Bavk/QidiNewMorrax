@@ -20,7 +20,7 @@ void main() {
     );
 
     expect(
-      engine.buildArguments(request, bundlePath: '/tmp/out/model.gcode.3mf'),
+      engine.buildArguments(request, bundleFileName: 'model.gcode.3mf'),
       [
         '/tmp/model.stl',
         '--load-settings',
@@ -35,7 +35,7 @@ void main() {
         '--slice',
         '0',
         '--export-3mf',
-        '/tmp/out/model.gcode.3mf',
+        'model.gcode.3mf',
         '--outputdir',
         '/tmp/out',
         '--debug',
