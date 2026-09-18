@@ -249,42 +249,44 @@ jobs:
                   for item in plate.findall('metadata')
               }
               index = int(meta['index'])
-              prediction = float(meta['prediction'])
+              prediction = float(meta.get('prediction') or 0)
               declared_weight = float(meta.get('weight') or 0)
+              filaments = plate.findall('filament')
               assert prediction > 0, (index, meta)
               assert 'first_layer_time' in meta, meta
-              filaments = plate.findall('filament')
               assert filaments, f'plate {index} has no filament elements'
-              xml_used_g = sum(float(item.attrib.get('used_g', '0') or 0) for item in filaments)
 
+              xml_used_g = sum(
+                  float(item.attrib.get('used_g', '0') or 0)
+                  for item in filaments
+              )
               gcode = Path(f'out/plate_{index}.gcode').read_text(errors='replace')
               time_match = re.search(
-                  r'^;\\s*estimated printing time \\(normal mode\\)\\s*=\\s*(.+)
-          PY
-,
+                  r'^;\s*estimated printing time \(normal mode\)\s*=\s*(.+)$',
                   gcode,
                   re.MULTILINE | re.IGNORECASE,
               )
               assert time_match, f'plate {index} has no Orca normal-mode time comment'
 
               total_match = re.search(
-                  r'^;\\s*total filament used \\[g\\]\\s*=\\s*([0-9.]+)',
+                  r'^;\s*total filament used \[g\]\s*=\s*([0-9.]+)',
                   gcode,
                   re.MULTILINE | re.IGNORECASE,
               )
               gcode_used_g = float(total_match.group(1)) if total_match else 0.0
               if gcode_used_g <= 0:
                   list_match = re.search(
-                      r'^;\\s*filament used \\[g\\]\\s*=\\s*(.+)
-          PY
-,
+                      r'^;\s*filament used \[g\]\s*=\s*(.+)$',
                       gcode,
                       re.MULTILINE | re.IGNORECASE,
                   )
                   if list_match:
                       gcode_used_g = sum(
                           float(value)
-                          for value in re.findall(r'-?\\d+(?:\\.\\d+)?', list_match.group(1))
+                          for value in re.findall(
+                              r'-?\d+(?:\.\d+)?',
+                              list_match.group(1),
+                          )
                       )
 
               effective_weight = (
@@ -294,10 +296,16 @@ jobs:
                   if xml_used_g > 0
                   else gcode_used_g
               )
-              assert effective_weight > 0, (index, meta, xml_used_g, gcode_used_g)
+              assert effective_weight > 0, (
+                  index,
+                  meta,
+                  xml_used_g,
+                  gcode_used_g,
+              )
               print(
                   f'plate {index}: prediction={prediction}s '
                   f'weight={effective_weight}g '
-                  f'xml_filament={xml_used_g}g gcode_filament={gcode_used_g}g'
+                  f'xml_filament={xml_used_g}g '
+                  f'gcode_filament={gcode_used_g}g'
               )
           PY
