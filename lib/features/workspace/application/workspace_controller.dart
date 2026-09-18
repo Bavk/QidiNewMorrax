@@ -8,6 +8,7 @@ import '../../../core/model_io/three_mf_parser.dart';
 import '../../../core/model_io/three_mf_project_writer.dart';
 import '../../../core/model_io/three_mf_transform.dart';
 import '../../../core/model_io/three_mf_writer.dart';
+import '../../../core/orca/orca_bed_coordinate_mapper.dart';
 import '../../../core/orca/orca_profile_materializer.dart';
 import '../../../core/orca/orca_project_settings_builder.dart';
 import '../../../core/orca/orca_slicer_engine.dart';
@@ -123,6 +124,7 @@ class WorkspaceController extends ChangeNotifier {
       final modelPath = await _materializeProject(
         modelDirectory,
         projectSettings: projectSettings,
+        machineProfile: resolvedMachine,
       );
 
       final profileFiles = await const OrcaProfileMaterializer().materialize(
@@ -165,6 +167,7 @@ class WorkspaceController extends ChangeNotifier {
   Future<String> _materializeProject(
     Directory modelDirectory, {
     required Map<String, dynamic> projectSettings,
+    required QidiProfile machineProfile,
   }) async {
     await modelDirectory.create(recursive: true);
     final imported = sourceProject;
@@ -198,7 +201,13 @@ class WorkspaceController extends ChangeNotifier {
     }
 
     final project = ThreeMfProject(
-      objects: [ThreeMfProjectObject.fromMesh(mesh!)],
+      objects: [
+        ThreeMfProjectObject.fromMesh(
+          mesh!,
+          transform: const OrcaBedCoordinateMapper()
+              .workspaceToPrinter(machineProfile),
+        ),
+      ],
       plates: const [
         ThreeMfProjectPlate(
           name: 'Plate 1',
