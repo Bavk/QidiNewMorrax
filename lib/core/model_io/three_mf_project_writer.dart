@@ -248,7 +248,9 @@ class ThreeMfProjectWriter {
       ..writeln(
         '<model unit="millimeter" xml:lang="en-US" '
         'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
-        'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">',
+        'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
+        'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" '
+        'requiredextensions="p">',
       )
       ..writeln(
         ' <metadata name="Application">BambuStudio-02.06.00.51</metadata>',
@@ -267,19 +269,10 @@ class ThreeMfProjectWriter {
         objectIndex++) {
       final object = project.objects[objectIndex];
       final objectIds = ids[objectIndex];
-      for (var volumeIndex = 0;
-          volumeIndex < object.volumes.length;
-          volumeIndex++) {
-        _writeVolumeMesh(
-          out,
-          object.volumes[volumeIndex],
-          objectIds.volumeIds[volumeIndex],
-        );
-      }
-
       out
         ..writeln(
-          '  <object id="${objectIds.parentId}" type="model">',
+          '  <object id="${objectIds.parentId}" '
+          'p:UUID="${_parentUuid(objectIndex)}" type="model">',
         )
         ..writeln('   <components>');
       for (var volumeIndex = 0;
@@ -287,7 +280,9 @@ class ThreeMfProjectWriter {
           volumeIndex++) {
         final volume = object.volumes[volumeIndex];
         out.writeln(
-          '    <component objectid="${objectIds.volumeIds[volumeIndex]}" '
+          '    <component p:path="/${_subModelPath(objectIndex)}" '
+          'objectid="${objectIds.volumeIds[volumeIndex]}" '
+          'p:UUID="${_componentUuid(objectIndex, volumeIndex)}" '
           'transform="${volume.transform.to3mfString()}"/>',
         );
       }
@@ -298,16 +293,18 @@ class ThreeMfProjectWriter {
 
     out
       ..writeln(' </resources>')
-      ..writeln(' <build>');
+      ..writeln(' <build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">');
     for (var objectIndex = 0;
         objectIndex < project.objects.length;
         objectIndex++) {
       final object = project.objects[objectIndex];
+      final parentId = ids[objectIndex].parentId;
       for (final instance in object.instances) {
         out.writeln(
-          '  <item objectid="${ids[objectIndex].parentId}" '
+          '  <item objectid="$parentId" '
+          'p:UUID="${_buildItemUuid(parentId)}" '
           'transform="${instance.transform.to3mfString()}" '
-          'printable="${instance.printable ? 1 : 0}"/>',
+          'printable="${instance.printable ? 1 : 0}" auto_drop="0"/>',
         );
       }
     }
@@ -317,13 +314,49 @@ class ThreeMfProjectWriter {
     return out.toString();
   }
 
+  String _subModelXml(
+    ThreeMfProjectObject object,
+    _ObjectIds objectIds,
+    int objectIndex,
+  ) {
+    final out = StringBuffer()
+      ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
+      ..writeln(
+        '<model unit="millimeter" xml:lang="en-US" '
+        'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02" '
+        'xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
+        'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" '
+        'requiredextensions="p">',
+      )
+      ..writeln(' <metadata name="BambuStudio:3mfVersion">1</metadata>')
+      ..writeln(' <resources>');
+    for (var volumeIndex = 0;
+        volumeIndex < object.volumes.length;
+        volumeIndex++) {
+      _writeVolumeMesh(
+        out,
+        object.volumes[volumeIndex],
+        objectIds.volumeIds[volumeIndex],
+        _volumeUuid(objectIndex, volumeIndex),
+      );
+    }
+    out
+      ..writeln(' </resources>')
+      ..writeln(' <build/>')
+      ..writeln('</model>');
+    return out.toString();
+  }
+
   void _writeVolumeMesh(
     StringBuffer out,
     ThreeMfProjectVolume volume,
     int objectId,
+    String uuid,
   ) {
     out
-      ..writeln('  <object id="$objectId" type="model">')
+      ..writeln(
+        '  <object id="$objectId" p:UUID="$uuid" type="model">',
+      )
       ..writeln('   <mesh>')
       ..writeln('    <vertices>');
     var vertexIndex = 0;
