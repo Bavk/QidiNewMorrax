@@ -2,7 +2,7 @@ name: OrcaSlicer engine smoke
 
 on:
   push:
-    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff, chatgpt/orca-progress-cancel]
+    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff, chatgpt/orca-progress-cancel, chatgpt/orca-slice-metadata]
   pull_request:
     branches: [main]
 
@@ -222,8 +222,12 @@ jobs:
             grep -Eq '^(G0|G1) ' "out/plate_${plate}.gcode"
           done
 
+          unzip -p out/project.gcode.3mf Metadata/slice_info.config > out/slice_info.config
+          test -s out/slice_info.config
+
           python3 - <<'PY'
           import json
+          import xml.etree.ElementTree as ET
           from pathlib import Path
 
           rows = [json.loads(line) for line in Path('out/orca-progress.jsonl').read_text().splitlines() if line.strip()]
@@ -234,4 +238,24 @@ jobs:
           assert any(int(row.get('plate_count', 0)) >= 2 for row in rows), rows
           assert any(row.get('message') or row.get('warning') for row in rows), rows
           print(f'validated {len(rows)} Orca progress events, max={max(totals)}%')
+
+          root = ET.parse('out/slice_info.config').getroot()
+          plates = root.findall('plate')
+          assert len(plates) == 2, f'expected 2 sliced plates, got {len(plates)}'
+          for plate in plates:
+              meta = {
+                  item.attrib.get('key'): item.attrib.get('value', '')
+                  for item in plate.findall('metadata')
+              }
+              index = int(meta['index'])
+              prediction = float(meta['prediction'])
+              weight = float(meta['weight'])
+              assert prediction > 0, (index, meta)
+              assert weight > 0, (index, meta)
+              assert 'first_layer_time' in meta, meta
+              filaments = plate.findall('filament')
+              assert filaments, f'plate {index} has no filament usage'
+              used_g = sum(float(item.attrib.get('used_g', '0') or 0) for item in filaments)
+              assert used_g > 0, (index, used_g)
+              print(f'plate {index}: prediction={prediction}s weight={weight}g filament={used_g}g')
           PY
