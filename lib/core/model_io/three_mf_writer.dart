@@ -16,9 +16,12 @@ class ThreeMfWriter {
 
   Uint8List repackWithBuildTransform(
     ThreeMfPackage package,
-    ThreeMfTransform transform,
-  ) {
-    if (transform.isIdentity) return repack(package);
+    ThreeMfTransform transform, {
+    Map<String, Uint8List> replacements = const {},
+  }) {
+    if (transform.isIdentity) {
+      return repack(package, replacements: replacements);
+    }
 
     final rootPath = _rootModelPath(package.entries);
     if (rootPath == null) {
@@ -42,6 +45,7 @@ class ThreeMfWriter {
     return repack(
       package,
       replacements: {
+        ...replacements,
         rootPath: Uint8List.fromList(
           utf8.encode(document.toXmlString(pretty: false)),
         ),
