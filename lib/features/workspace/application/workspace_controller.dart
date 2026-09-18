@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -9,6 +11,7 @@ import '../../../core/model_io/three_mf_project_writer.dart';
 import '../../../core/model_io/three_mf_transform.dart';
 import '../../../core/model_io/three_mf_writer.dart';
 import '../../../core/orca/orca_profile_materializer.dart';
+import '../../../core/orca/orca_project_settings_builder.dart';
 import '../../../core/orca/orca_slicer_engine.dart';
 import '../../../core/profiles/profile_repository.dart';
 
@@ -101,11 +104,6 @@ class WorkspaceController extends ChangeNotifier {
         '${job.path}${Platform.pathSeparator}output',
       );
 
-      statusMessage = 'Building 3MF project…';
-      notifyListeners();
-
-      final modelPath = await _materializeProject(modelDirectory);
-
       statusMessage = 'Resolving QIDI profiles…';
       notifyListeners();
 
@@ -115,6 +113,19 @@ class WorkspaceController extends ChangeNotifier {
           await profiles.resolved(process!.name) ?? process!;
       final resolvedFilament =
           await profiles.resolved(filament!.name) ?? filament!;
+      final projectSettings = const OrcaProjectSettingsBuilder().build(
+        machine: resolvedMachine,
+        process: resolvedProcess,
+        filaments: [resolvedFilament],
+      );
+
+      statusMessage = 'Building 3MF project…';
+      notifyListeners();
+
+      final modelPath = await _materializeProject(
+        modelDirectory,
+        projectSettings: projectSettings,
+      );
 
       final profileFiles = await const OrcaProfileMaterializer().materialize(
         directory: profileDirectory,
@@ -153,13 +164,34 @@ class WorkspaceController extends ChangeNotifier {
     }
   }
 
-  Future<String> _materializeProject(Directory modelDirectory) async {
+  Future<String> _materializeProject(
+    Directory modelDirectory, {
+    required Map<String, dynamic> projectSettings,
+  }) async {
     await modelDirectory.create(recursive: true);
     final imported = sourceProject;
     if (imported != null) {
+      final embedded = imported.projectSettings;
+      final validEmbedded = _hasRequiredProjectSettings(embedded);
+      final effectiveSettings = validEmbedded
+          ? embedded
+          : <String, dynamic>{
+              ...projectSettings,
+              ...embedded,
+            };
+      final replacements = validEmbedded
+          ? const <String, Uint8List>{}
+          : <String, Uint8List>{
+              'Metadata/project_settings.config': Uint8List.fromList(
+                utf8.encode(
+                  const JsonEncoder.withIndent(' ').convert(effectiveSettings),
+                ),
+              ),
+            };
       final bytes = const ThreeMfWriter().repackWithBuildTransform(
         imported,
         _sourceProjectTransform,
+        replacements: replacements,
       );
       final path =
           '${modelDirectory.path}${Platform.pathSeparator}project.3mf';
@@ -175,6 +207,7 @@ class WorkspaceController extends ChangeNotifier {
           instances: [ThreeMfPlateInstance(objectIndex: 0)],
         ),
       ],
+      projectSettings: projectSettings,
       metadata: const {
         'QidiNewMorrax:ProjectBoundary': 'generated',
       },
@@ -184,4 +217,10 @@ class WorkspaceController extends ChangeNotifier {
       directory: modelDirectory,
     );
   }
+
+  bool _hasRequiredProjectSettings(Map<String, dynamic> settings) =>
+      settings['printer_settings_id'] != null &&
+      settings['print_settings_id'] != null &&
+      settings['filament_settings_id'] != null &&
+      settings['nozzle_diameter'] != null;
 }
