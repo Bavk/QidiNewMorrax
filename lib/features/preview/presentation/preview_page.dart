@@ -6,11 +6,23 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/gcode/gcode_parser.dart';
+import '../../../core/orca/orca_slice_metadata.dart';
 
 class PreviewPage extends StatefulWidget {
-  const PreviewPage({super.key, this.gcodePath});
+  const PreviewPage({
+    super.key,
+    this.gcodePath,
+    this.gcodePathsByPlate = const {},
+    this.selectedPlate,
+    this.sliceMetadata,
+    this.onPlateChanged,
+  });
 
   final String? gcodePath;
+  final Map<int, String> gcodePathsByPlate;
+  final int? selectedPlate;
+  final OrcaPlateMetadata? sliceMetadata;
+  final ValueChanged<int>? onPlateChanged;
 
   @override
   State<PreviewPage> createState() => _PreviewPageState();
@@ -116,6 +128,24 @@ class _PreviewPageState extends State<PreviewPage> {
                 Expanded(
                   child: Text(fileName!, overflow: TextOverflow.ellipsis),
                 ),
+              if (widget.gcodePathsByPlate.length > 1) ...[
+                const SizedBox(width: 12),
+                DropdownButton<int>(
+                  value: widget.selectedPlate,
+                  items: [
+                    for (final plate in (widget.gcodePathsByPlate.keys.toList()
+                      ..sort()))
+                      DropdownMenuItem(
+                        value: plate,
+                        child: Text('Plate $plate'),
+                      ),
+                  ],
+                  onChanged: (plate) {
+                    if (plate != null) widget.onPlateChanged?.call(plate);
+                  },
+                ),
+                const SizedBox(width: 12),
+              ],
               if (loading)
                 const Padding(
                   padding: EdgeInsets.only(right: 16),
@@ -140,6 +170,7 @@ class _PreviewPageState extends State<PreviewPage> {
                         stats: stats!,
                         layers: layers.length,
                         current: current!,
+                        sliceMetadata: widget.sliceMetadata,
                       ),
                     ),
                     const VerticalDivider(),
@@ -314,10 +345,12 @@ class _StatsPanel extends StatelessWidget {
     required this.stats,
     required this.layers,
     required this.current,
+    this.sliceMetadata,
   });
   final GCodeStats stats;
   final int layers;
   final _LayerPath current;
+  final OrcaPlateMetadata? sliceMetadata;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -329,6 +362,58 @@ class _StatsPanel extends StatelessWidget {
             ?.copyWith(fontWeight: FontWeight.w700),
       ),
       const SizedBox(height: 16),
+      if (sliceMetadata case final metadata?) ...[
+        if (metadata.toolpathOutside || metadata.warnings.isNotEmpty)
+          Card(
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    metadata.toolpathOutside
+                        ? 'Toolpath outside build area'
+                        : 'OrcaSlicer warnings',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  for (final warning in metadata.warnings.take(4))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        warning.message,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        Text(
+          'OrcaSlicer estimate',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        _row('Print time', _duration(metadata.predictionSeconds)),
+        _row('First layer', _duration(metadata.firstLayerTimeSeconds)),
+        _row('Weight', '${metadata.weightGrams.toStringAsFixed(2)} g'),
+        _row('Supports', metadata.supportUsed ? 'Yes' : 'No'),
+        _row('Objects', '${metadata.objects.where((o) => !o.skipped).length}'),
+        for (final filament in metadata.filaments)
+          _row(
+            filament.type.isEmpty ? 'Filament ${filament.id}' : filament.type,
+            '${filament.usedGrams.toStringAsFixed(2)} g · '
+            '${filament.usedMeters.toStringAsFixed(2)} m',
+          ),
+        const Divider(height: 28),
+        Text('Parsed G-code', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+      ],
       _row('Layers', '$layers'),
       _row('Moves', '${stats.moveCount}'),
       _row('Extrusion moves', '${stats.extrusionMoveCount}'),
@@ -358,6 +443,17 @@ class _StatsPanel extends StatelessWidget {
       ),
     ],
   );
+
+  static String _duration(double seconds) {
+    if (seconds <= 0) return '—';
+    final total = seconds.round();
+    final hours = total ~/ 3600;
+    final minutes = (total % 3600) ~/ 60;
+    final secs = total % 60;
+    if (hours > 0) return '${hours}h ${minutes}m';
+    if (minutes > 0) return '${minutes}m ${secs}s';
+    return '${secs}s';
+  }
 
   Widget _row(String a, String b) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),
