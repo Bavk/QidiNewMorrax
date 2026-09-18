@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -18,6 +19,17 @@ class OrcaSlicerEngine {
   static const pinnedCommit = '8500fcdccaa10b5099ac20d252af3a7c560046f1';
 
   final String executable;
+  Process? _activeProcess;
+  bool _cancelRequested = false;
+
+  bool get isRunning => _activeProcess != null;
+
+  bool cancelActiveSlice() {
+    final process = _activeProcess;
+    if (process == null) return false;
+    _cancelRequested = true;
+    return process.kill();
+  }
 
   static String defaultExecutable() {
     final configured = Platform.environment['ORCA_SLICER_BIN'];
@@ -34,6 +46,7 @@ class OrcaSlicerEngine {
   List<String> buildArguments(
     OrcaSlicerRequest request, {
     required String bundleFileName,
+    String? pipePath,
   }) {
     final settings = <String>[
       request.processProfilePath,
@@ -41,6 +54,10 @@ class OrcaSlicerEngine {
     ];
     return <String>[
       request.modelPath,
+      if (pipePath != null && pipePath.isNotEmpty) ...[
+        '--pipe',
+        pipePath,
+      ],
       '--load-settings',
       settings.join(';'),
       if (request.filamentProfilePaths.isNotEmpty) ...[
@@ -63,7 +80,14 @@ class OrcaSlicerEngine {
     ];
   }
 
-  Future<OrcaSlicerResult> slice(OrcaSlicerRequest request) async {
+  Future<OrcaSlicerResult> slice(
+    OrcaSlicerRequest request, {
+    ValueChanged<OrcaSlicerProgress>? onProgress,
+  }) async {
+    if (_activeProcess != null) {
+      throw StateError('An OrcaSlicer process is already running.');
+    }
+
     await _requireFile(request.modelPath, 'model');
     await _requireFile(request.machineProfilePath, 'machine profile');
     await _requireFile(request.processProfilePath, 'process profile');
@@ -76,44 +100,83 @@ class OrcaSlicerEngine {
     final baseName = _fileStem(request.modelPath);
     final bundleFileName = '$baseName.gcode.3mf';
     final bundlePath = _join(outputDirectory.path, bundleFileName);
+
+    String? pipePath;
+    StreamSubscription<String>? progressSubscription;
+    if (Platform.isLinux && onProgress != null) {
+      pipePath = _join(outputDirectory.path, '.orca-progress.pipe');
+      await _createFifo(pipePath);
+      progressSubscription = File(pipePath)
+          .openRead()
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+            final progress = OrcaSlicerProgress.tryParse(line);
+            if (progress != null) onProgress(progress);
+          });
+    }
+
     final arguments = buildArguments(
       request,
       bundleFileName: bundleFileName,
+      pipePath: pipePath,
     );
 
     final stopwatch = Stopwatch()..start();
-    ProcessResult process;
+    _cancelRequested = false;
+    Process process;
+    String stdoutText = '';
+    String stderrText = '';
+    int exitCode;
     try {
-      process = await Process.run(
-        executable,
-        arguments,
-        runInShell: Platform.isWindows,
-      );
-    } on ProcessException catch (error) {
-      throw OrcaSlicerException(
-        'Could not start OrcaSlicer at "$executable". '
-        'Install OrcaSlicer $pinnedVersion or set ORCA_SLICER_BIN.',
-        cause: error,
-      );
+      try {
+        process = await Process.start(
+          executable,
+          arguments,
+          runInShell: Platform.isWindows,
+        );
+      } on ProcessException catch (error) {
+        throw OrcaSlicerException(
+          'Could not start OrcaSlicer at "$executable". '
+          'Install OrcaSlicer $pinnedVersion or set ORCA_SLICER_BIN.',
+          cause: error,
+        );
+      }
+
+      _activeProcess = process;
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+      exitCode = await process.exitCode;
+      stdoutText = await stdoutFuture;
+      stderrText = await stderrFuture;
+
+      if (_cancelRequested) {
+        throw const OrcaSlicerCancelledException();
+      }
+      if (exitCode != 0) {
+        throw OrcaSlicerException(
+          'OrcaSlicer exited with code $exitCode.\n'
+          '${stderrText.isEmpty ? stdoutText : stderrText}',
+          exitCode: exitCode,
+        );
+      }
     } finally {
       stopwatch.stop();
-    }
-
-    final stdoutText = _asText(process.stdout);
-    final stderrText = _asText(process.stderr);
-    if (process.exitCode != 0) {
-      throw OrcaSlicerException(
-        'OrcaSlicer exited with code ${process.exitCode}.\n'
-        '${stderrText.isEmpty ? stdoutText : stderrText}',
-        exitCode: process.exitCode,
-      );
+      _activeProcess = null;
+      await progressSubscription?.cancel();
+      if (pipePath != null) {
+        final pipe = File(pipePath);
+        if (await pipe.exists()) {
+          await pipe.delete();
+        }
+      }
     }
 
     final bundle = File(bundlePath);
     if (!await bundle.exists()) {
       throw OrcaSlicerException(
         'OrcaSlicer completed successfully but did not create $bundlePath.',
-        exitCode: process.exitCode,
+        exitCode: exitCode,
       );
     }
 
@@ -155,9 +218,22 @@ class OrcaSlicerEngine {
       selectedPlate: selectedPlate,
       stdout: stdoutText,
       stderr: stderrText,
-      exitCode: process.exitCode,
+      exitCode: exitCode,
       elapsed: stopwatch.elapsed,
     );
+  }
+
+  Future<void> _createFifo(String path) async {
+    final file = File(path);
+    if (await file.exists()) await file.delete();
+    final result = await Process.run('mkfifo', [path]);
+    if (result.exitCode != 0) {
+      throw OrcaSlicerException(
+        'Could not create OrcaSlicer progress FIFO at $path. '
+        '${_asText(result.stderr)}',
+        exitCode: result.exitCode,
+      );
+    }
   }
 
   Map<int, Uint8List> extractPlateGcodes(Uint8List bundleBytes) {
@@ -268,6 +344,56 @@ class OrcaSlicerResult {
   final String stderr;
   final int exitCode;
   final Duration elapsed;
+}
+
+class OrcaSlicerProgress {
+  const OrcaSlicerProgress({
+    required this.plateIndex,
+    required this.plateCount,
+    required this.platePercent,
+    required this.totalPercent,
+    required this.message,
+    required this.isWarning,
+  });
+
+  final int plateIndex;
+  final int plateCount;
+  final int platePercent;
+  final int totalPercent;
+  final String message;
+  final bool isWarning;
+
+  static OrcaSlicerProgress? tryParse(String line) {
+    try {
+      final decoded = jsonDecode(line);
+      if (decoded is! Map) return null;
+      final values = decoded.cast<String, dynamic>();
+      final warning = values['warning'];
+      final message = warning ?? values['message'];
+      return OrcaSlicerProgress(
+        plateIndex: _intValue(values['plate_index']),
+        plateCount: _intValue(values['plate_count']),
+        platePercent: _intValue(values['plate_percent']),
+        totalPercent: _intValue(values['total_percent']),
+        message: message?.toString() ?? '',
+        isWarning: warning != null,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static int _intValue(dynamic value) {
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+}
+
+class OrcaSlicerCancelledException implements Exception {
+  const OrcaSlicerCancelledException();
+
+  @override
+  String toString() => 'OrcaSlicer slicing was cancelled.';
 }
 
 class OrcaSlicerException implements Exception {
