@@ -1,5 +1,9 @@
 # Traceability ledger — OrcaSlicer engine cutover
 
+## Current Dart checkpoint
+
+`099b08ffe1e8e4c3aef61b03a27613d8422b8ab4` is green in Flutter CI run `35389777844` (#655), job `105745161355`: analyzer clean, **114/114 tests passed**.
+
 ## Production slicing path
 
 | Behavior | Production implementation | Evidence/status |
