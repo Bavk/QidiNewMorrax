@@ -758,8 +758,185 @@ class _PreparePageState extends State<PreparePage> {
               'mm/s',
             ),
           ],
+          const SizedBox(height: 18),
+          const Divider(),
+          _projectSection(),
         ],
       ),
+    );
+  }
+
+  Widget _projectSection() {
+    if (sourceProject != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            icon: Icons.folder_special_outlined,
+            title: 'Project',
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lock_outline, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Imported vendor 3MF is in lossless mode. '
+                      'Transforms are preserved, but structural plate/object '
+                      'editing is disabled until vendor metadata editing is '
+                      'round-trip safe.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final project = editableProject;
+    if (project == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            icon: Icons.dashboard_customize_outlined,
+            title: 'Project',
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add one or more models to create an editable multi-plate project.',
+          ),
+        ],
+      );
+    }
+
+    final plateObjects = project.objectIndicesForPlate(activePlateIndex);
+    final selected = selectedObjectIndex;
+    final selectedOnPlate =
+        selected != null && plateObjects.contains(selected) ? selected : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          icon: Icons.dashboard_customize_outlined,
+          title: 'Project',
+          trailing: Text(
+            '${project.plates.length} plate${project.plates.length == 1 ? '' : 's'} · '
+            '${project.objects.length} object${project.objects.length == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          key: ValueKey('plate-$activePlateIndex-${project.plates.length}'),
+          initialValue: activePlateIndex,
+          decoration: const InputDecoration(labelText: 'Active plate'),
+          items: [
+            for (var i = 0; i < project.plates.length; i++)
+              DropdownMenuItem(
+                value: i,
+                child: Text(
+                  project.plates[i].locked
+                      ? '${project.plates[i].name} · locked'
+                      : project.plates[i].name,
+                ),
+              ),
+          ],
+          onChanged: (value) {
+            if (value != null) _selectPlate(value);
+          },
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _addPlate,
+              icon: const Icon(Icons.add, size: 17),
+              label: const Text('Add plate'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _editActivePlate,
+              icon: const Icon(Icons.edit_outlined, size: 17),
+              label: const Text('Plate settings'),
+            ),
+            OutlinedButton.icon(
+              onPressed: project.plates.length > 1
+                  ? _removeActivePlate
+                  : null,
+              icon: const Icon(Icons.delete_outline, size: 17),
+              label: const Text('Delete plate'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<int>(
+          key: ValueKey(
+            'object-$activePlateIndex-${selectedObjectIndex ?? -1}-'
+            '${project.objects.length}',
+          ),
+          initialValue: selectedOnPlate,
+          decoration: const InputDecoration(labelText: 'Selected object'),
+          items: [
+            for (final index in plateObjects)
+              DropdownMenuItem(
+                value: index,
+                child: Text(
+                  project.objects[index].name,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: plateObjects.isEmpty
+              ? null
+              : (value) {
+                  if (value != null) _selectObject(value);
+                },
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              onPressed: selectedOnPlate == null ? null : _editSelectedObject,
+              icon: const Icon(Icons.tune, size: 17),
+              label: const Text('Object settings'),
+            ),
+            OutlinedButton.icon(
+              onPressed: selectedOnPlate == null ? null : _removeSelectedObject,
+              icon: const Icon(Icons.remove_circle_outline, size: 17),
+              label: const Text('Remove object'),
+            ),
+          ],
+        ),
+        if (selectedOnPlate != null) ...[
+          const SizedBox(height: 10),
+          Builder(
+            builder: (context) {
+              final object = project.objects[selectedOnPlate];
+              final overrides = object.settings.entries
+                  .map((entry) => '${entry.key}=${entry.value}')
+                  .join(' · ');
+              return Text(
+                'Extruder ${object.extruder}'
+                '${overrides.isEmpty ? '' : ' · $overrides'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              );
+            },
+          ),
+        ],
+      ],
     );
   }
 
