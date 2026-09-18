@@ -26,9 +26,9 @@ Release bundling of the engine is still pending; development builds currently ex
 
 ## Current application foundations
 
-Implemented foundations include Flutter desktop navigation, Prepare model loading/transforms, QIDI profile loading/inheritance, package-aware 3MF import/repack, G-code parsing/Preview, Moonraker/QIDI device foundations, calibration resources, and the new OrcaSlicer engine bridge.
+Implemented foundations include Flutter desktop navigation, Prepare model loading/transforms, QIDI profile loading/inheritance, lossless 3MF import/repack, Orca-compatible multi-plate project 3MF serialization, live Linux slicing progress, cancellation, G-code parsing/Preview, Moonraker/QIDI device foundations and calibration resources.
 
-The first engine cutover supports one active flattened mesh and one selected machine/process/filament set. Full multi-plate project state, modifiers/paint, richer sliced metadata, cancellation/progress and release packaging remain open.
+The Orca boundary now preserves/encodes project objects, plates, modifiers/paint metadata, settings and filament assignment and returns all sliced plate G-code entries. Richer Prepare editing, sliced-metadata consumption, cross-platform native progress transport and release packaging remain open.
 
 ## Development
 
