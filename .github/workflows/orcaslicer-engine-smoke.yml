@@ -89,8 +89,8 @@ jobs:
               </components></object>
             </resources>
             <build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">
-              <item objectid="2" p:UUID="00000002-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 0 0 0" printable="1" auto_drop="0"/>
-              <item objectid="4" p:UUID="00000004-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 0 0 0" printable="1" auto_drop="0"/>
+              <item objectid="2" p:UUID="00000002-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 100 100 0" printable="1" auto_drop="0"/>
+              <item objectid="4" p:UUID="00000004-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 100 100 0" printable="1" auto_drop="0"/>
             </build>
           </model>'''
 
