@@ -22,5 +22,6 @@
   "port_started: lib/features/device/presentation/device_page.dart": 2,
   "pending_test_port": 182,
   "external_engine: OrcaSlicer v2.4.2": 1,
-  "implemented_unverified: lib/core/orca": 2
+  "integration_verified: lib/core/orca": 2,
+  "implemented_unverified: Orca gcode -> Moonraker upload/start": 1
 }
