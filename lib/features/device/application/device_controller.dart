@@ -165,6 +165,17 @@ class DeviceController extends ChangeNotifier {
   Future<void> startPrint(String filename) =>
       _requireClient().startPrint(filename);
 
+  Future<String> uploadGcode(String localPath) async {
+    final remotePath = await _requireClient().uploadGcodeFile(localPath);
+    await refreshFiles();
+    return remotePath;
+  }
+
+  Future<void> uploadAndStart(String localPath) async {
+    final remotePath = await uploadGcode(localPath);
+    await startPrint(remotePath);
+  }
+
   Future<void> setNozzleTemperature(int value) =>
       sendGcode(PrinterCommands.setNozzleTemperature(value));
   Future<void> setBedTemperature(int value) =>
