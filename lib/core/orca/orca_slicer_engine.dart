@@ -125,9 +125,8 @@ class OrcaSlicerEngine {
     }
 
     final availablePlates = plateGcodes.keys.toList()..sort();
-    final selectedPlate = request.plate == 0
-        ? availablePlates.first
-        : request.plate;
+    final selectedPlate =
+        request.plate == 0 ? availablePlates.first : request.plate;
     final selectedBytes = plateGcodes[selectedPlate];
     if (selectedBytes == null) {
       throw OrcaSlicerException(
@@ -146,8 +145,6 @@ class OrcaSlicerEngine {
       gcodePathsByPlate[entry.key] = path;
     }
 
-    // Keep the established single-file path for Preview/Device while exposing
-    // every sliced plate separately for project-aware UI.
     final gcodePath = _join(outputDirectory.path, '$baseName.gcode');
     await File(gcodePath).writeAsBytes(selectedBytes, flush: true);
 
