@@ -10,6 +10,17 @@ import 'package:qidi_flow_flutter/core/model_io/three_mf_transform.dart';
 import 'package:qidi_flow_flutter/core/model_io/three_mf_writer.dart';
 
 void main() {
+  const projectSettings = <String, dynamic>{
+    '_name': 'project_settings',
+    '_from': 'project',
+    '_version': '2.4.2',
+    'printer_settings_id': 'Machine',
+    'print_settings_id': 'Process',
+    'filament_settings_id': ['Filament'],
+    'nozzle_diameter': ['0.4'],
+    'layer_height': '0.2',
+  };
+
   Mesh triangle(String name, double x) => Mesh(
         name: name,
         triangles: [
@@ -62,7 +73,7 @@ void main() {
           instances: [ThreeMfPlateInstance(objectIndex: 1)],
         ),
       ],
-      projectSettings: const {'layer_height': '0.2'},
+      projectSettings: projectSettings,
     );
 
     final bytes = const ThreeMfProjectWriter().encode(project);
@@ -88,10 +99,23 @@ void main() {
     expect(child, contains('paint_color="3"'));
   });
 
+  test('project writer rejects incomplete Orca project settings', () {
+    expect(
+      () => const ThreeMfProjectWriter().encode(
+        ThreeMfProject(
+          objects: [ThreeMfProjectObject.fromMesh(triangle('A', 0))],
+          projectSettings: const {'layer_height': '0.2'},
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('repack transform preserves vendor entries and transforms build', () {
     final original = const ThreeMfProjectWriter().encode(
       ThreeMfProject(
         objects: [ThreeMfProjectObject.fromMesh(triangle('A', 0))],
+        projectSettings: projectSettings,
       ),
     );
     final parsed = const ThreeMfParser().parsePackage(original);
