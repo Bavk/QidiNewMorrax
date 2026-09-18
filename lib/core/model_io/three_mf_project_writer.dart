@@ -403,6 +403,50 @@ class ThreeMfProjectWriter {
       ..writeln('  </object>');
   }
 
+  String _modelRelationships(ThreeMfProject project) {
+    final out = StringBuffer()
+      ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
+      ..writeln(
+        '<Relationships '
+        'xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+      );
+    for (var objectIndex = 0;
+        objectIndex < project.objects.length;
+        objectIndex++) {
+      out.writeln(
+        ' <Relationship Target="/${_subModelPath(objectIndex)}" '
+        'Id="rel-${objectIndex + 1}" '
+        'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>',
+      );
+    }
+    out.writeln('</Relationships>');
+    return out.toString();
+  }
+
+  static String _subModelPath(int objectIndex) =>
+      '3D/Objects/object_${objectIndex + 1}.model';
+
+  static String _hex8(int value) =>
+      value.toRadixString(16).padLeft(8, '0');
+
+  static String _parentUuid(int objectIndex) =>
+      '${_hex8(objectIndex + 1)}-61cb-4c03-9d28-80fed5dfa1dc';
+
+  static String _volumeUuid(int objectIndex, int volumeIndex) {
+    final backupId = objectIndex + 1;
+    final value = volumeIndex + (backupId << 16);
+    return '${_hex8(value)}-81cb-4c03-9d28-80fed5dfa1dc';
+  }
+
+  static String _componentUuid(int objectIndex, int volumeIndex) {
+    final backupId = objectIndex + 1;
+    final value = volumeIndex + (backupId << 16);
+    return '${_hex8(value)}-b206-40ff-9872-83e8017abed1';
+  }
+
+  static String _buildItemUuid(int parentId) =>
+      '${_hex8(parentId)}-b1ec-4553-aec9-835e5b724bb4';
+
   String _modelSettingsXml(ThreeMfProject project, List<_ObjectIds> ids) {
     final out = StringBuffer()
       ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
@@ -438,7 +482,7 @@ class ThreeMfProjectWriter {
           )
           ..writeln(
             '      <metadata key="matrix" '
-            'value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>',
+            'value="${volume.transform.toMatrixString()}"/>',
           );
         for (final setting in volume.settings.entries) {
           out.writeln(
