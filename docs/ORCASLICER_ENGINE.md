@@ -24,7 +24,7 @@ Prepare/project state is handed to Orca as:
 4. sliced 3MF -> all available `Metadata/plate_N.gcode` entries plus `Metadata/slice_info.config`;
 5. selected plate G-code + Orca estimates/warnings/material usage -> Preview and Device.
 
-Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job.
+Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job. Generated Prepare state is now editable through `WorkspaceEditableProject`; plate/object edits are serialized through the same `ThreeMfProjectWriter` boundary used by slicing.
 
 ## Sliced metadata
 
@@ -59,7 +59,7 @@ The upstream `--pipe` callback manager is Linux-only in OrcaSlicer 2.4.2, so mac
 - OrcaSlicer must currently be installed or configured with `ORCA_SLICER_BIN`.
 - Native progress transport is verified on Linux only; equivalent macOS/Windows progress transport remains a packaging/integration task.
 - Estimates, warnings and material usage are consumed; sliced thumbnails and additional vendor printer-payload metadata are not yet fully integrated.
-- Rich Prepare editing for creating multiple plates/modifiers/paint/per-object settings still trails the already verified project serializer.
+- Generated multi-plate/object editing is wired into Prepare and production 3MF. Modifier/support-volume creation, facet paint authoring, real multi-filament selection/assignment and wider per-volume overrides remain open; imported vendor 3MF stays on the lossless repack path.
 - Cross-platform bundled-engine packaging and exact-version/updater verification remain pending.
 
 CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON.
