@@ -7,7 +7,7 @@
 - commit: `8500fcdccaa10b5099ac20d252af3a7c560046f1`
 - Ubuntu 24.04 AppImage SHA-256: `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
 - license: GNU AGPL-3.0
-- CLI surface used by the Dart bridge: `--load-settings`, `--load-filaments`, `--arrange`, `--orient`, `--ensure-on-bed`, `--slice`, `--export-3mf`, `--outputdir`.
+- CLI surface used by the Dart bridge: `--load-settings`, `--load-filaments`, `--arrange`, `--orient`, `--ensure-on-bed`, `--slice`, `--export-3mf`, `--outputdir`, plus Linux `--pipe` progress.
 
 ## Flutter/Dart cutover checkpoint — 2026-09-18
 
@@ -39,10 +39,12 @@ This verifies the production engine process boundary, QIDI preset acceptance for
 
 The Flutter suite additionally covers:
 
-- exact Orca CLI argument construction, including Orca's `--outputdir` + relative `--export-3mf` semantics;
+- exact Orca CLI argument construction, including Orca's `--outputdir`, relative `--export-3mf` and optional `--pipe` semantics;
+- Orca progress JSON parsing for messages/warnings and overall/plate percentages;
+- managed-process cancellation without waiting for inherited stdout/stderr descriptors;
 - sliced 3MF `Metadata/plate_N.gcode` extraction and missing-plate failure;
 - selected QIDI profile JSON materialization;
-- transformed mesh -> STL interchange serialization.
+- project 3MF serialization, lossless vendor repack and virtual-bed coordinate mapping.
 
 ## Device integration
 
@@ -50,9 +52,8 @@ The latest generated Orca G-code is routed into the Dart Device surface. `Moonra
 
 ## Remaining validation gates
 
-- full 3MF/project handoff preserving multiple plates, modifiers, paint, per-object settings and vendor metadata;
-- Orca `--pipe` progress and cancellation;
 - richer sliced 3MF metadata/estimate/warning consumption;
+- packaged macOS/Windows progress behavior and process-tree cancellation validation;
 - Moonraker upload/start on representative QIDI hardware;
 - packaged Windows/macOS/Linux engine artifacts and exact-version verification;
 - AGPL notice/corresponding-source delivery in release packaging.

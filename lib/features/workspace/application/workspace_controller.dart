@@ -33,6 +33,8 @@ class WorkspaceController extends ChangeNotifier {
   ThreeMfTransform _sourceProjectTransform = ThreeMfTransform.identity;
 
   bool slicing = false;
+  OrcaSlicerProgress? progress;
+  bool _cancelRequested = false;
   String? lastGcodePath;
   Map<int, String> lastGcodePathsByPlate = const {};
   int? lastSelectedPlate;
@@ -42,6 +44,22 @@ class WorkspaceController extends ChangeNotifier {
 
   bool get canSlice =>
       mesh != null && machine != null && process != null && filament != null;
+
+  int? get slicingPercent => progress?.totalPercent;
+
+  void cancelSlice() {
+    if (!slicing) return;
+    _cancelRequested = true;
+    statusMessage = 'Cancelling OrcaSlicer…';
+    engine.cancelActiveSlice();
+    notifyListeners();
+  }
+
+  void _throwIfCancelled() {
+    if (_cancelRequested) {
+      throw const OrcaSlicerCancelledException();
+    }
+  }
 
   void updateSelection({
     Mesh? mesh,
@@ -87,6 +105,8 @@ class WorkspaceController extends ChangeNotifier {
     }
 
     slicing = true;
+    progress = null;
+    _cancelRequested = false;
     error = null;
     statusMessage = 'Preparing OrcaSlicer job…';
     notifyListeners();
@@ -112,6 +132,7 @@ class WorkspaceController extends ChangeNotifier {
           await profiles.resolved(process!.name) ?? process!;
       final resolvedFilament =
           await profiles.resolved(filament!.name) ?? filament!;
+      _throwIfCancelled();
       final projectSettings = const OrcaProjectSettingsBuilder().build(
         machine: resolvedMachine,
         process: resolvedProcess,
@@ -126,6 +147,7 @@ class WorkspaceController extends ChangeNotifier {
         projectSettings: projectSettings,
         machineProfile: resolvedMachine,
       );
+      _throwIfCancelled();
 
       final profileFiles = await const OrcaProfileMaterializer().materialize(
         directory: profileDirectory,
@@ -134,6 +156,7 @@ class WorkspaceController extends ChangeNotifier {
         filaments: [resolvedFilament],
       );
 
+      _throwIfCancelled();
       statusMessage = 'Slicing with OrcaSlicer…';
       notifyListeners();
 
@@ -145,21 +168,45 @@ class WorkspaceController extends ChangeNotifier {
           filamentProfilePaths: profileFiles.filaments,
           outputDirectory: outputDirectory.path,
         ),
+        onProgress: (update) {
+          progress = update;
+          final detail = update.message.trim();
+          statusMessage = detail.isEmpty
+              ? 'Slicing with OrcaSlicer… ${update.totalPercent}%'
+              : '${update.totalPercent}% · $detail';
+          notifyListeners();
+        },
       );
 
+      _throwIfCancelled();
       lastGcodePath = result.gcodePath;
       lastGcodePathsByPlate = result.gcodePathsByPlate;
       lastSelectedPlate = result.selectedPlate;
       lastBundlePath = result.bundlePath;
+      progress = const OrcaSlicerProgress(
+        plateIndex: 0,
+        plateCount: 0,
+        platePercent: 100,
+        totalPercent: 100,
+        message: 'Complete',
+        isWarning: false,
+      );
       statusMessage =
           'OrcaSlicer finished in ${result.elapsed.inMilliseconds / 1000}s';
       return result;
+    } on OrcaSlicerCancelledException {
+      error = null;
+      progress = null;
+      statusMessage = 'Slicing cancelled';
+      rethrow;
     } catch (caught) {
       error = caught;
+      progress = null;
       statusMessage = 'Slicing failed';
       rethrow;
     } finally {
       slicing = false;
+      _cancelRequested = false;
       notifyListeners();
     }
   }

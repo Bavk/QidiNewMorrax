@@ -59,15 +59,18 @@ PR #11 replaces the temporary STL bridge with an Orca-compatible project 3MF bou
 - old `MeshStlWriter` bridge removed;
 - real Orca v2.4.2 smoke run `35397155859` (#104) slices both plates in one `--slice 0` invocation successfully.
 
+## Progress/cancellation checkpoint — 2026-09-18
+
+PR #12 moves Orca invocation to a managed process and wires Linux `--pipe` progress into the workspace UI. The pinned Orca smoke validates real FIFO JSON while slicing the two-plate project; cancellation has dedicated process-lifecycle unit coverage. Orca 2.4.2 compiles this pipe callback only on Linux, so equivalent native progress transport for packaged Windows/macOS builds remains open.
+
 ## First unfinished priority
 
-The project/3MF engine boundary is now proven. Continue integration in this order:
+The next engine integration boundary is richer sliced-3MF metadata consumption. Continue in this order:
 
-1. Add slicing progress and cancellation using Orca's `--pipe` integration.
-2. Consume sliced 3MF metadata for richer Preview, estimates, warnings and printer payloads.
-3. Wire the project model into richer Prepare editor UI for creating/editing multiple plates, modifiers, paint and per-object settings instead of only preserving/serializing them.
-4. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks.
-5. Complete AGPL notices/corresponding-source delivery for distributed builds.
-6. Continue Dart/Flutter Device/calibration/UI integration around the stable engine boundary.
+1. Consume sliced 3MF metadata for richer Preview, estimates, warnings and printer payloads.
+2. Wire the project model into richer Prepare editor UI for creating/editing multiple plates, modifiers, paint and per-object settings instead of only preserving/serializing them.
+3. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks and platform progress behavior.
+4. Complete AGPL notices/corresponding-source delivery for distributed builds.
+5. Continue Dart/Flutter Device/calibration/UI integration around the stable engine boundary.
 
 Do not reintroduce a parallel custom production slicer or Clipper in Dart.

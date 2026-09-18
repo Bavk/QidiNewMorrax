@@ -2,7 +2,7 @@ name: OrcaSlicer engine smoke
 
 on:
   push:
-    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff]
+    branches: [main, chatgpt/orcaslicer-engine-cutover, chatgpt/orca-project-3mf-handoff, chatgpt/orca-progress-cancel]
   pull_request:
     branches: [main]
 
@@ -188,13 +188,21 @@ jobs:
           test -s fixture/Metadata/project_settings.config
           (cd fixture && zip -q -u project.3mf Metadata/project_settings.config)
           rm -rf fixture/Metadata
-      - name: Slice all project plates through real OrcaSlicer
+      - name: Slice all project plates with progress pipe
         shell: bash
         run: |
           set -euxo pipefail
           export ORCA_SLICER_BIN="$PWD/squashfs-root/AppRun"
+          progress_pipe="$PWD/out/orca-progress.pipe"
+          progress_log="$PWD/out/orca-progress.jsonl"
+          rm -f "$progress_pipe" "$progress_log"
+          mkfifo "$progress_pipe"
+          cat "$progress_pipe" > "$progress_log" &
+          pipe_reader=$!
+
           "$ORCA_SLICER_BIN" \
             "$PWD/fixture/project.3mf" \
+            --pipe "$progress_pipe" \
             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
             --load-filaments "$PWD/fixture/filament.json" \
             --arrange 0 \
@@ -203,11 +211,27 @@ jobs:
             --export-3mf "project.gcode.3mf" \
             --outputdir "$PWD/out" \
             --debug 2
+          wait "$pipe_reader"
 
           test -s out/project.gcode.3mf
+          test -s "$progress_log"
           for plate in 1 2; do
             unzip -p out/project.gcode.3mf "Metadata/plate_${plate}.gcode" \
               > "out/plate_${plate}.gcode"
             test -s "out/plate_${plate}.gcode"
             grep -Eq '^(G0|G1) ' "out/plate_${plate}.gcode"
           done
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          rows = [json.loads(line) for line in Path('out/orca-progress.jsonl').read_text().splitlines() if line.strip()]
+          assert rows, 'progress pipe emitted no JSON rows'
+          totals = [int(row.get('total_percent', 0)) for row in rows]
+          assert totals == sorted(totals), totals
+          assert max(totals) >= 90, totals
+          assert any(int(row.get('plate_count', 0)) >= 2 for row in rows), rows
+          assert any(row.get('message') or row.get('warning') for row in rows), rows
+          print(f'validated {len(rows)} Orca progress events, max={max(totals)}%')
+          PY
