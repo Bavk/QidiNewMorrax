@@ -30,6 +30,8 @@ Pinned engine:
 - Orca virtual-bed offsets for multi-plate projects;
 - `Slice plate` routes through Orca instead of a Dart slicer;
 - extraction of every sliced 3MF `Metadata/plate_N.gcode` entry;
+- Linux Orca `--pipe` JSON progress streaming and managed-process cancellation;
+- live progress/cancel control in the Flutter workspace;
 - automatic handoff of generated G-code to Dart Preview;
 - latest sliced G-code can be uploaded from Device through Moonraker and started;
 - real pinned Orca binary is exercised in CI with SHA-256 verification and a QIDI profile/model fixture;
@@ -46,16 +48,15 @@ Pinned engine:
 | QIDI profile materialization | `integration_verified` for X-Plus 4 fixture | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
 | multi-plate / modifiers / paint / per-object settings | `handoff_verified` | editor creation/editing UI still pending |
-| slicing progress / cancellation | `pending` | Orca `--pipe` integration |
+| slicing progress / cancellation | `integration_verified` on Linux / process cancellation unit-tested | add native progress transport validation for macOS/Windows packaging |
 | engine packaging / updater / exact version verification | `pending` | Windows/macOS/Linux packaging |
 | AGPL notices / corresponding source delivery | `pending` release gate | package license/source information |
 | Flutter editor/project/Preview/Device/calibration | `port_started` | continue application integration |
 
 ## Immediate priority
 
-1. Add progress and cancellation using Orca's CLI progress pipe.
-2. Consume sliced 3MF metadata for Preview estimates/warnings and printer delivery.
-3. Wire the verified project model into richer multi-plate/modifier/paint/per-object Prepare editing UI.
-4. Verify Moonraker upload/start against a real QIDI printer.
-5. Package the pinned engine for Windows/macOS/Linux with exact artifact/version checks and AGPL compliance.
-6. Continue Flutter Device/calibration/UI work around the stable engine boundary.
+1. Consume sliced 3MF metadata for Preview estimates/warnings and printer delivery.
+2. Wire the verified project model into richer multi-plate/modifier/paint/per-object Prepare editing UI.
+3. Verify Moonraker upload/start against a real QIDI printer.
+4. Package the pinned engine for Windows/macOS/Linux with exact artifact/version checks, native progress behavior and AGPL compliance.
+5. Continue Flutter Device/calibration/UI work around the stable engine boundary.
