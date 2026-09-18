@@ -139,7 +139,7 @@ jobs:
         run: |
           set -euxo pipefail
           export ORCA_SLICER_BIN="$PWD/squashfs-root/AppRun"
-          "$ORCA_SLICER_BIN"             "$PWD/fixture/cube.stl"             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json"             --load-filaments "$PWD/fixture/filament.json"             --arrange 1             --ensure-on-bed             --slice 0             --export-3mf "$PWD/out/cube.gcode.3mf"             --outputdir "$PWD/out"             --debug 2
+          "$ORCA_SLICER_BIN"             "$PWD/fixture/cube.stl"             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json"             --load-filaments "$PWD/fixture/filament.json"             --arrange 1             --ensure-on-bed             --slice 0             --export-3mf "cube.gcode.3mf"             --outputdir "$PWD/out"             --debug 2
 
           test -s out/cube.gcode.3mf
           unzip -l out/cube.gcode.3mf | tee out/archive.txt
