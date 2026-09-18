@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/geometry/point.dart';
 import 'package:qidi_flow_flutter/core/model_io/mesh.dart';
 import 'package:qidi_flow_flutter/core/model_io/three_mf_parser.dart';
+import 'package:qidi_flow_flutter/core/model_io/three_mf_project_writer.dart';
 import 'package:qidi_flow_flutter/core/model_io/three_mf_transform.dart';
 import 'package:qidi_flow_flutter/features/workspace/domain/workspace_editable_project.dart';
 
@@ -95,7 +96,7 @@ void main() {
         translation: const Point3(50, 50, 0),
       ),
     );
-    final bytes = const qidiProjectWriter().encode(project);
+    final bytes = const ThreeMfProjectWriter().encode(project);
     final package = const ThreeMfParser().parsePackage(bytes);
     final settings = package.modelSettingsXml!;
 
@@ -109,9 +110,4 @@ void main() {
     expect(root, contains('QidiNewMorrax:ProjectBoundary'));
     expect(package.mesh.triangles, hasLength(2));
   });
-}
-
-class qidiProjectWriter
-    extends ThreeMfProjectWriter {
-  const qidiProjectWriter();
 }
