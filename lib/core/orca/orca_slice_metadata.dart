@@ -26,6 +26,27 @@ class OrcaSliceMetadata {
         plates.values.expand((plate) => plate.warnings),
       );
 
+
+  /// Fills gaps left by CLI slice_info.config from Orca-authored statistics
+  /// comments embedded in each Metadata/plate_N.gcode.
+  ///
+  /// XML remains authoritative whenever it provides a positive value. The
+  /// G-code fallback mirrors OrcaSlicer GCodeProcessor output and never derives
+  /// estimates from geometry or motion replay.
+  OrcaSliceMetadata withPlateGcodes(Map<int, Uint8List> gcodes) {
+    if (gcodes.isEmpty) return this;
+    final updated = <int, OrcaPlateMetadata>{...plates};
+    for (final entry in gcodes.entries) {
+      final stats = _OrcaGcodeStatistics.parse(entry.value);
+      final existing = updated[entry.key] ?? OrcaPlateMetadata.empty(entry.key);
+      updated[entry.key] = existing.withGcodeStatistics(stats);
+    }
+    return OrcaSliceMetadata(
+      header: header,
+      plates: Map.unmodifiable(updated),
+    );
+  }
+
   static OrcaSliceMetadata fromBundle(Uint8List bundleBytes) {
     final archive = ZipDecoder().decodeBytes(bundleBytes, verify: true);
     for (final file in archive.files) {
@@ -96,6 +117,68 @@ class OrcaPlateMetadata {
   final List<OrcaSliceObject> objects;
   final List<OrcaSliceFilament> filaments;
   final List<OrcaSliceWarning> warnings;
+
+  factory OrcaPlateMetadata.empty(int index) => OrcaPlateMetadata(
+        index: index,
+        printerModelId: '',
+        nozzleDiameters: const [],
+        predictionSeconds: 0,
+        weightGrams: 0,
+        firstLayerTimeSeconds: 0,
+        toolpathOutside: false,
+        supportUsed: false,
+        labelObjectEnabled: false,
+        objects: const [],
+        filaments: const [],
+        warnings: const [],
+      );
+
+  OrcaPlateMetadata withGcodeStatistics(_OrcaGcodeStatistics stats) {
+    final count = [
+      filaments.length,
+      stats.filamentGrams.length,
+      stats.filamentMillimeters.length,
+    ].reduce((a, b) => a > b ? a : b);
+    final enrichedFilaments = <OrcaSliceFilament>[];
+    for (var i = 0; i < count; i++) {
+      final existing = i < filaments.length
+          ? filaments[i]
+          : OrcaSliceFilament.empty(i + 1);
+      enrichedFilaments.add(
+        existing.copyWith(
+          usedGrams: existing.usedGrams > 0
+              ? existing.usedGrams
+              : _at(stats.filamentGrams, i),
+          usedMeters: existing.usedMeters > 0
+              ? existing.usedMeters
+              : _at(stats.filamentMillimeters, i) / 1000,
+        ),
+      );
+    }
+
+    final gcodeWeight = stats.totalWeightGrams > 0
+        ? stats.totalWeightGrams
+        : stats.filamentGrams.fold<double>(0, (sum, value) => sum + value);
+
+    return OrcaPlateMetadata(
+      index: index,
+      printerModelId: printerModelId,
+      nozzleDiameters: nozzleDiameters,
+      predictionSeconds: predictionSeconds > 0
+          ? predictionSeconds
+          : stats.predictionSeconds,
+      weightGrams: weightGrams > 0 ? weightGrams : gcodeWeight,
+      firstLayerTimeSeconds: firstLayerTimeSeconds > 0
+          ? firstLayerTimeSeconds
+          : stats.firstLayerTimeSeconds,
+      toolpathOutside: toolpathOutside,
+      supportUsed: supportUsed,
+      labelObjectEnabled: labelObjectEnabled,
+      objects: objects,
+      filaments: List.unmodifiable(enrichedFilaments),
+      warnings: warnings,
+    );
+  }
 
   static OrcaPlateMetadata _fromXml(XmlElement element) {
     final values = <String, String>{};
@@ -197,6 +280,38 @@ class OrcaSliceFilament {
   final String nozzleVolumeType;
   final bool usedForObject;
   final bool usedForSupport;
+
+  factory OrcaSliceFilament.empty(int id) => OrcaSliceFilament(
+        id: id,
+        trayInfoId: '',
+        type: '',
+        color: '',
+        usedMeters: 0,
+        usedGrams: 0,
+        nozzleGroupIds: const [],
+        nozzleDiameter: 0,
+        nozzleVolumeType: '',
+        usedForObject: false,
+        usedForSupport: false,
+      );
+
+  OrcaSliceFilament copyWith({
+    double? usedMeters,
+    double? usedGrams,
+  }) =>
+      OrcaSliceFilament(
+        id: id,
+        trayInfoId: trayInfoId,
+        type: type,
+        color: color,
+        usedMeters: usedMeters ?? this.usedMeters,
+        usedGrams: usedGrams ?? this.usedGrams,
+        nozzleGroupIds: nozzleGroupIds,
+        nozzleDiameter: nozzleDiameter,
+        nozzleVolumeType: nozzleVolumeType,
+        usedForObject: usedForObject,
+        usedForSupport: usedForSupport,
+      );
 }
 
 class OrcaSliceWarning {
@@ -210,6 +325,173 @@ class OrcaSliceWarning {
   final int level;
   final String errorCode;
 }
+
+class _OrcaGcodeStatistics {
+  const _OrcaGcodeStatistics({
+    required this.predictionSeconds,
+    required this.firstLayerTimeSeconds,
+    required this.totalWeightGrams,
+    required this.filamentGrams,
+    required this.filamentMillimeters,
+  });
+
+  final double predictionSeconds;
+  final double firstLayerTimeSeconds;
+  final double totalWeightGrams;
+  final List<double> filamentGrams;
+  final List<double> filamentMillimeters;
+
+  static _OrcaGcodeStatistics parse(Uint8List bytes) {
+    final text = utf8.decode(bytes, allowMalformed: true);
+    final normal = RegExp(
+      r'^;\s*estimated printing time \(normal mode\)\s*=\s*(.+?)\s*
+
+double _double(String? value) =>
+    double.tryParse(value?.trim() ?? '') ?? 0;
+
+bool _bool(String? value) {
+  final normalized = value?.trim().toLowerCase();
+  return normalized == 'true' || normalized == '1' || normalized == 'yes';
+}
+
+List<int> _intList(String? value) => List.unmodifiable(
+      (value ?? '')
+          .split(RegExp(r'[ ,;]+'))
+          .map((part) => int.tryParse(part))
+          .whereType<int>(),
+    );
+
+List<double> _doubleList(String? value) => List.unmodifiable(
+      (value ?? '')
+          .split(RegExp(r'[ ,;]+'))
+          .map((part) => double.tryParse(part))
+          .whereType<double>(),
+    );
+,
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+    final bblTotal = RegExp(
+      r'^;\s*model printing time:.*?;\s*total estimated time:\s*(.+?)\s*
+
+double _double(String? value) =>
+    double.tryParse(value?.trim() ?? '') ?? 0;
+
+bool _bool(String? value) {
+  final normalized = value?.trim().toLowerCase();
+  return normalized == 'true' || normalized == '1' || normalized == 'yes';
+}
+
+List<int> _intList(String? value) => List.unmodifiable(
+      (value ?? '')
+          .split(RegExp(r'[ ,;]+'))
+          .map((part) => int.tryParse(part))
+          .whereType<int>(),
+    );
+
+List<double> _doubleList(String? value) => List.unmodifiable(
+      (value ?? '')
+          .split(RegExp(r'[ ,;]+'))
+          .map((part) => double.tryParse(part))
+          .whereType<double>(),
+    );
+,
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+    final firstLayer = RegExp(
+      r'^;\s*estimated first layer printing time \(normal mode\)\s*=\s*(.+?)\s*
+
+double _double(String? value) =>
+    double.tryParse(value?.trim() ?? '') ?? 0;
+
+bool _bool(String? value) {
+  final normalized = value?.trim().toLowerCase();
+  return normalized == 'true' || normalized == '1' || normalized == 'yes';
+}
+
+List<int> _intList(String? value) => List.unmodifiable(
+      (value ?? '')
+          .split(RegExp(r'[ ,;]+'))
+          .map((part) => int.tryParse(part))
+          .whereType<int>(),
+    );
+
+List<double> _doubleList(String? value) => List.unmodifiable(
+      (value ?? '')
+          .split(RegExp(r'[ ,;]+'))
+          .map((part) => double.tryParse(part))
+          .whereType<double>(),
+    );
+,
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+    final totalWeight = RegExp(
+      r'^;\s*total filament used \[g\]\s*=\s*([^\r\n]+)',
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+    final grams = RegExp(
+      r'^;\s*filament used \[g\]\s*=\s*([^\r\n]+)',
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+    final millimeters = RegExp(
+      r'^;\s*filament used \[mm\]\s*=\s*([^\r\n]+)',
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text);
+
+    return _OrcaGcodeStatistics(
+      predictionSeconds: _durationSeconds(
+        normal?.group(1) ?? bblTotal?.group(1),
+      ),
+      firstLayerTimeSeconds: _durationSeconds(firstLayer?.group(1)),
+      totalWeightGrams: _firstDouble(totalWeight?.group(1)),
+      filamentGrams: _doubleValues(grams?.group(1)),
+      filamentMillimeters: _doubleValues(millimeters?.group(1)),
+    );
+  }
+}
+
+double _durationSeconds(String? value) {
+  if (value == null || value.trim().isEmpty) return 0;
+  var total = 0.0;
+  final matches = RegExp(
+    r'(\d+(?:\.\d+)?)\s*([dhms])',
+    caseSensitive: false,
+  ).allMatches(value);
+  for (final match in matches) {
+    final amount = double.tryParse(match.group(1) ?? '') ?? 0;
+    switch ((match.group(2) ?? '').toLowerCase()) {
+      case 'd':
+        total += amount * 86400;
+      case 'h':
+        total += amount * 3600;
+      case 'm':
+        total += amount * 60;
+      case 's':
+        total += amount;
+    }
+  }
+  return total;
+}
+
+List<double> _doubleValues(String? value) => List.unmodifiable(
+      RegExp(r'-?\d+(?:\.\d+)?')
+          .allMatches(value ?? '')
+          .map((match) => double.tryParse(match.group(0) ?? ''))
+          .whereType<double>(),
+    );
+
+double _firstDouble(String? value) {
+  final values = _doubleValues(value);
+  return values.isEmpty ? 0 : values.first;
+}
+
+double _at(List<double> values, int index) =>
+    index >= 0 && index < values.length ? values[index] : 0;
 
 int _int(String? value) => int.tryParse(value?.trim() ?? '') ?? 0;
 
