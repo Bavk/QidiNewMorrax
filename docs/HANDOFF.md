@@ -16,15 +16,15 @@ Do not infer completion from visual similarity, compilation or common-case tests
 
 Latest validated code checkpoint:
 
-- code commit `9f04863ea904552d8edd7034067630bd82f8be98` (clean two-file functional tree for the AEL-outside rounded strict-max extension);
-- `.github/workflows/flutter-parity.yml` run `35284252825` (#639), job `105412942943`;
+- code commit `81691379c94382e5218c3feb22ff182e9f36bd98` (clean two-file functional tree for the early-second-touch rounded strict-max extension);
+- `.github/workflows/flutter-parity.yml` run `35362020769` (#647), job `105655340480`;
 - Flutter `3.47.2`;
 - Dart `3.13.2`;
 - `flutter analyze` → **No issues found!**;
-- `flutter test --reporter expanded` → **874/874 passed**;
+- `flutter test --reporter expanded` → **875/875 passed**;
 - job conclusion → **success**.
 
-The suite retains every earlier represented Classic/Arachne/geometry fixture, #615's independently traced **rounded-to-touch AEL-contained strict-maximum single-crossing collapse**, and two separately proved **AEL-outside retained-output** branches. The retained-wedge branch preserves the source cycle and ordinary rightmost-minimum `BuildResult()` anchor only when no later inner-other edge crosses the owner-predecessor scanbeam. The retained-inner branch additionally requires the touched and outgoing owner bounds to remain integer-`TopX` tied through that first scanbeam. Neighboring early-second-touch and extra-`TopX` scanbeam states remain explicit fallback, as do side-vertex touches, horizontal touches and mixed-collinear states.
+The suite retains every earlier represented Classic/Arachne/geometry fixture, #615's independently traced **rounded-to-touch AEL-contained strict-maximum single-crossing collapse**, #639's two separately proved **AEL-outside retained-output** branches, and #647's independently proved **early-second-touch owner-only** neighbor. The retained-wedge branch preserves the source cycle and ordinary rightmost-minimum `BuildResult()` anchor only when no later inner-other edge crosses the owner-predecessor scanbeam. The retained-inner branch requires the touched and outgoing owner bounds to remain integer-`TopX` tied through the first owner-predecessor scanbeam; #647 covers the matching divergent first-scanbeam state, where Clipper processes the second same-coordinate touch early and removes the inner endpoint. Extra-`TopX` scanbeam states remain explicit fallback, as do side-vertex touches, horizontal touches and mixed-collinear states.
 
 ## Independent pinned BambuStudio oracle provenance
 
@@ -83,7 +83,7 @@ Every broad matrix includes all 3×3 cyclic source rotations and both input orde
 
 For strict triangles with a single collinear shared interval, the one-point post-join collinearity classes are represented for endpoint-aligned overlaps (#549/#552) and full shared edges (#562). Strict-contained and staggered overlaps retain a support-line boundary segment at each relevant endpoint and therefore do not create the same third-vertex/third-vertex cleanup geometry. This does **not** prove wider-convex, multi-point cleanup or mixed-crossing fixup behavior.
 
-### #569 / #575 / #588 / #582 / #601 / #608 / #615 / #639 mixed proper-crossing + point-touch extensions
+### #569 / #575 / #588 / #582 / #601 / #608 / #615 / #639 / #647 mixed proper-crossing + point-touch extensions
 
 `SourceClipper1TwoConvexMixedPointUnion2` remains deliberately state-bounded to exactly two positive strict-convex triangles with at least one proper boundary crossing, exactly one unique vertex↔strict-edge-interior point touch, no second touch and no nonzero collinear overlap.
 
@@ -111,7 +111,9 @@ Pinned-source matrices for that exact AEL-contained branch matched **165132/1651
 
 Pinned source-event trace run `35283858278`, job `105411701842`, isolates the retained-inner boundary rather than inferring it geometrically. In the represented state the active touched bound and outgoing owner bound remain integer-`TopX` tied at the first owner-predecessor scanbeam, so Clipper does not process the second same-coordinate touch intersection early and the inner endpoint survives in `OutRec::Pts`. In the traced counterstate those `TopX` values diverge at that scanbeam, the second intersection is processed at the touch, and output collapses to owner-only. The wedge branch likewise rejects cases where the inner other edge crosses that predecessor scanbeam and source inserts an additional `TopX` output vertex. Flutter parity #639 is green at **874/874**.
 
-The represented non-horizontal strict-max ordering partition from #575/#588/#582/#601/#608 remains unchanged for ordinary non-collapsed intersections. #615 represents the traced rounded-to-touch `WindCnt == 1` AEL-contained collapse; #639 adds only the independently proved AEL-outside retained-wedge and first-scanbeam-`TopX`-tied retained-inner branches. AEL-outside early-second-touch and extra-`TopX` scanbeam neighbors, horizontal touched edges, side-vertex touches and mixed-collinear states remain on compatibility fallback.
+#647 independently promotes that first-scanbeam-divergent retained-inner counterstate from fallback to an exact owner-only source branch. Pinned-source oracle run `35361763642`, job `105654487004`, generated **1,200/1,200** independent early-second-touch bases. Across all 3×3 cyclic rotations and both input/AddPath orders, **21600/21600 exact complete raw paths** matched the owner-only `BuildResult()` cycle. The earlier direct event trace `35283858278` / `105411701842` independently records the same mechanism on the fixed fixture: integer `TopX` divergence at the first owner-predecessor scanbeam causes the second same-coordinate intersection to be processed at `touch.y`, discarding the inner endpoint. Flutter parity #647 is green at **875/875**.
+
+The represented non-horizontal strict-max ordering partition from #575/#588/#582/#601/#608 remains unchanged for ordinary non-collapsed intersections. #615 represents the traced rounded-to-touch `WindCnt == 1` AEL-contained collapse; #639 adds the independently proved AEL-outside retained-wedge and first-scanbeam-`TopX`-tied retained-inner branches; #647 adds the complementary first-scanbeam-divergent early-second-touch owner-only branch. Extra-`TopX` scanbeam neighbors, horizontal touched edges, side-vertex touches and mixed-collinear states remain on compatibility fallback.
 
 The earlier runtime evidence remains important: touch-time `AddLocalMaxPoly()`/`AppendPolygon()` is acceptance-relevant but not by itself an accept/reject predicate. The exact classes above are bounded by independently proved source scanline/output-list state, not a broad geometric rebase heuristic.
 
@@ -136,7 +138,7 @@ Pinned Qidi/Bambu source uses modified Clipper 6.2.9. Exact represented subsets 
 - interacting two-positive axis-aligned rectangles for same-span touch, diagonal area overlap, partial unequal edge/T contacts and point-only contacts;
 - exactly two positive strictly convex contours with only proper boundary crossings, preserving modified Clipper1 scanline intersection rounding and exact `BuildResult()` order/start;
 - exactly two positive strict-convex **triangles** for raw-proven zero-area contact states, partial collinear contact states and one-point fixup states through #562;
-- exactly two positive strict-convex triangles for mixed proper-crossing + single point-touch states in the #569 strict-minimum, #575 early ordered strict-maximum, #588 equal-Y strict-maximum, #582 late single-crossing strict-maximum, #601 late multi-crossing strict-maximum and #608 single-cross separated-minimum classes, plus the #615 traced AEL-contained rounded-to-touch collapse and #639's bounded AEL-outside retained-wedge/retained-inner branches described above.
+- exactly two positive strict-convex triangles for mixed proper-crossing + single point-touch states in the #569 strict-minimum, #575 early ordered strict-maximum, #588 equal-Y strict-maximum, #582 late single-crossing strict-maximum, #601 late multi-crossing strict-maximum and #608 single-cross separated-minimum classes, plus the #615 traced AEL-contained rounded-to-touch collapse, #639's bounded AEL-outside retained-wedge/retained-inner branches and #647's first-scanbeam-divergent early-second-touch owner-only branch described above.
 
 Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/collinear output-list states, wider-convex contact/fixup `OutRec` state, multi-point or otherwise unrepresented cleanup, interacting holes, more than two interacting paths, deeper/multiple surviving hole hierarchy, multi-reflex/non-local non-orthogonal cleanup, orthogonal hole/point-touch ambiguity and remaining prepared-outline final-union cases. Those continue to use explicit compatibility fallback where necessary.
 
@@ -144,7 +146,7 @@ Still **not** general Clipper1 parity: remaining mixed proper-crossing + touch/c
 
 Continue in source/dependency order:
 
-1. continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569/#575/#588/#582/#601/#608/#615/#639 proved event classes: first the remaining AEL-outside rounded strict-max neighbors that still process an early second touch or emit extra scanbeam `TopX` vertices, then side-vertex touches, horizontal touch ordering and mixed collinear cases; keep tracing AEL / `AppendPolygon()` / `OutRec::Pts` source state rather than using a geometric normalization heuristic;
+1. continue **mixed proper-crossing + point-touch/collinear two-positive paths** beyond the #569/#575/#588/#582/#601/#608/#615/#639/#647 proved event classes: first the remaining AEL-outside rounded strict-max neighbors that emit extra scanbeam `TopX` vertices, then side-vertex touches, horizontal touch ordering and mixed collinear cases; keep tracing AEL / `AppendPolygon()` / `OutRec::Pts` source state rather than using a geometric normalization heuristic;
 2. keep wider-convex and any multi-point/non-triangle `FixupOutPolygon()` states explicit fallback until their raw `OutRec` behavior is independently proved;
 3. continue the same Clipper1 final cross-path boolean priority with **interacting holes**, then **more than two interacting paths**;
 4. extend per-path Clipper1 `Execute()` beyond current V-notch/orthogonal subsets: multiple reflex vertices, non-local self-intersections, split/hole-producing non-orthogonal results and more general negative `pftNegative` cleanup;
