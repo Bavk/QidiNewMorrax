@@ -406,14 +406,22 @@ class _StatsPanel extends StatelessWidget {
         const SizedBox(height: 8),
         _row('Print time', _duration(metadata.predictionSeconds)),
         _row('First layer', _duration(metadata.firstLayerTimeSeconds)),
-        _row('Weight', '${metadata.weightGrams.toStringAsFixed(2)} g'),
+        if (metadata.weightGrams > 0)
+          _row('Weight', '${metadata.weightGrams.toStringAsFixed(2)} g'),
+        if (metadata.totalFilamentMeters > 0)
+          _row(
+            'Filament length',
+            '${metadata.totalFilamentMeters.toStringAsFixed(2)} m',
+          ),
         _row('Supports', metadata.supportUsed ? 'Yes' : 'No'),
         _row('Objects', '${metadata.objects.where((o) => !o.skipped).length}'),
         for (final filament in metadata.filaments)
           _row(
             filament.type.isEmpty ? 'Filament ${filament.id}' : filament.type,
-            '${filament.usedGrams.toStringAsFixed(2)} g · '
-            '${filament.usedMeters.toStringAsFixed(2)} m',
+            filament.usedGrams > 0
+                ? '${filament.usedGrams.toStringAsFixed(2)} g · '
+                  '${filament.usedMeters.toStringAsFixed(2)} m'
+                : '${filament.usedMeters.toStringAsFixed(2)} m',
           ),
         const Divider(height: 28),
         Text('Parsed G-code', style: Theme.of(context).textTheme.titleMedium),
