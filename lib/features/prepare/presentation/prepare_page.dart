@@ -11,6 +11,7 @@ import '../../../core/model_io/three_mf_parser.dart';
 import '../../../core/orca/orca_bed_coordinate_mapper.dart';
 import '../../../core/profiles/profile_repository.dart';
 import '../../workspace/application/workspace_controller.dart';
+import '../../workspace/domain/workspace_editable_project.dart';
 
 class PreparePage extends StatefulWidget {
   const PreparePage({super.key, required this.controller});
@@ -33,6 +34,9 @@ class _PreparePageState extends State<PreparePage> {
   QidiProfile? process;
   Mesh? mesh;
   ThreeMfPackage? sourceProject;
+  WorkspaceEditableProject? editableProject;
+  int activePlateIndex = 0;
+  int? selectedObjectIndex;
   String? modelPath;
   Object? error;
   bool loadingProfiles = true;
@@ -53,6 +57,7 @@ class _PreparePageState extends State<PreparePage> {
       process: process,
       filament: filament,
       sourceProject: sourceProject,
+      editableProject: editableProject,
     );
   }
 
