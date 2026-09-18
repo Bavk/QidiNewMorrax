@@ -2,9 +2,9 @@
 
 ## Current validated checkpoint
 
-Functional code `a69646d98fbc07de7004cda6b62ad78757a8d61a` is green in Flutter CI run `35400170625` (#746), job `105778026686`: analyzer clean, **131/131 tests passed**.
+Functional code `cbc806db7ecf00c87b6730c4167fa3d3f622223a` is green in Flutter CI run `35401167437` (#752), job `105781146290`: analyzer clean, **134/134 tests passed**.
 
-The same functional HEAD is green in OrcaSlicer smoke run `35400170623` (#173), job `105778021824`: pinned AppImage digest verified, the two-plate QIDI fixture sliced successfully, progress reached 100%, and real sliced metadata/G-code statistics were validated. Each plate reported **1167 s** prediction and **1.335 m** filament.
+The same functional HEAD is green in OrcaSlicer smoke run `35401167530` (#180), job `105781147329`: pinned AppImage digest verified, the two-plate QIDI fixture sliced successfully, progress reached 100%, both plate G-code entries remained printable, and each plate reported **1167 s** prediction and **1.335 m** filament.
 
 ## Production slicing path
 
@@ -15,7 +15,7 @@ The same functional HEAD is green in OrcaSlicer smoke run `35400170623` (#173), 
 | infill/support/seam/bridge/travel | pinned OrcaSlicer v2.4.2 | engine-owned; complete fixture slice verified |
 | G-code generation | pinned OrcaSlicer v2.4.2 | sliced 3MF + 385515-byte plate G-code verified |
 | QIDI profile selection/inheritance | Dart `ProfileRepository` + `OrcaProfileMaterializer` | Dart tests + real X-Plus 4 Orca fixture |
-| Prepare/project handoff | Dart `ThreeMfProjectWriter` + lossless `ThreeMfWriter` | split-model/unit tests + real two-plate Orca `--slice 0` smoke |
+| Prepare/project handoff | Dart `WorkspaceEditableProject` + `ThreeMfProjectWriter` + lossless `ThreeMfWriter` | generated multi-plate/object editor tests + split-model tests + real two-plate Orca `--slice 0` smoke |
 | project settings | Dart `OrcaProjectSettingsBuilder` | resolved QIDI config embedded before BBS/Orca import |
 | plate coordinate mapping | Dart `OrcaBedCoordinateMapper` + writer virtual-bed offsets | unit tests + real two-plate Orca smoke |
 | engine invocation | Dart `OrcaSlicerEngine` managed `Process.start` boundary | CLI contract tests + real pinned executable CI |
@@ -25,6 +25,7 @@ The same functional HEAD is green in OrcaSlicer smoke run `35400170623` (#173), 
 | sliced result metadata | Dart `OrcaSliceMetadata` | `slice_info.config` tests + real two-plate Orca smoke; missing/zero fields filled only from Orca G-code statistics |
 | Preview | Dart `GCodeParser` + selected `OrcaPlateMetadata` | generated Orca G-code plus estimates/warnings/support/material usage routed automatically |
 | printer upload/start | Dart `DeviceController` + `MoonrakerClient` | implementation complete; printer-backed validation pending |
+| generated Prepare multi-plate/object editing | Dart `WorkspaceEditableProject` + `PreparePage` + `WorkspaceController` | add/rename/lock/remove plates; add/remove/reassign/transform objects; object overrides serialized into production 3MF; Flutter #752 + Orca smoke #180 |
 
 ## Engine provenance
 
@@ -40,4 +41,4 @@ The former `lib/core/slicer` source-shaped Dart implementation, custom Clipper s
 
 ## First unfinished integration boundary
 
-The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, and per-plate estimates/warnings/material usage are consumed from the sliced package. The first unfinished application boundary is richer Prepare editing of the project model that already preserves/encodes multi-plate state, modifiers, painted facets, object/volume settings, filament assignment and vendor metadata. Sliced thumbnails and additional vendor payload metadata remain secondary Preview/Device work.
+The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, per-plate estimates/warnings/material usage are consumed, and generated multi-plate/object Prepare editing now feeds the real production 3MF. The first unfinished application boundary is deeper Prepare editing: modifier/support volume creation, facet paint, real multi-filament selection/assignment and wider per-object/per-volume overrides. Imported vendor 3MF structural editing must preserve the existing lossless package contract. Sliced thumbnails and additional vendor payload metadata remain secondary Preview/Device work.
