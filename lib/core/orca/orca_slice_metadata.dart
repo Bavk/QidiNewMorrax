@@ -136,12 +136,18 @@ class OrcaPlateMetadata {
       }
     }
 
+    final declaredWeight = _double(values['weight']);
+    final filamentWeight = filaments.fold<double>(
+      0,
+      (sum, filament) => sum + filament.usedGrams,
+    );
+
     return OrcaPlateMetadata(
       index: _int(values['index']),
       printerModelId: values['printer_model_id'] ?? '',
       nozzleDiameters: _doubleList(values['nozzle_diameters']),
       predictionSeconds: _double(values['prediction']),
-      weightGrams: _double(values['weight']),
+      weightGrams: declaredWeight > 0 ? declaredWeight : filamentWeight,
       firstLayerTimeSeconds: _double(values['first_layer_time']),
       toolpathOutside: _bool(values['outside']),
       supportUsed: _bool(values['support_used']),
