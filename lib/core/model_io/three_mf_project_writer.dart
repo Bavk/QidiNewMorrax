@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 
+import '../geometry/point.dart';
 import 'mesh.dart';
 import 'three_mf_transform.dart';
 
@@ -314,16 +316,24 @@ class ThreeMfProjectWriter {
     out
       ..writeln(' </resources>')
       ..writeln(' <build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">');
+    final plateIndexByInstance = _plateIndexByInstance(project);
     for (var objectIndex = 0;
         objectIndex < project.objects.length;
         objectIndex++) {
       final object = project.objects[objectIndex];
       final parentId = ids[objectIndex].parentId;
-      for (final instance in object.instances) {
+      for (var instanceIndex = 0;
+          instanceIndex < object.instances.length;
+          instanceIndex++) {
+        final instance = object.instances[instanceIndex];
+        final plateIndex =
+            plateIndexByInstance[(objectIndex, instanceIndex)] ?? 0;
+        final transform =
+            _plateVirtualTransform(project, plateIndex) * instance.transform;
         out.writeln(
           '  <item objectid="$parentId" '
-          'p:UUID="${_buildItemUuid(parentId)}" '
-          'transform="${instance.transform.to3mfString()}" '
+          'p:UUID="${_buildItemUuid(parentId, instanceIndex)}" '
+          'transform="${transform.to3mfString()}" '
           'printable="${instance.printable ? 1 : 0}" auto_drop="0"/>',
         );
       }
@@ -464,8 +474,283 @@ class ThreeMfProjectWriter {
     return '${_hex8(value)}-b206-40ff-9872-83e8017abed1';
   }
 
-  static String _buildItemUuid(int parentId) =>
-      '${_hex8(parentId)}-b1ec-4553-aec9-835e5b724bb4';
+  static String _buildItemUuid(int parentId, int instanceIndex) {
+    final value = parentId + (instanceIndex << 16);
+    return '${_hex8(value)}-b1ec-4553-aec9-835e5b724bb4';
+  }
+
+  Map<(int, int), int> _plateIndexByInstance(ThreeMfProject project) {
+    final result = <(int, int), int>{};
+    final plates = project.plates.isEmpty
+        ? [
+            ThreeMfProjectPlate(
+              name: 'Plate 1',
+              instances: [
+                for (var objectIndex = 0;
+                    objectIndex < project.objects.length;
+                    objectIndex++)
+                  for (var instanceIndex = 0;
+                      instanceIndex <
+                          project.objects[objectIndex].instances.length;
+                      instanceIndex++)
+                    ThreeMfPlateInstance(
+                      objectIndex: objectIndex,
+                      instanceIndex: instanceIndex,
+                    ),
+              ],
+            ),
+          ]
+        : project.plates;
+
+    for (var plateIndex = 0; plateIndex < plates.length; plateIndex++) {
+      for (final placement in plates[plateIndex].instances) {
+        final key = (placement.objectIndex, placement.instanceIndex);
+        if (result.containsKey(key)) {
+          throw ArgumentError(
+            'Object ${placement.objectIndex} instance '
+            '${placement.instanceIndex} belongs to multiple plates.',
+          );
+        }
+        result[key] = plateIndex;
+      }
+    }
+    return result;
+  }
+
+  ThreeMfTransform _plateVirtualTransform(
+    ThreeMfProject project,
+    int plateIndex,
+  ) {
+    if (plateIndex <= 0) return ThreeMfTransform.identity;
+    final size = _printableAreaSize(project.projectSettings);
+    if (size == null) {
+      throw ArgumentError(
+        'Multi-plate Orca projects require printable_area in '
+        'project_settings.config.',
+      );
+    }
+    final plateCount = project.plates.isEmpty ? 1 : project.plates.length;
+    final columns = _columnCount(plateCount);
+    final row = plateIndex ~/ columns;
+    final column = plateIndex % columns;
+    const gapRatio = 0.2;
+    return ThreeMfTransform.fromComponents(
+      translation: Point3(
+        column * size.$1 * (1 + gapRatio),
+        -row * size.$2 * (1 + gapRatio),
+        0,
+      ),
+    );
+  }
+
+  (double, double)? _printableAreaSize(Map<String, dynamic> settings) {
+    final raw = settings['printable_area'];
+    if (raw is! List || raw.isEmpty) return null;
+    double? minX;
+    double? maxX;
+    double? minY;
+    double? maxY;
+    final pattern = RegExp(
+      r'^\s*(-?(?:\d+(?:\.\d*)?|\.\d+))x'
+      r'(-?(?:\d+(?:\.\d*)?|\.\d+))\s*
+
+  String _modelSettingsXml(ThreeMfProject project, List<_ObjectIds> ids) {
+    final out = StringBuffer()
+      ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
+      ..writeln('<config>');
+
+    for (var objectIndex = 0;
+        objectIndex < project.objects.length;
+        objectIndex++) {
+      final object = project.objects[objectIndex];
+      final objectIds = ids[objectIndex];
+      out
+        ..writeln('  <object id="${objectIds.parentId}">')
+        ..writeln(
+          '    <metadata key="name" value="${_xml(object.name)}"/>',
+        );
+      for (final setting in object.settings.entries) {
+        out.writeln(
+          '    <metadata key="${_xml(setting.key)}" '
+          'value="${_xml(setting.value)}"/>',
+        );
+      }
+      for (var volumeIndex = 0;
+          volumeIndex < object.volumes.length;
+          volumeIndex++) {
+        final volume = object.volumes[volumeIndex];
+        out
+          ..writeln(
+            '    <part id="${objectIds.volumeIds[volumeIndex]}" '
+            'subtype="${_xml(volume.type)}">',
+          )
+          ..writeln(
+            '      <metadata key="name" value="${_xml(volume.name)}"/>',
+          )
+          ..writeln(
+            '      <metadata key="matrix" '
+            'value="${volume.transform.toMatrixString()}"/>',
+          );
+        for (final setting in volume.settings.entries) {
+          out.writeln(
+            '      <metadata key="${_xml(setting.key)}" '
+            'value="${_xml(setting.value)}"/>',
+          );
+        }
+        out.writeln(
+          '      <mesh_stat edges_fixed="0" degenerate_facets="0" '
+          'facets_removed="0" facets_reversed="0" backwards_edges="0"/>',
+        );
+        out.writeln('    </part>');
+      }
+      out.writeln('  </object>');
+    }
+
+    final plates = project.plates.isEmpty
+        ? [
+            ThreeMfProjectPlate(
+              name: 'Plate 1',
+              instances: [
+                for (var objectIndex = 0;
+                    objectIndex < project.objects.length;
+                    objectIndex++)
+                  for (var instanceIndex = 0;
+                      instanceIndex <
+                          project.objects[objectIndex].instances.length;
+                      instanceIndex++)
+                    ThreeMfPlateInstance(
+                      objectIndex: objectIndex,
+                      instanceIndex: instanceIndex,
+                    ),
+              ],
+            ),
+          ]
+        : project.plates;
+
+    var identify = 1;
+    for (var plateIndex = 0; plateIndex < plates.length; plateIndex++) {
+      final plate = plates[plateIndex];
+      out
+        ..writeln('  <plate>')
+        ..writeln(
+          '    <metadata key="plater_id" value="${plateIndex + 1}"/>',
+        )
+        ..writeln(
+          '    <metadata key="plater_name" value="${_xml(plate.name)}"/>',
+        )
+        ..writeln(
+          '    <metadata key="locked" value="${plate.locked}"/>',
+        );
+      for (final setting in plate.settings.entries) {
+        out.writeln(
+          '    <metadata key="${_xml(setting.key)}" '
+          'value="${_xml(setting.value)}"/>',
+        );
+      }
+      for (final placement in plate.instances) {
+        if (placement.objectIndex < 0 ||
+            placement.objectIndex >= project.objects.length) {
+          throw RangeError.index(
+            placement.objectIndex,
+            project.objects,
+            'objectIndex',
+          );
+        }
+        final object = project.objects[placement.objectIndex];
+        if (placement.instanceIndex < 0 ||
+            placement.instanceIndex >= object.instances.length) {
+          throw RangeError.index(
+            placement.instanceIndex,
+            object.instances,
+            'instanceIndex',
+          );
+        }
+        out
+          ..writeln('    <model_instance>')
+          ..writeln(
+            '      <metadata key="object_id" '
+            'value="${ids[placement.objectIndex].parentId}"/>',
+          )
+          ..writeln(
+            '      <metadata key="instance_id" '
+            'value="${placement.instanceIndex}"/>',
+          )
+          ..writeln(
+            '      <metadata key="identify_id" '
+            'value="${placement.identifyId ?? identify++}"/>',
+          )
+          ..writeln('    </model_instance>');
+      }
+      out.writeln('  </plate>');
+    }
+
+    out
+      ..writeln('  <assemble>')
+      ..writeln('  </assemble>')
+      ..writeln('</config>');
+    return out.toString();
+  }
+
+  static String _number(double value) {
+    if (value.abs() < 1e-15) return '0';
+    final rounded = value.roundToDouble();
+    if ((value - rounded).abs() < 1e-12) return rounded.toInt().toString();
+    return value.toStringAsPrecision(17);
+  }
+
+  static String _xml(String value) => value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
+
+  static const _contentTypes =
+      '<?xml version="1.0" encoding="UTF-8"?>\n'
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+      ' <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n'
+      ' <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n'
+      ' <Default Extension="config" ContentType="application/octet-stream"/>\n'
+      '</Types>\n';
+
+  static const _relationships =
+      '<?xml version="1.0" encoding="UTF-8"?>\n'
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+      ' <Relationship Target="/3D/3dmodel.model" Id="rel0" '
+      'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>\n'
+      '</Relationships>\n';
+}
+
+class _ObjectIds {
+  const _ObjectIds(this.volumeIds, this.parentId);
+  final List<int> volumeIds;
+  final int parentId;
+}
+,
+    );
+    for (final value in raw) {
+      final match = pattern.firstMatch(value.toString());
+      if (match == null) continue;
+      final x = double.tryParse(match.group(1)!);
+      final y = double.tryParse(match.group(2)!);
+      if (x == null || y == null) continue;
+      minX = minX == null || x < minX ? x : minX;
+      maxX = maxX == null || x > maxX ? x : maxX;
+      minY = minY == null || y < minY ? y : minY;
+      maxY = maxY == null || y > maxY ? y : maxY;
+    }
+    if (minX == null || maxX == null || minY == null || maxY == null) {
+      return null;
+    }
+    return (maxX - minX, maxY - minY);
+  }
+
+  int _columnCount(int count) {
+    if (count <= 1) return 1;
+    final root = math.sqrt(count);
+    final rounded = root.round();
+    return root > rounded ? rounded + 1 : rounded;
+  }
 
   String _modelSettingsXml(ThreeMfProject project, List<_ObjectIds> ids) {
     final out = StringBuffer()
