@@ -344,86 +344,17 @@ class _OrcaGcodeStatistics {
   static _OrcaGcodeStatistics parse(Uint8List bytes) {
     final text = utf8.decode(bytes, allowMalformed: true);
     final normal = RegExp(
-      r'^;\s*estimated printing time \(normal mode\)\s*=\s*(.+?)\s*
-
-double _double(String? value) =>
-    double.tryParse(value?.trim() ?? '') ?? 0;
-
-bool _bool(String? value) {
-  final normalized = value?.trim().toLowerCase();
-  return normalized == 'true' || normalized == '1' || normalized == 'yes';
-}
-
-List<int> _intList(String? value) => List.unmodifiable(
-      (value ?? '')
-          .split(RegExp(r'[ ,;]+'))
-          .map((part) => int.tryParse(part))
-          .whereType<int>(),
-    );
-
-List<double> _doubleList(String? value) => List.unmodifiable(
-      (value ?? '')
-          .split(RegExp(r'[ ,;]+'))
-          .map((part) => double.tryParse(part))
-          .whereType<double>(),
-    );
-,
+      r'^;\s*estimated printing time \(normal mode\)\s*=\s*(.+?)\s*$',
       caseSensitive: false,
       multiLine: true,
     ).firstMatch(text);
     final bblTotal = RegExp(
-      r'^;\s*model printing time:.*?;\s*total estimated time:\s*(.+?)\s*
-
-double _double(String? value) =>
-    double.tryParse(value?.trim() ?? '') ?? 0;
-
-bool _bool(String? value) {
-  final normalized = value?.trim().toLowerCase();
-  return normalized == 'true' || normalized == '1' || normalized == 'yes';
-}
-
-List<int> _intList(String? value) => List.unmodifiable(
-      (value ?? '')
-          .split(RegExp(r'[ ,;]+'))
-          .map((part) => int.tryParse(part))
-          .whereType<int>(),
-    );
-
-List<double> _doubleList(String? value) => List.unmodifiable(
-      (value ?? '')
-          .split(RegExp(r'[ ,;]+'))
-          .map((part) => double.tryParse(part))
-          .whereType<double>(),
-    );
-,
+      r'^;\s*model printing time:.*?;\s*total estimated time:\s*(.+?)\s*$',
       caseSensitive: false,
       multiLine: true,
     ).firstMatch(text);
     final firstLayer = RegExp(
-      r'^;\s*estimated first layer printing time \(normal mode\)\s*=\s*(.+?)\s*
-
-double _double(String? value) =>
-    double.tryParse(value?.trim() ?? '') ?? 0;
-
-bool _bool(String? value) {
-  final normalized = value?.trim().toLowerCase();
-  return normalized == 'true' || normalized == '1' || normalized == 'yes';
-}
-
-List<int> _intList(String? value) => List.unmodifiable(
-      (value ?? '')
-          .split(RegExp(r'[ ,;]+'))
-          .map((part) => int.tryParse(part))
-          .whereType<int>(),
-    );
-
-List<double> _doubleList(String? value) => List.unmodifiable(
-      (value ?? '')
-          .split(RegExp(r'[ ,;]+'))
-          .map((part) => double.tryParse(part))
-          .whereType<double>(),
-    );
-,
+      r'^;\s*estimated first layer printing time \(normal mode\)\s*=\s*(.+?)\s*$',
       caseSensitive: false,
       multiLine: true,
     ).firstMatch(text);
@@ -513,3 +444,4 @@ List<double> _doubleList(String? value) => List.unmodifiable(
           .map((part) => double.tryParse(part))
           .whereType<double>(),
     );
+
