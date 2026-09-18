@@ -41,6 +41,8 @@ class _MainShellState extends State<MainShell> {
       await _workspace.slice();
       if (!mounted) return;
       setState(() => _index = 1);
+    } on OrcaSlicerCancelledException {
+      return;
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,22 +109,35 @@ class _MainShellState extends State<MainShell> {
                     ),
                     if (_index == 0) ...[
                       Tooltip(
-                        message: _workspace.canSlice
+                        message: _workspace.slicing
+                            ? (_workspace.statusMessage ?? 'Cancel current slice')
+                            : _workspace.canSlice
                             ? 'Slice with OrcaSlicer ${OrcaSlicerEngine.pinnedVersion}'
                             : 'Select a model, printer, process and filament',
                         child: FilledButton.icon(
-                          onPressed: _workspace.canSlice && !_workspace.slicing
+                          onPressed: _workspace.slicing
+                              ? _workspace.cancelSlice
+                              : _workspace.canSlice
                               ? _slicePlate
                               : null,
                           icon: _workspace.slicing
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    value: _workspace.slicingPercent == null
+                                        ? null
+                                        : _workspace.slicingPercent! / 100,
+                                  ),
                                 )
                               : const Icon(Icons.content_cut_outlined, size: 18),
                           label: Text(
-                            _workspace.slicing ? 'Slicing…' : 'Slice plate',
+                            _workspace.slicing
+                                ? _workspace.slicingPercent == null
+                                      ? 'Cancel slice'
+                                      : 'Cancel ${_workspace.slicingPercent}%'
+                                : 'Slice plate',
                           ),
                         ),
                       ),
