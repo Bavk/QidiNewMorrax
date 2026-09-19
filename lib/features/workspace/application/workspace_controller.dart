@@ -30,7 +30,7 @@ class WorkspaceController extends ChangeNotifier {
   String? sourceModelPath;
   QidiProfile? machine;
   QidiProfile? process;
-  QidiProfile? filament;
+  List<QidiProfile> filamentSlots = const [];
   ThreeMfPackage? sourceProject;
   WorkspaceEditableProject? editableProject;
   ThreeMfTransform _sourceProjectTransform = ThreeMfTransform.identity;
@@ -52,7 +52,7 @@ class WorkspaceController extends ChangeNotifier {
           mesh != null) &&
       machine != null &&
       process != null &&
-      filament != null;
+      filamentSlots.isNotEmpty;
 
   int? get slicingPercent => progress?.totalPercent;
 
@@ -90,6 +90,7 @@ class WorkspaceController extends ChangeNotifier {
     QidiProfile? machine,
     QidiProfile? process,
     QidiProfile? filament,
+    List<QidiProfile>? filamentSlots,
     ThreeMfPackage? sourceProject,
     WorkspaceEditableProject? editableProject,
   }) {
@@ -100,7 +101,10 @@ class WorkspaceController extends ChangeNotifier {
     this.sourceModelPath = sourceModelPath;
     this.machine = machine;
     this.process = process;
-    this.filament = filament;
+    this.filamentSlots = List.unmodifiable(
+      filamentSlots ??
+          (filament == null ? const <QidiProfile>[] : <QidiProfile>[filament]),
+    );
     this.sourceProject = sourceProject;
     this.editableProject = editableProject;
     error = null;
@@ -155,13 +159,18 @@ class WorkspaceController extends ChangeNotifier {
           await profiles.resolved(machine!.name) ?? machine!;
       final resolvedProcess =
           await profiles.resolved(process!.name) ?? process!;
-      final resolvedFilament =
-          await profiles.resolved(filament!.name) ?? filament!;
+      final resolvedFilaments = <QidiProfile>[];
+      for (final slot in filamentSlots) {
+        resolvedFilaments.add(
+          await profiles.resolved(slot.name) ?? slot,
+        );
+      }
       _throwIfCancelled();
+      editableProject?.validateExtruderAssignments(resolvedFilaments.length);
       final projectSettings = const OrcaProjectSettingsBuilder().build(
         machine: resolvedMachine,
         process: resolvedProcess,
-        filaments: [resolvedFilament],
+        filaments: resolvedFilaments,
       );
 
       statusMessage = 'Building 3MF project…';
@@ -178,7 +187,7 @@ class WorkspaceController extends ChangeNotifier {
         directory: profileDirectory,
         machine: resolvedMachine,
         process: resolvedProcess,
-        filaments: [resolvedFilament],
+        filaments: resolvedFilaments,
       );
 
       _throwIfCancelled();
