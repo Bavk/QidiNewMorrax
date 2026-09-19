@@ -5,9 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  release:
+    types: [published]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-verify-bundle:
@@ -163,3 +165,16 @@ jobs:
             orcaslicer-source-${{ env.ORCA_PIN }}.tar.gz
           if-no-files-found: error
           retention-days: 7
+
+      - name: Attach binary and corresponding source to GitHub Release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          gh release upload "${{ github.event.release.tag_name }}" \
+            qidi-new-morrax-linux-x64.tar.gz \
+            qidi-new-morrax-source.tar.gz \
+            "orcaslicer-source-${ORCA_PIN}.tar.gz" \
+            --clobber
