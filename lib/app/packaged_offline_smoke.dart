@@ -19,7 +19,7 @@ class PackagedOfflineSmokeOptions {
 
   static PackagedOfflineSmokeOptions parse(List<String> args) {
     String? value(String name) {
-      final prefix = name + '=';
+      final prefix = '${name}=';
       for (var index = 0; index < args.length; index++) {
         final argument = args[index];
         if (argument.startsWith(prefix)) {
@@ -65,7 +65,7 @@ class PackagedOfflineSmoke {
       final report = await _execute(options);
       await _writeReport(options.reportPath, report);
       stdout.writeln(
-        'PACKAGED_OFFLINE_SMOKE_OK ' + jsonEncode(report),
+        'PACKAGED_OFFLINE_SMOKE_OK ${jsonEncode(report)}',
       );
       return 0;
     } catch (error, stackTrace) {
@@ -83,7 +83,7 @@ class PackagedOfflineSmoke {
         }
       }
       stderr.writeln(
-        'PACKAGED_OFFLINE_SMOKE_ERROR ' + jsonEncode(failure),
+        'PACKAGED_OFFLINE_SMOKE_ERROR ${jsonEncode(failure)}',
       );
       return 1;
     }
@@ -95,7 +95,7 @@ class PackagedOfflineSmoke {
     final modelFile = File(options.modelPath);
     if (!await modelFile.exists()) {
       throw StateError(
-        'Smoke model does not exist: ' + options.modelPath,
+        'Smoke model does not exist: ${options.modelPath}',
       );
     }
 
@@ -190,9 +190,7 @@ class PackagedOfflineSmoke {
         result.sliceMetadata.plate(result.selectedPlate);
     if (selectedMetadata == null) {
       throw StateError(
-        'Slice metadata has no selected plate ' +
-            result.selectedPlate.toString() +
-            '.',
+        'Slice metadata has no selected plate ${result.selectedPlate}.',
       );
     }
 
