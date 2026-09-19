@@ -32,5 +32,6 @@
   "integration_verified: packaged pinned Orca Linux x64": 1,
   "release_gate_closed: packaged pinned Orca first target": 1,
   "integration_verified: packaged pinned QIDI profile catalog": 1,
-  "release_gate_closed: packaged offline slice-to-preview smoke": 1
+  "release_gate_closed: packaged offline slice-to-preview smoke": 1,
+  "integration_verified: real ordered filament slots + object assignment": 1
 }

@@ -13,11 +13,11 @@ Pinned engine:
 
 ## Validated checkpoint — 2026-09-19
 
-- functional code `9a2701a879138f1dce113c9b9a8255d07192f8cf`;
-- Flutter CI `35462902220` (#806), job `105949847037`;
+- functional code `58f20bbd2468dc14de81d413ba58e38530e6982b`;
+- Flutter CI `35467266012` (#829), job `105961796643`;
 - analyzer: **No issues found**;
-- tests: **142/142 passed**;
-- Orca smoke `35462902163` (#234), job `105949846774`, conclusion **success**;
+- tests: **144/144 passed**;
+- Orca smoke `35467266000` (#257), job `105961796652`, conclusion **success**;
 - real QIDI X-Plus 4 two-plate slice remains green; Linux packaged release smoke `35462902353` (#27), job `105949847400`, additionally compiles **1547** pinned QIDI profiles into the app and passes the packaged production-stack STL -> Orca -> Preview-input smoke with **5005** moves, **1988** extrusion moves, **537 s** prediction and **0.35 m** filament.
 
 ## Implemented in this cutover
@@ -29,6 +29,7 @@ Pinned engine:
 - object/volume settings, modifier/support volume types, painted facet metadata, extruder assignment and plate membership serialization;
 - Orca virtual-bed offsets for multi-plate projects;
 - generated Prepare projects now have editable multi-plate/object state plus explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`), volume-scoped settings and normal-part support/seam/fuzzy-skin facet annotations routed into the production 3MF;
+- Prepare/workspace now owns an ordered list of materialized filament slots; every slot is an inheritance-resolved QIDI filament preset, object `extruder` assignments are validated against the slot count, and real Orca CI slices a two-slot PLA/PETG project with the second object on extruder 2;
 - `Slice plate` routes through Orca instead of a Dart slicer;
 - extraction of every sliced 3MF `Metadata/plate_N.gcode` entry;
 - sliced `Metadata/slice_info.config` parsing with source-shaped G-code statistics fallback for fields Orca CLI leaves empty/zero;
@@ -53,7 +54,7 @@ Pinned engine:
 | sliced G-code + estimates/warnings/material -> Dart Preview | `integration_verified` including multi-plate metadata fallback | thumbnails / additional vendor payload metadata remain |
 | QIDI profile materialization | `integration_verified` for packaged pinned QIDI catalog + X-Plus 4 E2E | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
-| multi-plate / modifiers / paint / per-object settings | `port_started` with generated facet paint verified | viewport paint brush, real multi-filament/MMU color and wider per-volume overrides remain |
+| multi-plate / modifiers / paint / per-object settings | `port_started` with real ordered multi-filament object assignment verified | MMU facet `paint_color`, viewport brush and wider per-volume overrides remain |
 | slicing progress / cancellation | `integration_verified` on Linux / process cancellation unit-tested | add native progress transport validation for macOS/Windows packaging |
 | engine packaging / updater / exact version verification | `integration_verified` for Linux-first portable bundle | Windows/macOS packaging/updater remain post-v0.1 |
 | AGPL notices / corresponding source delivery | `integration_verified` engineering path on Linux | final public-release legal review remains |
@@ -61,7 +62,7 @@ Pinned engine:
 
 ## Immediate priority
 
-1. Continue the verified Prepare model with real multi-filament selection/materialization/assignment; couple MMU `paint_color` to those real slots, then widen per-object/per-volume overrides.
+1. Source-verify Orca's MMU/material facet-state serialization for slots above 2, add `paint_color` on top of the verified real filament slots, then widen per-object/per-volume overrides.
 2. For v0.1 first launch, Linux engine packaging, pinned runtime profiles, automated AGPL/source delivery and packaged offline E2E are closed engineering gates. The only remaining hard gate is real QIDI Moonraker upload/start validation on representative hardware; do not replace it with another mock.
 3. Improve facet-paint UX with viewport hit-testing/brushes while preserving the verified source-shaped facet state.
 4. Consume remaining sliced-package thumbnails/additional vendor payload metadata and continue broader Device/calibration/UI work.
