@@ -964,6 +964,178 @@ class _PreparePageState extends State<PreparePage> {
     }
   }
 
+  Future<void> _editSelectedFilamentPaint() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    final volumeIndex = selectedVolumeIndex;
+    if (project == null || objectIndex == null || volumeIndex == null) return;
+    final object = project.objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      setState(() {
+        error = StateError(
+          'Color paint is only supported on normal-part volumes.',
+        );
+      });
+      return;
+    }
+    if (selectedFilaments.length < 2) {
+      setState(() {
+        error = StateError(
+          'Add at least two materialized filament slots before color paint.',
+        );
+      });
+      return;
+    }
+
+    final facetText = TextEditingController();
+    var slot = object.extruder
+        .clamp(1, selectedFilaments.length)
+        .toInt();
+    var action = _FilamentPaintAction.paint;
+    String? validationMessage;
+
+    final result = await showDialog<
+        ({
+          int slot,
+          _FilamentPaintAction action,
+          List<int> facets,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Color paint'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${volume.name} · ${volume.mesh.triangles.length} facets',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<_FilamentPaintAction>(
+                  initialValue: action,
+                  decoration: const InputDecoration(labelText: 'Action'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: _FilamentPaintAction.paint,
+                      child: Text('Paint filament'),
+                    ),
+                    DropdownMenuItem(
+                      value: _FilamentPaintAction.erase,
+                      child: Text('Erase color paint'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => action = value);
+                    }
+                  },
+                ),
+                if (action == _FilamentPaintAction.paint) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    initialValue: slot,
+                    decoration: const InputDecoration(
+                      labelText: 'Filament slot',
+                    ),
+                    items: [
+                      for (var i = 0; i < selectedFilaments.length; i++)
+                        DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(
+                            'Slot ${i + 1} · ${selectedFilaments[i].name}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => slot = value);
+                      }
+                    },
+                  ),
+                ],
+                const SizedBox(height: 10),
+                TextField(
+                  controller: facetText,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Facet indices / ranges',
+                    hintText: '0,2-8,15 or all',
+                    helperText:
+                        'Valid indices: 0..${volume.mesh.triangles.length - 1}',
+                    errorText: validationMessage,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Color paint uses Orca TriangleSelector material-slot '
+                  'encoding and the same materialized slots passed to slicing.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                try {
+                  final facets = _parseFacetSelection(
+                    facetText.text,
+                    volume.mesh.triangles.length,
+                  );
+                  Navigator.pop(
+                    context,
+                    (slot: slot, action: action, facets: facets),
+                  );
+                } on FormatException catch (e) {
+                  setDialogState(() => validationMessage = e.message);
+                } on RangeError catch (e) {
+                  setDialogState(
+                    () => validationMessage = e.message.toString(),
+                  );
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    facetText.dispose();
+    if (result == null) return;
+
+    try {
+      final updated = result.action == _FilamentPaintAction.paint
+          ? project.paintFilamentFacets(
+              objectIndex,
+              volumeIndex,
+              result.facets,
+              filamentSlot: result.slot,
+            )
+          : project.clearFilamentFacetPaint(
+              objectIndex,
+              volumeIndex,
+              result.facets,
+            );
+      setState(() {
+        editableProject = updated;
+        error = null;
+        _publishSelection();
+      });
+    } catch (e) {
+      setState(() => error = e);
+    }
+  }
+
   List<int> _parseFacetSelection(String raw, int triangleCount) {
     final normalized = raw.trim().toLowerCase();
     if (triangleCount <= 0) {
@@ -1655,6 +1827,15 @@ class _PreparePageState extends State<PreparePage> {
                         label: const Text('Facet paint'),
                       ),
                       OutlinedButton.icon(
+                        onPressed: volume.type ==
+                                    WorkspaceEditableVolume.normalPart &&
+                                selectedFilaments.length > 1
+                            ? _editSelectedFilamentPaint
+                            : null,
+                        icon: const Icon(Icons.palette_outlined, size: 17),
+                        label: const Text('Color paint'),
+                      ),
+                      OutlinedButton.icon(
                         onPressed: object.volumes.length > 1
                             ? _removeSelectedVolume
                             : null,
@@ -2120,6 +2301,8 @@ class _MeshPainter extends CustomPainter {
 enum _TransformKind { move, rotate, scale }
 
 enum _FacetPaintAction { enforcer, blocker, erase }
+
+enum _FilamentPaintAction { paint, erase }
 
 class _TransformDialog extends StatefulWidget {
   const _TransformDialog({required this.kind});
