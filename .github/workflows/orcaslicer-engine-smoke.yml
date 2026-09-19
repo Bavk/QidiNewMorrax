@@ -266,9 +266,12 @@ jobs:
           grep -q '<object id="4"><metadata key="name" value="Cube B"/><metadata key="extruder" value="2"' out/model_settings.config
           python3 - <<'PY'
           import json
-          from pathlib import Path
+          import zipfile
 
-          settings = json.loads(Path('fixture/Metadata/project_settings.config').read_text())
+          with zipfile.ZipFile('fixture/project.3mf') as archive:
+              settings = json.loads(
+                  archive.read('Metadata/project_settings.config')
+              )
           ids = settings.get('filament_settings_id', [])
           assert len(ids) == 2, ids
           assert any('PLA' in item for item in ids), ids
