@@ -35,6 +35,7 @@ void main() {
       const {
         'layer_height': '0.2',
         'inherits': '0.20mm Standard @Qidi X3',
+        'compatible_printers': ['Qidi X-Plus 4 0.4 nozzle'],
       },
     );
     final filament = profile(
@@ -63,6 +64,10 @@ void main() {
     expect(settings['filament_settings_id'], [filament.name]);
     expect(settings['nozzle_diameter'], ['0.4']);
     expect(settings['layer_height'], '0.2');
+    expect(
+      settings['compatible_printers'],
+      ['Qidi X-Plus 4 0.4 nozzle'],
+    );
     expect(settings['nozzle_temperature'], ['210']);
     expect(settings['printer_model'], 'Qidi X-Plus 4');
     expect(
