@@ -423,9 +423,9 @@ void main() {
 
     final bytes = const ThreeMfProjectWriter().encode(
       project.toThreeMfProject(
-        projectSettings: const {
+        projectSettings: <String, dynamic>{
           ...projectSettings,
-          'filament_settings_id': ['PLA', 'PETG', 'ABS', 'TPU'],
+          'filament_settings_id': const ['PLA', 'PETG', 'ABS', 'TPU'],
         },
         workspaceToPrinter: ThreeMfTransform.identity,
       ),
