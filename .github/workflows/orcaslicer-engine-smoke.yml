@@ -217,7 +217,7 @@ jobs:
           "$ORCA_SLICER_BIN" \
             "$PWD/fixture/reference.stl" \
             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
-            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json;$PWD/fixture/filament_3.json" \
+            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json" \
             --arrange 1 \
             --ensure-on-bed \
             --slice 0 \
@@ -229,6 +229,54 @@ jobs:
           unzip -p out/reference.gcode.3mf Metadata/project_settings.config \
             > fixture/Metadata/project_settings.config
           test -s fixture/Metadata/project_settings.config
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          settings_path = Path('fixture/Metadata/project_settings.config')
+          settings = json.loads(settings_path.read_text())
+          third = json.loads(Path('fixture/filament_3.json').read_text())
+
+          # Orca 2.4.2 CLI crashes while synthesizing a reference config from
+          # three --load-filaments presets for this single-nozzle fixture.
+          # Build the third slot inside the self-contained 3MF instead: every
+          # two-slot config vector gets a third value, then the third preset's
+          # explicit child overrides replace that duplicated value.
+          for key, value in list(settings.items()):
+              if isinstance(value, list) and len(value) == 2:
+                  settings[key] = [*value, value[-1]]
+
+          metadata_keys = {
+              'name', 'type', 'inherits', 'from', 'setting_id',
+              'filament_id', 'instantiation', 'compatible_printers',
+              'compatible_prints', 'description', 'renamed_from',
+          }
+          for key, value in third.items():
+              if key in metadata_keys or not isinstance(value, list) or not value:
+                  continue
+              existing = settings.get(key)
+              if isinstance(existing, list) and len(existing) == 3:
+                  existing[-1] = value[-1]
+
+          ids = settings.get('filament_settings_id')
+          assert isinstance(ids, list) and len(ids) == 3, ids
+          ids[-1] = third['name']
+
+          filament_ids = settings.get('filament_ids')
+          if isinstance(filament_ids, list) and len(filament_ids) == 3:
+              filament_ids[-1] = third.get('filament_id', filament_ids[-1])
+
+          inherits = settings.get('inherits_group')
+          if isinstance(inherits, list) and len(inherits) == 4:
+              inherits.insert(-1, third.get('inherits', ''))
+
+          different = settings.get('different_settings_to_system')
+          if isinstance(different, list) and len(different) == 4:
+              different.insert(-1, '')
+
+          settings_path.write_text(json.dumps(settings, separators=(',', ':')))
+          print(f'embedded third filament slot: {ids}')
+          PY
           (cd fixture && zip -q -u project.3mf Metadata/project_settings.config)
           rm -rf fixture/Metadata
       - name: Slice all project plates with progress pipe
@@ -246,8 +294,6 @@ jobs:
           "$ORCA_SLICER_BIN" \
             "$PWD/fixture/project.3mf" \
             --pipe "$progress_pipe" \
-            --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
-            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json;$PWD/fixture/filament_3.json" \
             --arrange 0 \
             --ensure-on-bed \
             --slice 0 \
