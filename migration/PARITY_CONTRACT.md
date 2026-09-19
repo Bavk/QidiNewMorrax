@@ -47,7 +47,10 @@ Generated Prepare projects must keep Orca/Bambu project structure explicit inste
 - the first/simple volume may be a `normal_part`, while additional volumes may be `normal_part`, `modifier`, `support_enforcer` or `support_blocker`;
 - per-object and per-volume settings must remain attached to their original scope when serialized to `Metadata/model_settings.config`;
 - transforms that conceptually target an object must move all of its volumes together; volume-specific edits must not silently rewrite sibling volumes;
-- facet paint metadata belongs to a volume/facet and must remain volume-scoped when paint editing is added;
+- facet paint metadata belongs to a volume/facet and must remain volume-scoped. Pinned Orca v2.4.2 uses `FacetsAnnotation` / `TriangleSelector`; for an unsplit whole triangle ENFORCER serializes as `"4"` and BLOCKER as `"8"`. Supports and seam may use either state; fuzzy-skin uses only the ENFORCER/enable state;
+- facet paint authoring is valid only for `normal_part` volumes, matching Orca's painter behavior. Do not attach painter facets to modifier/support volumes;
+- MMU/material color paint (`paint_color`) must not be exposed until the referenced filament/extruder slots are backed by materialized runtime filament profiles;
+- the first Dart facet editor may address whole source triangles by index/range; future viewport brush/hit-testing must write the same volume/facet state rather than introduce a second paint model;
 - generated editor state must be the same state handed to `ThreeMfProjectWriter` and OrcaSlicer; do not maintain a separate presentation-only project model;
 - imported vendor 3MF remains lossless by default. Do not structurally rewrite imported package internals until the edited metadata can be round-tripped without dropping unknown vendor entries;
 - runtime filament/extruder assignments must not expose slots that are not backed by materialized filament profiles.
@@ -58,7 +61,7 @@ Generated Prepare projects must keep Orca/Bambu project structure explicit inste
 Acceptance is split at the engine boundary:
 
 1. Dart tests validate request construction, profile/materialization, model/project handoff, result extraction, Preview parsing and application state.
-2. Engine integration tests execute the pinned OrcaSlicer binary on representative QIDI projects and verify successful output plus selected golden invariants.
+2. Engine integration tests execute the pinned OrcaSlicer binary on representative QIDI projects and verify successful output plus selected golden invariants. Generated-project fixtures must exercise structural features being promoted (for example modifier/support volumes and facet-paint triangle attributes), not only legacy two-plate geometry.
 3. Release tests verify the exact bundled Orca version/commit and licensing/source notices.
 
 Historical Dart Clipper/Arachne parity tests are no longer production acceptance gates.
