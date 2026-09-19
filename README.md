@@ -26,9 +26,17 @@ Release bundling of the engine is still pending; development builds currently ex
 
 ## Current application foundations
 
-Implemented foundations include Flutter desktop navigation, Prepare model loading/transforms, QIDI profile loading/inheritance, lossless 3MF import/repack, Orca-compatible multi-plate project 3MF serialization, live Linux slicing progress, cancellation, G-code parsing/Preview, Moonraker/QIDI device foundations and calibration resources.
+Implemented foundations include Flutter desktop navigation, Prepare model loading/transforms, QIDI profile loading/inheritance, lossless 3MF import/repack, Orca-compatible multi-plate project 3MF serialization, live Linux slicing progress, cancellation, sliced-metadata parsing, G-code Preview, Moonraker/QIDI device foundations and calibration resources.
 
-The Orca boundary now preserves/encodes project objects, plates, modifiers/paint metadata, settings and filament assignment and returns all sliced plate G-code entries. Richer Prepare editing, sliced-metadata consumption, cross-platform native progress transport and release packaging remain open.
+Generated Prepare projects now edit plates, objects and explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`). Normal-part volumes also carry source-shaped Orca support/seam/fuzzy-skin facet annotations. The same state is serialized to production 3MF and exercised by the pinned Orca CI fixture.
+
+For continuation rules and current evidence, read [docs/HANDOFF.md](docs/HANDOFF.md) and [migration/PARITY_CONTRACT.md](migration/PARITY_CONTRACT.md) before extending the editor.
+
+## v0.1 first-launch target
+
+The deliberately narrow first-launch target is a single-material installable desktop build that can open/import a model, edit basic project state, slice through the pinned Orca engine, show Preview, and upload/start the resulting G-code on one representative QIDI printer.
+
+The remaining hard launch gates are engine packaging/version verification on the first desktop target, real-printer Moonraker validation, AGPL notice/corresponding-source delivery, and a packaged end-to-end smoke. Multi-filament/MMU authoring, viewport paint brushes, imported-vendor structural editing, thumbnails and all-platform packaging are parity work unless the v0.1 target is widened.
 
 ## Development
 

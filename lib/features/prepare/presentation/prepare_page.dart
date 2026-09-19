@@ -702,6 +702,243 @@ class _PreparePageState extends State<PreparePage> {
     });
   }
 
+  Future<void> _editSelectedFacetPaint() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    final volumeIndex = selectedVolumeIndex;
+    if (project == null || objectIndex == null || volumeIndex == null) return;
+    final volume = project.objects[objectIndex].volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      setState(() {
+        error = StateError(
+          'Facet paint is only supported on normal-part volumes.',
+        );
+      });
+      return;
+    }
+
+    final facetText = TextEditingController();
+    var channel = WorkspaceFacetPaintChannel.supports;
+    var action = _FacetPaintAction.enforcer;
+    String? validationMessage;
+
+    final result = await showDialog<
+        ({
+          WorkspaceFacetPaintChannel channel,
+          _FacetPaintAction action,
+          List<int> facets,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Facet paint'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${volume.name} · ${volume.mesh.triangles.length} facets',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<WorkspaceFacetPaintChannel>(
+                  initialValue: channel,
+                  decoration: const InputDecoration(labelText: 'Paint channel'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: WorkspaceFacetPaintChannel.supports,
+                      child: Text('Supports'),
+                    ),
+                    DropdownMenuItem(
+                      value: WorkspaceFacetPaintChannel.seam,
+                      child: Text('Seam'),
+                    ),
+                    DropdownMenuItem(
+                      value: WorkspaceFacetPaintChannel.fuzzySkin,
+                      child: Text('Fuzzy skin'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() {
+                      channel = value;
+                      if (channel == WorkspaceFacetPaintChannel.fuzzySkin &&
+                          action == _FacetPaintAction.blocker) {
+                        action = _FacetPaintAction.enforcer;
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<_FacetPaintAction>(
+                  initialValue: action,
+                  decoration: const InputDecoration(labelText: 'Action'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: _FacetPaintAction.enforcer,
+                      child: Text('Enforce / enable'),
+                    ),
+                    if (channel != WorkspaceFacetPaintChannel.fuzzySkin)
+                      const DropdownMenuItem(
+                        value: _FacetPaintAction.blocker,
+                        child: Text('Block'),
+                      ),
+                    const DropdownMenuItem(
+                      value: _FacetPaintAction.erase,
+                      child: Text('Erase channel paint'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => action = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: facetText,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Facet indices / ranges',
+                    hintText: '0,2-8,15 or all',
+                    helperText:
+                        'Valid indices: 0..${volume.mesh.triangles.length - 1}',
+                    errorText: validationMessage,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This edits Orca triangle attributes directly. '
+                  'A viewport brush can reuse the same facet state later.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                try {
+                  final facets = _parseFacetSelection(
+                    facetText.text,
+                    volume.mesh.triangles.length,
+                  );
+                  Navigator.pop(
+                    context,
+                    (
+                      channel: channel,
+                      action: action,
+                      facets: facets,
+                    ),
+                  );
+                } on FormatException catch (e) {
+                  setDialogState(() => validationMessage = e.message);
+                } on RangeError catch (e) {
+                  setDialogState(
+                    () => validationMessage = e.message.toString(),
+                  );
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    facetText.dispose();
+    if (result == null) return;
+
+    try {
+      final updated = switch (result.action) {
+        _FacetPaintAction.enforcer => project.paintFacets(
+            objectIndex,
+            volumeIndex,
+            result.facets,
+            channel: result.channel,
+            state: WorkspaceFacetPaintState.enforcer,
+          ),
+        _FacetPaintAction.blocker => project.paintFacets(
+            objectIndex,
+            volumeIndex,
+            result.facets,
+            channel: result.channel,
+            state: WorkspaceFacetPaintState.blocker,
+          ),
+        _FacetPaintAction.erase => project.clearFacetPaint(
+            objectIndex,
+            volumeIndex,
+            result.facets,
+            channel: result.channel,
+          ),
+      };
+      setState(() {
+        editableProject = updated;
+        error = null;
+        _publishSelection();
+      });
+    } catch (e) {
+      setState(() => error = e);
+    }
+  }
+
+  List<int> _parseFacetSelection(String raw, int triangleCount) {
+    final normalized = raw.trim().toLowerCase();
+    if (triangleCount <= 0) {
+      throw const FormatException('The selected volume has no facets.');
+    }
+    if (normalized == 'all') {
+      return List<int>.generate(triangleCount, (index) => index);
+    }
+    if (normalized.isEmpty) {
+      throw const FormatException('Enter one or more facet indices.');
+    }
+
+    final selected = <int>{};
+    for (final part in normalized.split(',')) {
+      final token = part.trim();
+      if (token.isEmpty) continue;
+      final range = RegExp(r'^(\d+)\s*-\s*(\d+)$').firstMatch(token);
+      if (range != null) {
+        final start = int.parse(range.group(1)!);
+        final end = int.parse(range.group(2)!);
+        if (end < start) {
+          throw FormatException('Invalid facet range: $token');
+        }
+        if (end >= triangleCount) {
+          throw RangeError(
+            'Facet range $token is outside 0..${triangleCount - 1}.',
+          );
+        }
+        for (var index = start; index <= end; index++) {
+          selected.add(index);
+        }
+        continue;
+      }
+
+      final index = int.tryParse(token);
+      if (index == null) {
+        throw FormatException('Invalid facet index: $token');
+      }
+      if (index < 0 || index >= triangleCount) {
+        throw RangeError(
+          'Facet index $index is outside 0..${triangleCount - 1}.',
+        );
+      }
+      selected.add(index);
+    }
+    if (selected.isEmpty) {
+      throw const FormatException('Enter one or more facet indices.');
+    }
+    final result = selected.toList()..sort();
+    return result;
+  }
+
   void _removeSelectedVolume() {
     final project = editableProject;
     final objectIndex = selectedObjectIndex;
@@ -1275,6 +1512,14 @@ class _PreparePageState extends State<PreparePage> {
                         label: const Text('Volume settings'),
                       ),
                       OutlinedButton.icon(
+                        onPressed: volume.type ==
+                                WorkspaceEditableVolume.normalPart
+                            ? _editSelectedFacetPaint
+                            : null,
+                        icon: const Icon(Icons.brush_outlined, size: 17),
+                        label: const Text('Facet paint'),
+                      ),
+                      OutlinedButton.icon(
                         onPressed: object.volumes.length > 1
                             ? _removeSelectedVolume
                             : null,
@@ -1289,7 +1534,8 @@ class _PreparePageState extends State<PreparePage> {
                   const SizedBox(height: 6),
                   Text(
                     '${_volumeTypeLabel(volume.type)}'
-                    '${volume.settings.isEmpty ? '' : ' · ${volume.settings.entries.map((entry) => '${entry.key}=${entry.value}').join(' · ')}'}',
+                    '${volume.settings.isEmpty ? '' : ' · ${volume.settings.entries.map((entry) => '${entry.key}=${entry.value}').join(' · ')}'}'
+                    '${volume.facets.isEmpty ? '' : ' · ${volume.facets.length} painted facet${volume.facets.length == 1 ? '' : 's'}'}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -1737,6 +1983,8 @@ class _MeshPainter extends CustomPainter {
 }
 
 enum _TransformKind { move, rotate, scale }
+
+enum _FacetPaintAction { enforcer, blocker, erase }
 
 class _TransformDialog extends StatefulWidget {
   const _TransformDialog({required this.kind});

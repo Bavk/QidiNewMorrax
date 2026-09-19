@@ -70,6 +70,20 @@ Functional code `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c`:
 
 This checkpoint does not claim facet-paint authoring or true multi-filament runtime assignment; those remain the next Prepare boundaries.
 
+## Facet paint checkpoint — 2026-09-19
+
+Functional code `c54cbacf31346049e7dd342759e12f5795e95a8b`:
+
+- Flutter run `35457718002` (#770), job `105935857211` — analyzer **No issues found**, **138/138 tests passed**;
+- Orca smoke `35457717977` (#198), job `105935857104` — **success**;
+- Dart state edits support, seam and fuzzy-skin facet channels independently and preserves sibling channels on the same triangle;
+- source-shaped whole-triangle codes are locked to pinned Orca `TriangleSelector`: ENFORCER `4`, BLOCKER `8`;
+- facet paint is rejected on non-`normal_part` volumes, matching Orca painter behavior;
+- the real pinned Orca fixture contains `paint_supports="4"`, `paint_seam="8"` and `paint_fuzzy_skin="4"` and still slices both plates successfully;
+- Prepare exposes an initial range-based authoring UI (`0,2-8,15` / `all`); viewport brush/hit-testing remains a presentation enhancement over the same verified facet state.
+
+MMU/material color paint is not promoted by this checkpoint. It remains coupled to real runtime multi-filament slot materialization.
+
 ## Dart boundary tests
 
 The Flutter suite additionally covers:
@@ -83,6 +97,7 @@ The Flutter suite additionally covers:
 - selected QIDI profile JSON materialization;
 - editable generated multi-plate workspace state, object reassignment/transforms/settings and production 3MF serialization;
 - editable child-volume subtype/settings behavior and real Orca acceptance of modifier/support-enforcer/support-blocker project structure;
+- source-shaped support/seam/fuzzy-skin facet annotations, normal-part scope enforcement and real Orca paint-attribute acceptance;
 - project 3MF serialization, lossless vendor repack and virtual-bed coordinate mapping.
 
 ## Device integration
@@ -91,11 +106,20 @@ The latest generated Orca G-code and selected-plate estimate are routed into the
 
 ## Remaining validation gates
 
+First-launch hard gates:
+
+- package/discover the pinned Orca executable on the chosen first desktop target and verify the packaged version/hash;
+- Moonraker upload/start on representative QIDI hardware;
+- AGPL notice/corresponding-source delivery in release packaging;
+- packaged end-to-end smoke from model open/import through slice/Preview to upload/start.
+
+Post-v0.1 or widened-target gates:
+
+- true multi-filament/MMU authoring and `paint_color` with materialized slots;
+- viewport paint brush/hit-testing UX;
 - sliced thumbnails and additional vendor printer-payload metadata where useful;
 - packaged macOS/Windows progress behavior and process-tree cancellation validation;
-- Moonraker upload/start on representative QIDI hardware;
-- packaged Windows/macOS/Linux engine artifacts and exact-version verification;
-- AGPL notice/corresponding-source delivery in release packaging.
+- all-platform packaged engine artifacts if v0.1 is released on more than the first target.
 
 ## Historical evidence
 

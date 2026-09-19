@@ -13,12 +13,12 @@ Pinned engine:
 
 ## Validated checkpoint — 2026-09-19
 
-- functional code `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c`;
-- Flutter CI `35456145423` (#761), job `105931646159`;
+- functional code `c54cbacf31346049e7dd342759e12f5795e95a8b`;
+- Flutter CI `35457718002` (#770), job `105935857211`;
 - analyzer: **No issues found**;
-- tests: **136/136 passed**;
-- Orca smoke `35456145434` (#189), job `105931646222`, conclusion **success**;
-- real QIDI X-Plus 4 two-plate slice remains green with explicit `modifier`, `support_enforcer` and `support_blocker` volumes: both plate G-code entries are printable, progress reaches **100%**, and each plate validates the existing metadata path.
+- tests: **138/138 passed**;
+- Orca smoke `35457717977` (#198), job `105935857104`, conclusion **success**;
+- real QIDI X-Plus 4 two-plate slice remains green with explicit modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint: both plate G-code entries are printable and progress reaches **100%**.
 
 ## Implemented in this cutover
 
@@ -28,7 +28,7 @@ Pinned engine:
 - imported vendor 3MF packages are preserved losslessly while owned build transforms are updated;
 - object/volume settings, modifier/support volume types, painted facet metadata, extruder assignment and plate membership serialization;
 - Orca virtual-bed offsets for multi-plate projects;
-- generated Prepare projects now have editable multi-plate/object state plus explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`) with volume-scoped settings routed into the production 3MF;
+- generated Prepare projects now have editable multi-plate/object state plus explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`), volume-scoped settings and normal-part support/seam/fuzzy-skin facet annotations routed into the production 3MF;
 - `Slice plate` routes through Orca instead of a Dart slicer;
 - extraction of every sliced 3MF `Metadata/plate_N.gcode` entry;
 - sliced `Metadata/slice_info.config` parsing with source-shaped G-code statistics fallback for fields Orca CLI leaves empty/zero;
@@ -46,11 +46,11 @@ Pinned engine:
 | Area | Status | Next work |
 |---|---|---|
 | Orca engine process boundary | `integration_verified` | package same pinned engine on all desktop targets |
-| Prepare/project -> Orca 3MF handoff | `integration_verified` | generated multi-plate/object/volume editor feeds production state; extend facet paint, multi-filament and broader per-volume editing |
+| Prepare/project -> Orca 3MF handoff | `integration_verified` | generated multi-plate/object/volume/facet editor feeds production state; extend real multi-filament and broader per-volume editing |
 | sliced G-code + estimates/warnings/material -> Dart Preview | `integration_verified` including multi-plate metadata fallback | thumbnails / additional vendor payload metadata remain |
 | QIDI profile materialization | `integration_verified` for X-Plus 4 fixture | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
-| multi-plate / modifiers / paint / per-object settings | `port_started` with generated multi-plate/object/volume editing verified | facet paint, real multi-filament and wider per-volume overrides remain |
+| multi-plate / modifiers / paint / per-object settings | `port_started` with generated facet paint verified | viewport paint brush, real multi-filament/MMU color and wider per-volume overrides remain |
 | slicing progress / cancellation | `integration_verified` on Linux / process cancellation unit-tested | add native progress transport validation for macOS/Windows packaging |
 | engine packaging / updater / exact version verification | `pending` | Windows/macOS/Linux packaging |
 | AGPL notices / corresponding source delivery | `pending` release gate | package license/source information |
@@ -58,8 +58,21 @@ Pinned engine:
 
 ## Immediate priority
 
-1. Continue the verified generated Prepare editor with facet paint first, then real multi-filament selection/assignment and wider per-object/per-volume settings; keep imported vendor 3MF structural edits lossless.
-2. Consume remaining sliced-package thumbnails and additional vendor printer-payload metadata where useful.
-3. Verify Moonraker upload/start against a real QIDI printer.
-4. Package the pinned engine for Windows/macOS/Linux with exact artifact/version checks, native progress behavior and AGPL compliance.
-5. Continue Flutter Device/calibration/UI work around the stable engine boundary.
+1. Continue the verified Prepare model with real multi-filament selection/materialization/assignment; couple MMU `paint_color` to those real slots, then widen per-object/per-volume overrides.
+2. For v0.1 first launch, prioritize packaging/version verification of the pinned engine on the first desktop target, real QIDI Moonraker upload/start, AGPL notice/source delivery, and one packaged end-to-end smoke.
+3. Improve facet-paint UX with viewport hit-testing/brushes while preserving the verified source-shaped facet state.
+4. Consume remaining sliced-package thumbnails/additional vendor payload metadata and continue broader Device/calibration/UI work.
+
+## v0.1 first-launch gates
+
+A first-launch build is intentionally narrower than full QIDI/Orca editor parity. The minimum release target is a single-material installable desktop build that opens a model, edits basic project state, slices through the pinned Orca engine, shows Preview, and uploads/starts on one representative QIDI printer.
+
+Open hard gates:
+
+- bundled/discovered pinned Orca executable with packaged version/hash verification on the chosen first desktop target;
+- real-printer Moonraker upload/start validation;
+- AGPL notices plus corresponding-source delivery in the distributable;
+- packaged end-to-end smoke from open/import through slice/preview to upload/start.
+
+True multi-filament/MMU authoring, viewport paint brushes, imported-vendor structural editing, thumbnails and all-platform packaging remain important parity work but are not required for that deliberately narrow v0.1 unless the release target is widened.
+

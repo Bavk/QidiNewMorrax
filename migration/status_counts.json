@@ -26,5 +26,10 @@
   "implemented_unverified: Orca gcode -> Moonraker upload/start": 1,
   "integration_verified: Orca sliced metadata -> Preview/Device": 1,
   "integration_verified: generated Prepare multi-plate/object editor": 1,
-  "integration_verified: generated Prepare modifier/support volume editor": 1
+  "integration_verified: generated Prepare modifier/support volume editor": 1,
+  "integration_verified: generated Prepare facet paint editor": 1,
+  "release_gate_open: packaged pinned Orca first target": 1,
+  "release_gate_open: real QIDI Moonraker upload/start": 1,
+  "release_gate_open: AGPL source delivery": 1,
+  "release_gate_open: packaged end-to-end smoke": 1
 }

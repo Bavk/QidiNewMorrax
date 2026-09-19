@@ -30,18 +30,18 @@ The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility l
 
 Functional code checkpoint:
 
-- code: `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c`;
-- Flutter parity run `35456145423` (#761), job `105931646159`;
+- code: `c54cbacf31346049e7dd342759e12f5795e95a8b`;
+- Flutter parity run `35457718002` (#770), job `105935857211`;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **136/136 passed**;
+- `flutter test --reporter expanded` — **138/138 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35456145434` (#189), job `105931646222`;
+- Orca smoke run `35457717977` (#198), job `105935857104`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
 - QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
-- the real QIDI X-Plus 4 two-plate project fixture, now containing modifier, support-enforcer and support-blocker volumes, sliced successfully;
+- the real QIDI X-Plus 4 two-plate project fixture, containing modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint attributes, sliced successfully;
 - both `Metadata/plate_1.gcode` and `Metadata/plate_2.gcode` were present with printable G0/G1 moves;
 - progress reached **100%**, and each plate retained the verified **1167 s** prediction / **1.335 m** filament metadata fallback;
 - conclusion — **success**.
@@ -103,15 +103,47 @@ PR #15 extends generated objects from the earlier single-mesh assumption to an e
 
 Functional HEAD `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c` is green in Flutter run `35456145423` (#761), job `105931646159`: analyzer clean, **136/136 tests passed**. The strengthened pinned Orca smoke `35456145434` (#189), job `105931646222`, is green with a real fixture containing all three non-normal volume subtypes.
 
+## Facet paint checkpoint — 2026-09-19
+
+PR #16 promotes source-shaped facet annotations into generated Prepare state:
+
+- `WorkspaceEditableProject.paintFacets()` / `clearFacetPaint()` edit support, seam and fuzzy-skin channels without overwriting sibling channels on the same triangle;
+- pinned Orca `TriangleSelector` encoding is used directly for unsplit whole facets: ENFORCER = `"4"`, BLOCKER = `"8"`;
+- facet paint is restricted to `normal_part` volumes, matching Orca painter behavior;
+- Prepare exposes a first functional editor using facet indices/ranges (`0,2-8,15` or `all`) with Enforce/Block/Erase actions; a viewport brush can be layered on the same state later;
+- MMU/material color paint is intentionally deferred until real multi-filament profiles/slots are materialized;
+- `ThreeMfProjectWriter` emits `paint_supports`, `paint_seam` and `paint_fuzzy_skin` on the exact source triangles.
+
+Functional HEAD `c54cbacf31346049e7dd342759e12f5795e95a8b` is green in Flutter run `35457718002` (#770), job `105935857211`: analyzer clean, **138/138 tests passed**. Pinned Orca smoke `35457717977` (#198), job `105935857104`, is green with real support/seam/fuzzy-skin facet attributes in the sliced project fixture.
+
+## First-launch definition
+
+For planning purposes, **v0.1 first launch** means an installable single-material desktop build that can:
+
+1. open/import a model or generated project;
+2. edit basic plate/object/volume state;
+3. slice through the pinned Orca engine;
+4. show the selected plate in Preview with Orca estimates/warnings/material usage;
+5. upload the generated G-code to one representative QIDI printer through Moonraker and optionally start the print;
+6. ship with reproducible Orca provenance plus required AGPL notices/corresponding-source information.
+
+The following are **not blockers for that first launch** unless the release target is explicitly widened: true multi-filament/MMU authoring, paint-color/MMU brush parity, full imported-vendor-3MF structural editing, sliced thumbnails, all calibration surfaces, and all three desktop operating systems.
+
+Hard first-launch gates still open after PR #16:
+
+- package/discover the pinned Orca executable for the chosen first desktop target and verify its version/hash from the packaged app;
+- validate Moonraker upload/start on representative QIDI hardware;
+- add AGPL notice/corresponding-source delivery to the packaged build;
+- run an end-to-end packaged-app smoke (open -> slice -> preview -> upload/start) and close release-blocking desktop errors.
+
 ## First unfinished priority
 
-The next application boundary is richer editing of the already verified project model. Continue in this order:
+Continue in this order:
 
-1. Continue the richer Prepare editor from the now-verified multi-volume model: add facet paint editing first, then real multi-filament selection/assignment, widen per-object/per-volume overrides, and finally decide how much structured editing imported vendor 3MF can support without violating lossless preservation.
-2. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
-3. Verify Moonraker upload/start against representative QIDI hardware.
-4. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks and platform progress behavior.
-5. Complete AGPL notices/corresponding-source delivery for distributed builds.
-6. Continue Dart/Flutter Device/calibration/UI integration around the stable engine boundary.
+1. For feature parity, add real multi-filament selection/materialization/assignment on top of the now-verified object/volume/facet model; `paint_color` stays coupled to that work. Widen per-object/per-volume overrides after slot materialization is correct.
+2. In parallel with parity work, prioritize the **v0.1 first-launch gates** above: packaged pinned engine, real-printer Moonraker validation, AGPL/source delivery, then packaged end-to-end smoke.
+3. Improve facet-paint UX with viewport hit-testing/brushes without changing the source-shaped facet state.
+4. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
+5. Continue broader Device/calibration/UI integration and cross-platform packaging after the first target is launchable.
 
 Do not reintroduce a parallel custom production slicer or Clipper in Dart.
