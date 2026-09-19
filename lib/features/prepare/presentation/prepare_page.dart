@@ -32,6 +32,7 @@ class _PreparePageState extends State<PreparePage> {
   List<QidiProfile> processes = const [];
   QidiProfile? machine;
   QidiProfile? filament;
+  List<QidiProfile> selectedFilaments = const [];
   QidiProfile? process;
   Mesh? mesh;
   ThreeMfPackage? sourceProject;
@@ -58,6 +59,7 @@ class _PreparePageState extends State<PreparePage> {
       machine: machine,
       process: process,
       filament: filament,
+      filaments: selectedFilaments,
       sourceProject: sourceProject,
       editableProject: editableProject,
     );
@@ -98,16 +100,91 @@ class _PreparePageState extends State<PreparePage> {
     processes = allProcesses
         .where((p) => p.isCompatibleWithPrinter(printerName))
         .toList(growable: false);
-    if (resetSelection || filament == null || !filaments.contains(filament)) {
-      filament =
-          filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
-          filaments.firstOrNull;
+    final defaultFilament =
+        filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
+        filaments.firstOrNull;
+    if (resetSelection) {
+      selectedFilaments = defaultFilament == null
+          ? const []
+          : [defaultFilament];
+    } else {
+      selectedFilaments = selectedFilaments
+          .where(filaments.contains)
+          .toList(growable: false);
+      if (selectedFilaments.isEmpty && defaultFilament != null) {
+        selectedFilaments = [defaultFilament];
+      }
     }
+    filament = selectedFilaments.firstOrNull;
     if (resetSelection || process == null || !processes.contains(process)) {
       process =
           processes.where((p) => p.name.contains('0.20')).firstOrNull ??
           processes.firstOrNull;
     }
+  }
+
+  void _setFilamentSlot(int slotIndex, QidiProfile? value) {
+    if (slotIndex < 0 || slotIndex >= selectedFilaments.length) return;
+    if (value == null) return;
+    setState(() {
+      final updated = [...selectedFilaments];
+      updated[slotIndex] = value;
+      selectedFilaments = List.unmodifiable(updated);
+      filament = selectedFilaments.firstOrNull;
+      _publishSelection();
+    });
+  }
+
+  void _addFilamentSlot() {
+    if (selectedFilaments.length >= 16 || filaments.isEmpty) return;
+    final candidate = filaments.firstWhere(
+      (profile) => !selectedFilaments.contains(profile),
+      orElse: () => selectedFilaments.firstOrNull ?? filaments.first,
+    );
+    setState(() {
+      selectedFilaments = List.unmodifiable([
+        ...selectedFilaments,
+        candidate,
+      ]);
+      filament = selectedFilaments.firstOrNull;
+      _publishSelection();
+    });
+  }
+
+  void _removeFilamentSlot(int slotIndex) {
+    if (slotIndex <= 0 || slotIndex >= selectedFilaments.length) return;
+    setState(() {
+      selectedFilaments = List.unmodifiable([
+        for (var i = 0; i < selectedFilaments.length; i++)
+          if (i != slotIndex) selectedFilaments[i],
+      ]);
+      filament = selectedFilaments.firstOrNull;
+      final project = editableProject;
+      if (project != null) {
+        var updated = project;
+        for (var objectIndex = 0;
+            objectIndex < updated.objects.length;
+            objectIndex++) {
+          final object = updated.objects[objectIndex];
+          final oldSlot = object.extruder;
+          final newSlot = oldSlot == slotIndex + 1
+              ? 1
+              : oldSlot > slotIndex + 1
+                  ? oldSlot - 1
+                  : oldSlot;
+          if (newSlot != oldSlot) {
+            updated = updated.updateObject(
+              objectIndex,
+              extruder: newSlot,
+            );
+          }
+        }
+        editableProject = updated.remapFilamentFacetSlotsAfterRemoval(
+          slotIndex + 1,
+        );
+      }
+      _publishSelection();
+    });
   }
 
   Future<void> _openModel() async {
