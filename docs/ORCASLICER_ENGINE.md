@@ -24,7 +24,7 @@ Prepare/project state is handed to Orca as:
 4. sliced 3MF -> all available `Metadata/plate_N.gcode` entries plus `Metadata/slice_info.config`;
 5. selected plate G-code + Orca estimates/warnings/material usage -> Preview and Device.
 
-Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job. Generated Prepare state is now editable through `WorkspaceEditableProject`; plate/object edits are serialized through the same `ThreeMfProjectWriter` boundary used by slicing.
+Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job. Generated Prepare state is now editable through `WorkspaceEditableProject`; plate/object edits are serialized through the same `ThreeMfProjectWriter` boundary used by slicing. Editable generated objects are structurally volume-based: a single object may carry normal-part, modifier, support-enforcer and support-blocker volumes, each with its own settings/facet metadata, and this structure must be preserved through `Metadata/model_settings.config` rather than flattened before slicing.
 
 ## Sliced metadata
 
