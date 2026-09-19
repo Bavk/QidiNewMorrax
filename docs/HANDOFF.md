@@ -11,7 +11,7 @@ Pinned engine:
 - Ubuntu 24.04 AppImage SHA-256 `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
 - GNU AGPL-3.0
 
-Read [ORCASLICER_ENGINE.md](ORCASLICER_ENGINE.md) and [../migration/PARITY_CONTRACT.md](../migration/PARITY_CONTRACT.md) before continuing.
+Read [ORCASLICER_ENGINE.md](ORCASLICER_ENGINE.md) and [../migration/PARITY_CONTRACT.md](../migration/PARITY_CONTRACT.md) before continuing. Generated-project editing now follows the explicit `plate -> object -> volumes` contract in `PARITY_CONTRACT.md`; do not collapse modifier/support volumes into a single object mesh when extending Prepare.
 
 ## Current production path
 
