@@ -47,6 +47,33 @@ void main() {
     expect(project.objects.every((object) => object.plateIndex == 0), isTrue);
   });
 
+  test('object extruders must map to materialized filament slots', () {
+    final project = WorkspaceEditableProject.empty()
+        .addObject(triangle('A', 0), plateIndex: 0, extruder: 1)
+        .addObject(triangle('B', 20), plateIndex: 0, extruder: 2);
+
+    project.validateExtruderAssignments(2);
+    expect(
+      () => project.validateExtruderAssignments(1),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.toString(),
+          'message',
+          contains('only 1 filament slot'),
+        ),
+      ),
+    );
+
+    expect(
+      () => WorkspaceEditableProject.empty().addObject(
+        triangle('Invalid', 0),
+        plateIndex: 0,
+        extruder: 0,
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('object transform and settings remain attached to selected object', () {
     var project = WorkspaceEditableProject.empty()
         .addObject(triangle('A', 0), plateIndex: 0);
