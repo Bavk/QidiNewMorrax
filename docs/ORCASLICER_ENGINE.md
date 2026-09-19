@@ -24,7 +24,7 @@ Prepare/project state is handed to Orca as:
 4. sliced 3MF -> all available `Metadata/plate_N.gcode` entries plus `Metadata/slice_info.config`;
 5. selected plate G-code + Orca estimates/warnings/material usage -> Preview and Device.
 
-Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job. Generated Prepare state is editable through `WorkspaceEditableProject`; plate/object/volume edits are serialized through the same `ThreeMfProjectWriter` boundary used by slicing. Editable generated objects are structurally volume-based: a single object may carry normal-part, modifier, support-enforcer and support-blocker volumes, each with its own settings/facet metadata. Pinned Orca smoke #189 slices a fixture containing all three non-normal subtypes, so this structure must stay explicit through `Metadata/model_settings.config` rather than being flattened.
+Multi-plate placement uses the same virtual-bed spacing convention as Orca, and the real pinned engine CI validates two plates in one `--slice 0` job. Generated Prepare state is editable through `WorkspaceEditableProject`; plate/object/volume/facet edits are serialized through the same `ThreeMfProjectWriter` boundary used by slicing. Editable generated objects are structurally volume-based: a single object may carry normal-part, modifier, support-enforcer and support-blocker volumes, each with its own settings/facet metadata. Facet annotations on normal parts use Orca's source-shaped `FacetsAnnotation` strings (`4` for unsplit ENFORCER, `8` for unsplit BLOCKER); pinned Orca smoke #198 accepts support/seam/fuzzy-skin paint attributes together with all three non-normal volume subtypes.
 
 ## Sliced metadata
 
@@ -59,10 +59,10 @@ The upstream `--pipe` callback manager is Linux-only in OrcaSlicer 2.4.2, so mac
 - OrcaSlicer must currently be installed or configured with `ORCA_SLICER_BIN`.
 - Native progress transport is verified on Linux only; equivalent macOS/Windows progress transport remains a packaging/integration task.
 - Estimates, warnings and material usage are consumed; sliced thumbnails and additional vendor printer-payload metadata are not yet fully integrated.
-- Generated multi-plate/object/volume editing is wired into Prepare and production 3MF, including modifier/support-enforcer/support-blocker creation and volume-scoped wall/infill overrides. Facet paint authoring, real multi-filament selection/assignment and wider per-volume overrides remain open; imported vendor 3MF stays on the lossless repack path.
+- Generated multi-plate/object/volume editing is wired into Prepare and production 3MF, including modifier/support-enforcer/support-blocker creation, volume-scoped wall/infill overrides, and source-shaped support/seam/fuzzy-skin facet annotations. The first paint UI addresses whole source facets by index/range; viewport brush/hit-testing remains UX work. Real multi-filament selection/assignment, MMU `paint_color`, and wider per-volume overrides remain open; imported vendor 3MF stays on the lossless repack path.
 - Cross-platform bundled-engine packaging and exact-version/updater verification remain pending.
 
-CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON.
+CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF containing normal/modifier/support volumes plus support/seam/fuzzy-skin facet annotations, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON.
 
 ## Licensing
 
