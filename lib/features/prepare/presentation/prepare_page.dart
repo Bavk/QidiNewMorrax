@@ -32,6 +32,7 @@ class _PreparePageState extends State<PreparePage> {
   List<QidiProfile> processes = const [];
   QidiProfile? machine;
   QidiProfile? filament;
+  List<QidiProfile> selectedFilaments = const [];
   QidiProfile? process;
   Mesh? mesh;
   ThreeMfPackage? sourceProject;
@@ -58,6 +59,7 @@ class _PreparePageState extends State<PreparePage> {
       machine: machine,
       process: process,
       filament: filament,
+      filaments: selectedFilaments,
       sourceProject: sourceProject,
       editableProject: editableProject,
     );
@@ -98,16 +100,91 @@ class _PreparePageState extends State<PreparePage> {
     processes = allProcesses
         .where((p) => p.isCompatibleWithPrinter(printerName))
         .toList(growable: false);
-    if (resetSelection || filament == null || !filaments.contains(filament)) {
-      filament =
-          filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
-          filaments.firstOrNull;
+    final defaultFilament =
+        filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
+        filaments.firstOrNull;
+    if (resetSelection) {
+      selectedFilaments = defaultFilament == null
+          ? const []
+          : [defaultFilament];
+    } else {
+      selectedFilaments = selectedFilaments
+          .where(filaments.contains)
+          .toList(growable: false);
+      if (selectedFilaments.isEmpty && defaultFilament != null) {
+        selectedFilaments = [defaultFilament];
+      }
     }
+    filament = selectedFilaments.firstOrNull;
     if (resetSelection || process == null || !processes.contains(process)) {
       process =
           processes.where((p) => p.name.contains('0.20')).firstOrNull ??
           processes.firstOrNull;
     }
+  }
+
+  void _setFilamentSlot(int slotIndex, QidiProfile? value) {
+    if (slotIndex < 0 || slotIndex >= selectedFilaments.length) return;
+    if (value == null) return;
+    setState(() {
+      final updated = [...selectedFilaments];
+      updated[slotIndex] = value;
+      selectedFilaments = List.unmodifiable(updated);
+      filament = selectedFilaments.firstOrNull;
+      _publishSelection();
+    });
+  }
+
+  void _addFilamentSlot() {
+    if (selectedFilaments.length >= 16 || filaments.isEmpty) return;
+    final candidate = filaments.firstWhere(
+      (profile) => !selectedFilaments.contains(profile),
+      orElse: () => selectedFilaments.firstOrNull ?? filaments.first,
+    );
+    setState(() {
+      selectedFilaments = List.unmodifiable([
+        ...selectedFilaments,
+        candidate,
+      ]);
+      filament = selectedFilaments.firstOrNull;
+      _publishSelection();
+    });
+  }
+
+  void _removeFilamentSlot(int slotIndex) {
+    if (slotIndex <= 0 || slotIndex >= selectedFilaments.length) return;
+    setState(() {
+      selectedFilaments = List.unmodifiable([
+        for (var i = 0; i < selectedFilaments.length; i++)
+          if (i != slotIndex) selectedFilaments[i],
+      ]);
+      filament = selectedFilaments.firstOrNull;
+      final project = editableProject;
+      if (project != null) {
+        var updated = project;
+        for (var objectIndex = 0;
+            objectIndex < updated.objects.length;
+            objectIndex++) {
+          final object = updated.objects[objectIndex];
+          final oldSlot = object.extruder;
+          final newSlot = oldSlot == slotIndex + 1
+              ? 1
+              : oldSlot > slotIndex + 1
+                  ? oldSlot - 1
+                  : oldSlot;
+          if (newSlot != oldSlot) {
+            updated = updated.updateObject(
+              objectIndex,
+              extruder: newSlot,
+            );
+          }
+        }
+        editableProject = updated.remapFilamentFacetSlotsAfterRemoval(
+          slotIndex + 1,
+        );
+      }
+      _publishSelection();
+    });
   }
 
   Future<void> _openModel() async {
@@ -887,6 +964,178 @@ class _PreparePageState extends State<PreparePage> {
     }
   }
 
+  Future<void> _editSelectedFilamentPaint() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    final volumeIndex = selectedVolumeIndex;
+    if (project == null || objectIndex == null || volumeIndex == null) return;
+    final object = project.objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      setState(() {
+        error = StateError(
+          'Color paint is only supported on normal-part volumes.',
+        );
+      });
+      return;
+    }
+    if (selectedFilaments.length < 2) {
+      setState(() {
+        error = StateError(
+          'Add at least two materialized filament slots before color paint.',
+        );
+      });
+      return;
+    }
+
+    final facetText = TextEditingController();
+    var slot = object.extruder
+        .clamp(1, selectedFilaments.length)
+        .toInt();
+    var action = _FilamentPaintAction.paint;
+    String? validationMessage;
+
+    final result = await showDialog<
+        ({
+          int slot,
+          _FilamentPaintAction action,
+          List<int> facets,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Color paint'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${volume.name} · ${volume.mesh.triangles.length} facets',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<_FilamentPaintAction>(
+                  initialValue: action,
+                  decoration: const InputDecoration(labelText: 'Action'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: _FilamentPaintAction.paint,
+                      child: Text('Paint filament'),
+                    ),
+                    DropdownMenuItem(
+                      value: _FilamentPaintAction.erase,
+                      child: Text('Erase color paint'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => action = value);
+                    }
+                  },
+                ),
+                if (action == _FilamentPaintAction.paint) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    initialValue: slot,
+                    decoration: const InputDecoration(
+                      labelText: 'Filament slot',
+                    ),
+                    items: [
+                      for (var i = 0; i < selectedFilaments.length; i++)
+                        DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(
+                            'Slot ${i + 1} · ${selectedFilaments[i].name}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => slot = value);
+                      }
+                    },
+                  ),
+                ],
+                const SizedBox(height: 10),
+                TextField(
+                  controller: facetText,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Facet indices / ranges',
+                    hintText: '0,2-8,15 or all',
+                    helperText:
+                        'Valid indices: 0..${volume.mesh.triangles.length - 1}',
+                    errorText: validationMessage,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Color paint uses Orca TriangleSelector material-slot '
+                  'encoding and the same materialized slots passed to slicing.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                try {
+                  final facets = _parseFacetSelection(
+                    facetText.text,
+                    volume.mesh.triangles.length,
+                  );
+                  Navigator.pop(
+                    context,
+                    (slot: slot, action: action, facets: facets),
+                  );
+                } on FormatException catch (e) {
+                  setDialogState(() => validationMessage = e.message);
+                } on RangeError catch (e) {
+                  setDialogState(
+                    () => validationMessage = e.message.toString(),
+                  );
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    facetText.dispose();
+    if (result == null) return;
+
+    try {
+      final updated = result.action == _FilamentPaintAction.paint
+          ? project.paintFilamentFacets(
+              objectIndex,
+              volumeIndex,
+              result.facets,
+              filamentSlot: result.slot,
+            )
+          : project.clearFilamentFacetPaint(
+              objectIndex,
+              volumeIndex,
+              result.facets,
+            );
+      setState(() {
+        editableProject = updated;
+        error = null;
+        _publishSelection();
+      });
+    } catch (e) {
+      setState(() => error = e);
+    }
+  }
+
   List<int> _parseFacetSelection(String raw, int triangleCount) {
     final normalized = raw.trim().toLowerCase();
     if (triangleCount <= 0) {
@@ -971,11 +1220,15 @@ class _PreparePageState extends State<PreparePage> {
       text: object.settings['sparse_infill_density'] ?? '',
     );
     var plateIndex = object.plateIndex;
+    var extruder = object.extruder
+        .clamp(1, math.max(1, selectedFilaments.length))
+        .toInt();
 
     final result = await showDialog<
         ({
           String name,
           int plateIndex,
+          int extruder,
           String wallLoops,
           String infill,
         })>(
@@ -1009,6 +1262,30 @@ class _PreparePageState extends State<PreparePage> {
                     }
                   },
                 ),
+                if (selectedFilaments.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    initialValue: extruder,
+                    decoration: const InputDecoration(
+                      labelText: 'Filament slot',
+                    ),
+                    items: [
+                      for (var i = 0; i < selectedFilaments.length; i++)
+                        DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(
+                            'Slot ${i + 1} · ${selectedFilaments[i].name}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => extruder = value);
+                      }
+                    },
+                  ),
+                ],
 
                 const SizedBox(height: 10),
                 Row(
@@ -1049,6 +1326,7 @@ class _PreparePageState extends State<PreparePage> {
                 (
                   name: name.text,
                   plateIndex: plateIndex,
+                  extruder: extruder,
                   wallLoops: wallLoops.text,
                   infill: infill.text,
                 ),
@@ -1083,6 +1361,7 @@ class _PreparePageState extends State<PreparePage> {
       objectIndex,
       name: result.name.trim().isEmpty ? object.name : result.name.trim(),
       plateIndex: result.plateIndex,
+      extruder: result.extruder,
       settings: settings,
     );
     setState(() {
@@ -1141,44 +1420,72 @@ class _PreparePageState extends State<PreparePage> {
           ),
           const SizedBox(height: 18),
           const Divider(),
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.inventory_2_outlined,
-            title: 'Filament',
+            title: 'Filaments',
             trailing: IconButton(
-              onPressed: null,
-              icon: Icon(Icons.add),
-              tooltip: 'Profile editing parity pending',
+              onPressed: !loadingProfiles &&
+                      filaments.isNotEmpty &&
+                      selectedFilaments.length < 16
+                  ? _addFilamentSlot
+                  : null,
+              icon: const Icon(Icons.add),
+              tooltip: 'Add filament slot',
             ),
           ),
           const SizedBox(height: 8),
-          _profileDropdown(
-            'Filament preset',
-            filaments,
-            filament,
-            (value) => setState(() {
-              filament = value;
-              _publishSelection();
-            }),
-          ),
-          const SizedBox(height: 8),
-          if (filament != null)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                Chip(
-                  label: Text(
-                    filament!.stringValue('filament_type') ?? 'Material',
-                  ),
-                ),
-                if (filament!.stringValue('nozzle_temperature') != null)
-                  Chip(
-                    label: Text(
-                      '${filament!.stringValue('nozzle_temperature')} °C',
+          if (selectedFilaments.isEmpty)
+            const Text('No compatible filament presets.')
+          else
+            for (var slotIndex = 0;
+                slotIndex < selectedFilaments.length;
+                slotIndex++) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _profileDropdown(
+                      'Filament slot ${slotIndex + 1}',
+                      filaments,
+                      selectedFilaments[slotIndex],
+                      (value) => _setFilamentSlot(slotIndex, value),
                     ),
                   ),
-              ],
-            ),
+                  if (slotIndex > 0) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      onPressed: () => _removeFilamentSlot(slotIndex),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      tooltip: 'Remove slot ${slotIndex + 1}',
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  Chip(
+                    label: Text(
+                      selectedFilaments[slotIndex]
+                              .stringValue('filament_type') ??
+                          'Material',
+                    ),
+                  ),
+                  if (selectedFilaments[slotIndex]
+                          .stringValue('nozzle_temperature') !=
+                      null)
+                    Chip(
+                      label: Text(
+                        '${selectedFilaments[slotIndex].stringValue('nozzle_temperature')} °C',
+                      ),
+                    ),
+                ],
+              ),
+              if (slotIndex + 1 < selectedFilaments.length)
+                const SizedBox(height: 8),
+            ],
           const SizedBox(height: 18),
           const Divider(),
           const _SectionHeader(
@@ -1518,6 +1825,15 @@ class _PreparePageState extends State<PreparePage> {
                             : null,
                         icon: const Icon(Icons.brush_outlined, size: 17),
                         label: const Text('Facet paint'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: volume.type ==
+                                    WorkspaceEditableVolume.normalPart &&
+                                selectedFilaments.length > 1
+                            ? _editSelectedFilamentPaint
+                            : null,
+                        icon: const Icon(Icons.palette_outlined, size: 17),
+                        label: const Text('Color paint'),
                       ),
                       OutlinedButton.icon(
                         onPressed: object.volumes.length > 1
@@ -1985,6 +2301,8 @@ class _MeshPainter extends CustomPainter {
 enum _TransformKind { move, rotate, scale }
 
 enum _FacetPaintAction { enforcer, blocker, erase }
+
+enum _FilamentPaintAction { paint, erase }
 
 class _TransformDialog extends StatefulWidget {
   const _TransformDialog({required this.kind});

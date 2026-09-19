@@ -49,7 +49,11 @@ Generated Prepare projects must keep Orca/Bambu project structure explicit inste
 - transforms that conceptually target an object must move all of its volumes together; volume-specific edits must not silently rewrite sibling volumes;
 - facet paint metadata belongs to a volume/facet and must remain volume-scoped. Pinned Orca v2.4.2 uses `FacetsAnnotation` / `TriangleSelector`; for an unsplit whole triangle ENFORCER serializes as `"4"` and BLOCKER as `"8"`. Supports and seam may use either state; fuzzy-skin uses only the ENFORCER/enable state;
 - facet paint authoring is valid only for `normal_part` volumes, matching Orca's painter behavior. Do not attach painter facets to modifier/support volumes;
-- MMU/material color paint (`paint_color`) must not be exposed until the referenced filament/extruder slots are backed by materialized runtime filament profiles;
+- runtime filament slots are ordered application state. Their 1-based slot number must stay identical across Prepare object assignments, project `filament_settings_id`, materialized filament preset files and Orca `--load-filaments` ordering;
+- every object extruder assignment and MMU `paint_color` reference must resolve to an actually materialized slot before slicing; invalid or dangling references fail closed rather than silently falling back;
+- pinned Orca `TriangleSelector` whole-facet MMU states map slot 1 -> `"4"`, slot 2 -> `"8"`, slot 3 -> `"0C"`, slot 4 -> `"1C"` and continue through slot 16 -> `"DC"`. Do not invent slot encodings beyond pinned Orca `ExtruderMax`;
+- removing a non-primary slot must remap generated object extruder IDs and painted facets consistently: references to the removed slot return to the explicit replacement slot (currently slot 1), and higher slots shift down by one;
+- MMU/material color paint (`paint_color`) may be exposed only when at least two runtime filament profiles are materialized and the selected color slot is in range;
 - the first Dart facet editor may address whole source triangles by index/range; future viewport brush/hit-testing must write the same volume/facet state rather than introduce a second paint model;
 - generated editor state must be the same state handed to `ThreeMfProjectWriter` and OrcaSlicer; do not maintain a separate presentation-only project model;
 - imported vendor 3MF remains lossless by default. Do not structurally rewrite imported package internals until the edited metadata can be round-tripped without dropping unknown vendor entries;

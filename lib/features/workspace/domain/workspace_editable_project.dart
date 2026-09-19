@@ -335,6 +335,156 @@ class WorkspaceEditableProject {
     );
   }
 
+  WorkspaceEditableProject paintFilamentFacets(
+    int objectIndex,
+    int volumeIndex,
+    Iterable<int> triangleIndices, {
+    required int filamentSlot,
+  }) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      throw StateError(
+        'Orca color painting is only defined for normal_part volumes.',
+      );
+    }
+    final encoded = facetColorForFilamentSlot(filamentSlot);
+    final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
+    for (final triangleIndex in triangleIndices.toSet()) {
+      _checkTriangle(volume, triangleIndex);
+      final current = facets[triangleIndex] ?? const ThreeMfFacetMetadata();
+      facets[triangleIndex] = ThreeMfFacetMetadata(
+        supports: current.supports,
+        seam: current.seam,
+        color: encoded,
+        fuzzySkin: current.fuzzySkin,
+      );
+    }
+    return updateVolume(objectIndex, volumeIndex, facets: facets);
+  }
+
+  WorkspaceEditableProject clearFilamentFacetPaint(
+    int objectIndex,
+    int volumeIndex,
+    Iterable<int> triangleIndices,
+  ) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      throw StateError(
+        'Orca color painting is only defined for normal_part volumes.',
+      );
+    }
+    final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
+    for (final triangleIndex in triangleIndices.toSet()) {
+      _checkTriangle(volume, triangleIndex);
+      final current = facets[triangleIndex];
+      if (current == null) continue;
+      final updated = ThreeMfFacetMetadata(
+        supports: current.supports,
+        seam: current.seam,
+        fuzzySkin: current.fuzzySkin,
+      );
+      if (updated.supports == null &&
+          updated.seam == null &&
+          updated.fuzzySkin == null) {
+        facets.remove(triangleIndex);
+      } else {
+        facets[triangleIndex] = updated;
+      }
+    }
+    return updateVolume(objectIndex, volumeIndex, facets: facets);
+  }
+
+  static String facetColorForFilamentSlot(int filamentSlot) {
+    if (filamentSlot < 1 || filamentSlot > 16) {
+      throw RangeError.range(
+        filamentSlot,
+        1,
+        16,
+        'filamentSlot',
+        'Pinned Orca TriangleSelector supports slots 1..16.',
+      );
+    }
+    if (filamentSlot == 1) return '4';
+    if (filamentSlot == 2) return '8';
+    final highNibble = filamentSlot - 3;
+    return '${highNibble.toRadixString(16).toUpperCase()}C';
+  }
+
+  static int? filamentSlotFromFacetColor(String? encoded) {
+    if (encoded == null || encoded.isEmpty) return null;
+    if (encoded == '4') return 1;
+    if (encoded == '8') return 2;
+    final match = RegExp(r'^([0-9A-D])C$').firstMatch(encoded.toUpperCase());
+    if (match == null) return null;
+    final slot = int.parse(match.group(1)!, radix: 16) + 3;
+    return slot <= 16 ? slot : null;
+  }
+
+  WorkspaceEditableProject remapFilamentFacetSlotsAfterRemoval(
+    int removedSlot, {
+    int replacementSlot = 1,
+  }) {
+    facetColorForFilamentSlot(removedSlot);
+    facetColorForFilamentSlot(replacementSlot);
+
+    var changed = false;
+    final remappedObjects = <WorkspaceEditableObject>[];
+    for (final object in objects) {
+      final remappedVolumes = <WorkspaceEditableVolume>[];
+      for (final volume in object.volumes) {
+        if (volume.type != WorkspaceEditableVolume.normalPart ||
+            volume.facets.isEmpty) {
+          remappedVolumes.add(volume);
+          continue;
+        }
+
+        var volumeChanged = false;
+        final facets = <int, ThreeMfFacetMetadata>{};
+        for (final entry in volume.facets.entries) {
+          final current = entry.value;
+          final slot = filamentSlotFromFacetColor(current.color);
+          String? color = current.color;
+          if (slot != null) {
+            if (slot == removedSlot) {
+              color = facetColorForFilamentSlot(replacementSlot);
+              volumeChanged = true;
+            } else if (slot > removedSlot) {
+              color = facetColorForFilamentSlot(slot - 1);
+              volumeChanged = true;
+            }
+          }
+          facets[entry.key] = ThreeMfFacetMetadata(
+            supports: current.supports,
+            seam: current.seam,
+            color: color,
+            fuzzySkin: current.fuzzySkin,
+          );
+        }
+        changed |= volumeChanged;
+        remappedVolumes.add(
+          volumeChanged ? volume.copyWith(facets: facets) : volume,
+        );
+      }
+      final objectChanged = [
+        for (var i = 0; i < remappedVolumes.length; i++)
+          if (!identical(remappedVolumes[i], object.volumes[i])) true,
+      ].isNotEmpty;
+      remappedObjects.add(
+        objectChanged ? object.copyWith(volumes: remappedVolumes) : object,
+      );
+    }
+
+    if (!changed) return this;
+    return WorkspaceEditableProject(
+      plates: plates,
+      objects: remappedObjects,
+    );
+  }
+
   WorkspaceEditableProject removeVolume(int objectIndex, int volumeIndex) {
     _checkVolume(objectIndex, volumeIndex);
     final object = objects[objectIndex];

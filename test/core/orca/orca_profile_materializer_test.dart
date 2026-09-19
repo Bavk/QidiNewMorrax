@@ -24,20 +24,31 @@ void main() {
       directory: dir,
       machine: profile('machine', 'machine'),
       process: profile('process', 'process'),
-      filaments: [profile('PLA', 'filament')],
+      filaments: [
+        profile('PLA', 'filament'),
+        profile('PETG', 'filament'),
+      ],
     );
 
     final machine =
         jsonDecode(await File(files.machine).readAsString()) as Map<String, dynamic>;
     final process =
         jsonDecode(await File(files.process).readAsString()) as Map<String, dynamic>;
-    final filament = jsonDecode(
-      await File(files.filaments.single).readAsString(),
+    final filamentA = jsonDecode(
+      await File(files.filaments[0]).readAsString(),
+    ) as Map<String, dynamic>;
+    final filamentB = jsonDecode(
+      await File(files.filaments[1]).readAsString(),
     ) as Map<String, dynamic>;
 
     expect(machine['name'], 'machine');
     expect(process['name'], 'process');
-    expect(filament['name'], 'PLA');
+    expect(filamentA['name'], 'PLA');
+    expect(filamentB['name'], 'PETG');
+    expect(files.filaments.map((path) => path.split('/').last), [
+      'filament_0.json',
+      'filament_1.json',
+    ]);
     expect(machine.containsKey('inherits'), isFalse);
   });
 }
