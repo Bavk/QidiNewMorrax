@@ -119,9 +119,6 @@ class _PreparePageState extends State<PreparePage> {
     }
   }
 
-  QidiProfile? get _primaryFilament =>
-      filamentSlots.isEmpty ? null : filamentSlots.first;
-
   void _setFilamentSlot(int index, QidiProfile? value) {
     if (value == null || index < 0 || index >= filamentSlots.length) return;
     setState(() {
