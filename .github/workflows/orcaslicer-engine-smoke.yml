@@ -68,6 +68,8 @@ jobs:
                           attrs += ' paint_seam="8"'
                       if index == 2:
                           attrs += ' paint_fuzzy_skin="4"'
+                      if index == 3:
+                          attrs += ' paint_color="0C"'
                   triangle_xml.append(
                       f'<triangle v1="{a}" v2="{b}" v3="{c}"{attrs}/>'
                   )
@@ -173,6 +175,7 @@ jobs:
           curl -fL "$base/process/0.20mm%20Standard%20@Qidi%20XPlus4.json" -o fixture/process.json
           curl -fL "$base/filament/Qidi%20Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
           curl -fL "$base/filament/QIDI%20PETG%20Basic%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament_2.json
+          curl -fL "$base/filament/QIDI%20PLA%20Rapido%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament_3.json
       - name: Embed canonical Orca project settings
         shell: bash
         run: |
@@ -214,7 +217,7 @@ jobs:
           "$ORCA_SLICER_BIN" \
             "$PWD/fixture/reference.stl" \
             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
-            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json" \
+            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json;$PWD/fixture/filament_3.json" \
             --arrange 1 \
             --ensure-on-bed \
             --slice 0 \
@@ -244,7 +247,7 @@ jobs:
             "$PWD/fixture/project.3mf" \
             --pipe "$progress_pipe" \
             --load-settings "$PWD/fixture/process.json;$PWD/fixture/machine.json" \
-            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json" \
+            --load-filaments "$PWD/fixture/filament.json;$PWD/fixture/filament_2.json;$PWD/fixture/filament_3.json" \
             --arrange 0 \
             --ensure-on-bed \
             --slice 0 \
@@ -259,6 +262,7 @@ jobs:
           grep -q 'paint_supports="4"' out/object_1.model
           grep -q 'paint_seam="8"' out/object_1.model
           grep -q 'paint_fuzzy_skin="4"' out/object_1.model
+          grep -q 'paint_color="0C"' out/object_1.model
           unzip -p fixture/project.3mf Metadata/model_settings.config > out/model_settings.config
           grep -q 'subtype="modifier"' out/model_settings.config
           grep -q 'subtype="support_enforcer"' out/model_settings.config
@@ -273,9 +277,10 @@ jobs:
                   archive.read('Metadata/project_settings.config')
               )
           ids = settings.get('filament_settings_id', [])
-          assert len(ids) == 2, ids
-          assert any('PLA' in item for item in ids), ids
+          assert len(ids) == 3, ids
+          assert any('Generic PLA' in item for item in ids), ids
           assert any('PETG' in item for item in ids), ids
+          assert any('PLA Rapido' in item for item in ids), ids
           print(f'validated multi-filament project settings: {ids}')
           PY
           for plate in 1 2; do
