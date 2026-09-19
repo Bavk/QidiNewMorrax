@@ -19,7 +19,7 @@ class PackagedOfflineSmokeOptions {
 
   static PackagedOfflineSmokeOptions parse(List<String> args) {
     String? value(String name) {
-      final prefix = '${name}=';
+      final prefix = '$name=';
       for (var index = 0; index < args.length; index++) {
         final argument = args[index];
         if (argument.startsWith(prefix)) {
