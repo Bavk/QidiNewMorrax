@@ -3,6 +3,17 @@ import '../../../core/model_io/mesh.dart';
 import '../../../core/model_io/three_mf_project_writer.dart';
 import '../../../core/model_io/three_mf_transform.dart';
 
+enum WorkspaceFacetPaintChannel {
+  supports,
+  seam,
+  fuzzySkin,
+}
+
+enum WorkspaceFacetPaintState {
+  enforcer,
+  blocker,
+}
+
 class WorkspaceEditableProject {
   WorkspaceEditableProject({
     required List<WorkspaceEditablePlate> plates,
@@ -212,6 +223,108 @@ class WorkspaceEditableProject {
     );
   }
 
+  WorkspaceEditableProject paintFacets(
+    int objectIndex,
+    int volumeIndex,
+    Iterable<int> triangleIndices, {
+    required WorkspaceFacetPaintChannel channel,
+    required WorkspaceFacetPaintState state,
+  }) {
+    _checkVolume(objectIndex, volumeIndex);
+    if (channel == WorkspaceFacetPaintChannel.fuzzySkin &&
+        state == WorkspaceFacetPaintState.blocker) {
+      throw ArgumentError(
+        'Fuzzy-skin paint only supports the enabled/enforcer state.',
+      );
+    }
+
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
+    final encoded = state == WorkspaceFacetPaintState.enforcer ? '4' : '8';
+
+    for (final triangleIndex in triangleIndices.toSet()) {
+      _checkTriangle(volume, triangleIndex);
+      final current = facets[triangleIndex] ?? const ThreeMfFacetMetadata();
+      facets[triangleIndex] = switch (channel) {
+        WorkspaceFacetPaintChannel.supports => ThreeMfFacetMetadata(
+            supports: encoded,
+            seam: current.seam,
+            color: current.color,
+            fuzzySkin: current.fuzzySkin,
+          ),
+        WorkspaceFacetPaintChannel.seam => ThreeMfFacetMetadata(
+            supports: current.supports,
+            seam: encoded,
+            color: current.color,
+            fuzzySkin: current.fuzzySkin,
+          ),
+        WorkspaceFacetPaintChannel.fuzzySkin => ThreeMfFacetMetadata(
+            supports: current.supports,
+            seam: current.seam,
+            color: current.color,
+            fuzzySkin: encoded,
+          ),
+      };
+    }
+
+    return updateVolume(
+      objectIndex,
+      volumeIndex,
+      facets: facets,
+    );
+  }
+
+  WorkspaceEditableProject clearFacetPaint(
+    int objectIndex,
+    int volumeIndex,
+    Iterable<int> triangleIndices, {
+    required WorkspaceFacetPaintChannel channel,
+  }) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
+
+    for (final triangleIndex in triangleIndices.toSet()) {
+      _checkTriangle(volume, triangleIndex);
+      final current = facets[triangleIndex];
+      if (current == null) continue;
+
+      final updated = switch (channel) {
+        WorkspaceFacetPaintChannel.supports => ThreeMfFacetMetadata(
+            seam: current.seam,
+            color: current.color,
+            fuzzySkin: current.fuzzySkin,
+          ),
+        WorkspaceFacetPaintChannel.seam => ThreeMfFacetMetadata(
+            supports: current.supports,
+            color: current.color,
+            fuzzySkin: current.fuzzySkin,
+          ),
+        WorkspaceFacetPaintChannel.fuzzySkin => ThreeMfFacetMetadata(
+            supports: current.supports,
+            seam: current.seam,
+            color: current.color,
+          ),
+      };
+      if (updated.supports == null &&
+          updated.seam == null &&
+          updated.color == null &&
+          updated.fuzzySkin == null) {
+        facets.remove(triangleIndex);
+      } else {
+        facets[triangleIndex] = updated;
+      }
+    }
+
+    return updateVolume(
+      objectIndex,
+      volumeIndex,
+      facets: facets,
+    );
+  }
+
   WorkspaceEditableProject removeVolume(int objectIndex, int volumeIndex) {
     _checkVolume(objectIndex, volumeIndex);
     final object = objects[objectIndex];
@@ -382,6 +495,13 @@ class WorkspaceEditableProject {
     final volumes = objects[objectIndex].volumes;
     if (volumeIndex < 0 || volumeIndex >= volumes.length) {
       throw RangeError.index(volumeIndex, volumes, 'volumeIndex');
+    }
+  }
+
+  void _checkTriangle(WorkspaceEditableVolume volume, int triangleIndex) {
+    final triangles = volume.mesh.triangles;
+    if (triangleIndex < 0 || triangleIndex >= triangles.length) {
+      throw RangeError.index(triangleIndex, triangles, 'triangleIndex');
     }
   }
 }
