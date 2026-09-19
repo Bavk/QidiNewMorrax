@@ -713,10 +713,9 @@ class _PreparePageState extends State<PreparePage> {
     final updated = project.removeVolume(objectIndex, volumeIndex);
     setState(() {
       editableProject = updated;
-      selectedVolumeIndex = volumeIndex.clamp(
-        0,
-        updated.objects[objectIndex].volumes.length - 1,
-      );
+      selectedVolumeIndex = volumeIndex
+          .clamp(0, updated.objects[objectIndex].volumes.length - 1)
+          .toInt();
       mesh = updated.objects[objectIndex].mesh;
       _publishSelection();
     });
