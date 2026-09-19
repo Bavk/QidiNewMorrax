@@ -49,15 +49,15 @@ Generated Prepare projects must keep Orca/Bambu project structure explicit inste
 - transforms that conceptually target an object must move all of its volumes together; volume-specific edits must not silently rewrite sibling volumes;
 - facet paint metadata belongs to a volume/facet and must remain volume-scoped. Pinned Orca v2.4.2 uses `FacetsAnnotation` / `TriangleSelector`; for an unsplit whole triangle ENFORCER serializes as `"4"` and BLOCKER as `"8"`. Supports and seam may use either state; fuzzy-skin uses only the ENFORCER/enable state;
 - facet paint authoring is valid only for `normal_part` volumes, matching Orca's painter behavior. Do not attach painter facets to modifier/support volumes;
-- MMU/material color paint (`paint_color`) must not be exposed until the referenced filament/extruder slots are backed by materialized runtime filament profiles;
+- MMU/material color paint (`paint_color`) may reference only real materialized filament slots. For an unsplit whole triangle, pinned Orca `TriangleSelector::serialize()` encodes slot 1 as `"4"`, slot 2 as `"8"`, and slots 3–16 as `<HEX(slot-3)>C` (`3 -> "0C"`, `16 -> "DC"`); do not substitute the decimal slot number or reuse support/seam encoding heuristics;
 - the first Dart facet editor may address whole source triangles by index/range; future viewport brush/hit-testing must write the same volume/facet state rather than introduce a second paint model;
 - generated editor state must be the same state handed to `ThreeMfProjectWriter` and OrcaSlicer; do not maintain a separate presentation-only project model;
 - imported vendor 3MF remains lossless by default. Do not structurally rewrite imported package internals until the edited metadata can be round-tripped without dropping unknown vendor entries;
 - runtime filament/extruder assignments must not expose slots that are not backed by materialized filament profiles;
 - generated multi-filament state is an **ordered, 1-based slot list**. Slot N maps to the Nth resolved preset passed both to `OrcaProjectSettingsBuilder` and `OrcaProfileMaterializer`, and object `extruder=N` is valid only while that slot exists;
-- changing machine compatibility or removing a slot must repair/reject dangling object assignments before slicing; never silently pass an object extruder outside the materialized slot range to Orca;
-- the current pinned Orca material-paint state surface is capped at 16 slots. Object-level slot assignment may use the verified ordered preset list independently of MMU facet painting;
-- `paint_color` remains gated until its full slot-state triangle serialization (including states above slot 2) is independently source-verified; do not infer it from support/seam `4`/`8` encodings.
+- changing machine compatibility or removing a slot must repair/reject dangling object and painted-facet assignments before slicing. When a slot is deleted, references above it shift down by one and references to the deleted slot are moved to an explicit surviving replacement; never silently pass an object/facet slot outside the materialized range to Orca;
+- the current pinned Orca material-paint state surface is capped at 16 slots. Object-level assignment and whole-facet MMU paint both use the same verified ordered preset list;
+- source verification is against pinned `EnforcerBlockerType`, `TriangleSelector::serialize()` and `FacetsAnnotation::get_triangle_as_string()`. CI must include an extended-state example above slot 2 (currently slot 3 / `paint_color="0C"`) so future changes cannot regress to the 2-bit support/seam assumption.
 
 
 ## Packaged-engine contract
