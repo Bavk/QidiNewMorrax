@@ -356,4 +356,94 @@ void main() {
     expect(child, contains('paint_fuzzy_skin="4"'));
   });
 
+
+  test('MMU whole-facet slot encoding matches pinned Orca', () {
+    expect(WorkspaceEditableProject.facetColorForFilamentSlot(1), '4');
+    expect(WorkspaceEditableProject.facetColorForFilamentSlot(2), '8');
+    expect(WorkspaceEditableProject.facetColorForFilamentSlot(3), '0C');
+    expect(WorkspaceEditableProject.facetColorForFilamentSlot(4), '1C');
+    expect(WorkspaceEditableProject.facetColorForFilamentSlot(16), 'DC');
+
+    expect(WorkspaceEditableProject.filamentSlotFromFacetColor('4'), 1);
+    expect(WorkspaceEditableProject.filamentSlotFromFacetColor('8'), 2);
+    expect(WorkspaceEditableProject.filamentSlotFromFacetColor('0C'), 3);
+    expect(WorkspaceEditableProject.filamentSlotFromFacetColor('DC'), 16);
+    expect(WorkspaceEditableProject.filamentSlotFromFacetColor('bad'), isNull);
+
+    expect(
+      () => WorkspaceEditableProject.facetColorForFilamentSlot(0),
+      throwsRangeError,
+    );
+    expect(
+      () => WorkspaceEditableProject.facetColorForFilamentSlot(17),
+      throwsRangeError,
+    );
+  });
+
+  test('MMU facet paint serializes and remaps removed slots', () {
+    final mesh = Mesh(
+      name: 'MMU',
+      triangles: [
+        Triangle(
+          const Point3(0, 0, 0),
+          const Point3(10, 0, 0),
+          const Point3(0, 10, 0),
+        ),
+        Triangle(
+          const Point3(10, 0, 0),
+          const Point3(10, 10, 0),
+          const Point3(0, 10, 0),
+        ),
+        Triangle(
+          const Point3(0, 10, 0),
+          const Point3(10, 10, 0),
+          const Point3(5, 15, 0),
+        ),
+      ],
+    );
+
+    var project = WorkspaceEditableProject.empty()
+        .addObject(mesh, plateIndex: 0, extruder: 2)
+        .paintFacets(
+          0,
+          0,
+          const [0],
+          channel: WorkspaceFacetPaintChannel.supports,
+          state: WorkspaceFacetPaintState.enforcer,
+        )
+        .paintFilamentFacets(0, 0, const [0], filamentSlot: 2)
+        .paintFilamentFacets(0, 0, const [1], filamentSlot: 3)
+        .paintFilamentFacets(0, 0, const [2], filamentSlot: 4);
+
+    var facets = project.objects.single.volumes.single.facets;
+    expect(facets[0]!.supports, '4');
+    expect(facets[0]!.color, '8');
+    expect(facets[1]!.color, '0C');
+    expect(facets[2]!.color, '1C');
+
+    final bytes = const ThreeMfProjectWriter().encode(
+      project.toThreeMfProject(
+        projectSettings: const {
+          ...projectSettings,
+          'filament_settings_id': ['PLA', 'PETG', 'ABS', 'TPU'],
+        },
+        workspaceToPrinter: ThreeMfTransform.identity,
+      ),
+    );
+    final package = const ThreeMfParser().parsePackage(bytes);
+    final child = utf8.decode(package.entry('3D/Objects/object_1.model')!);
+    expect(child, contains('paint_color="8"'));
+
+    project = project.remapFilamentFacetSlotsAfterRemoval(2);
+    facets = project.objects.single.volumes.single.facets;
+    expect(facets[0]!.color, '4');
+    expect(facets[0]!.supports, '4');
+    expect(facets[1]!.color, '8');
+    expect(facets[2]!.color, '0C');
+
+    project = project.clearFilamentFacetPaint(0, 0, const [0]);
+    expect(project.objects.single.volumes.single.facets[0]!.color, isNull);
+    expect(project.objects.single.volumes.single.facets[0]!.supports, '4');
+  });
+
 }
