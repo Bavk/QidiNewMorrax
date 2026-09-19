@@ -98,6 +98,22 @@ Functional/release code `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`:
 
 This closes the bundled-engine/version/hash gate for the Linux-first v0.1 target. The artifact is still a CI portable bundle rather than a claim of AGPL-complete public distribution.
 
+## Packaged offline application checkpoint — 2026-09-19
+
+Functional/release code `9a2701a879138f1dce113c9b9a8255d07192f8cf`:
+
+- Flutter run `35462902220` (#806), job `105949847037` — analyzer **No issues found**, **142/142 tests passed**;
+- Orca smoke `35462902163` (#234), job `105949846774` — **success**;
+- Linux packaged release smoke `35462902353` (#27), job `105949847400` — **success**;
+- the release workflow generated **1547** QIDI profiles from the exact pinned Orca source tree and compiled them into `assets/generated/profile_catalog.json` before Flutter build;
+- the packaged release executable was launched under Xvfb with no `ORCA_SLICER_BIN` override, so the app discovered and verified its sibling bundled AppImage;
+- the production path loaded a four-triangle STL, resolved the packaged X-Plus 4 machine/process/PLA profiles, materialized the project and presets, sliced through bundled Orca, parsed sliced metadata and parsed Preview G-code;
+- smoke output: **5005 moves**, **1988 extrusion moves**, **537 s** prediction, **0.35 m** filament, selected plate 1, `packaged_engine_verified=true`, `preview_ready=true`;
+- release-material artifact `qidi-new-morrax-linux-x64-release` id `10590381363` uploaded successfully.
+
+This closes the automated packaged offline open/import -> slice -> Preview-input gate. The smoke is intentionally non-interactive; a visual desktop sanity pass remains release QA, while printer-backed upload/start remains the only hard v0.1 integration gate.
+
+
 ## Dart boundary tests
 
 The Flutter suite additionally covers:
@@ -110,6 +126,7 @@ The Flutter suite additionally covers:
 - `Metadata/slice_info.config` headers, per-plate estimates/flags/objects/filaments/warnings;
 - Orca G-code time/gram/millimeter fallback, including the real length-only case where mass stays unknown;
 - selected QIDI profile JSON materialization;
+- packaged profile-catalog generation from pinned Orca source plus real packaged-binary profile resolution/slice/Preview-input smoke;
 - editable generated multi-plate workspace state, object reassignment/transforms/settings and production 3MF serialization;
 - editable child-volume subtype/settings behavior and real Orca acceptance of modifier/support-enforcer/support-blocker project structure;
 - source-shaped support/seam/fuzzy-skin facet annotations, normal-part scope enforcement and real Orca paint-attribute acceptance;
@@ -123,10 +140,11 @@ The latest generated Orca G-code and selected-plate estimate are routed into the
 
 First-launch hard gates:
 
-- Linux packaged-engine discovery/version/hash verification — **closed** by packaged release smoke #4;
-- Moonraker upload/start on representative QIDI hardware — open;
-- AGPL notice/corresponding-source delivery in release packaging — open;
-- packaged end-to-end smoke from model open/import through slice/Preview to upload/start — open.
+- Linux packaged-engine discovery/version/hash verification — **closed**;
+- pinned QIDI runtime profile catalog in the packaged app — **closed**;
+- AGPL notice/corresponding-source engineering delivery — **closed**;
+- packaged offline model open/import -> slice -> Preview-input path — **closed** by release smoke #27;
+- Moonraker upload/start on representative QIDI hardware — **open** and cannot be replaced by another mock.
 
 Post-v0.1 or widened-target gates:
 
