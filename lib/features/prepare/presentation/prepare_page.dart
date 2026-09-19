@@ -148,6 +148,9 @@ class _PreparePageState extends State<PreparePage> {
     }
     setState(() {
       final updated = [...filamentSlots]..removeAt(index);
+      editableProject = editableProject?.remapFilamentSlotsAfterRemoval(
+        index + 1,
+      );
       filamentSlots = List.unmodifiable(updated);
       _clampObjectExtrudersToSlots();
       _publishSelection();
@@ -955,6 +958,179 @@ class _PreparePageState extends State<PreparePage> {
     }
   }
 
+  Future<void> _editSelectedMaterialFacetPaint() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    final volumeIndex = selectedVolumeIndex;
+    if (project == null || objectIndex == null || volumeIndex == null) return;
+    final volume = project.objects[objectIndex].volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      setState(() {
+        error = StateError(
+          'Material facet paint is only supported on normal-part volumes.',
+        );
+      });
+      return;
+    }
+    if (filamentSlots.isEmpty) {
+      setState(() {
+        error = StateError('Add at least one filament slot before painting.');
+      });
+      return;
+    }
+
+    final facetText = TextEditingController();
+    var action = _MaterialFacetPaintAction.paint;
+    var slot = 1;
+    String? validationMessage;
+
+    final result = await showDialog<
+        ({
+          _MaterialFacetPaintAction action,
+          int slot,
+          List<int> facets,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Material facet paint'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${volume.name} · ${volume.mesh.triangles.length} facets',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<_MaterialFacetPaintAction>(
+                  initialValue: action,
+                  decoration: const InputDecoration(labelText: 'Action'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: _MaterialFacetPaintAction.paint,
+                      child: Text('Assign filament'),
+                    ),
+                    DropdownMenuItem(
+                      value: _MaterialFacetPaintAction.erase,
+                      child: Text('Erase material paint'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => action = value);
+                    }
+                  },
+                ),
+                if (action == _MaterialFacetPaintAction.paint) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    initialValue: slot,
+                    decoration: const InputDecoration(
+                      labelText: 'Filament slot',
+                    ),
+                    items: [
+                      for (var i = 0; i < filamentSlots.length; i++)
+                        DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(
+                            '${i + 1} · ${filamentSlots[i].name}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => slot = value);
+                      }
+                    },
+                  ),
+                ],
+                const SizedBox(height: 10),
+                TextField(
+                  controller: facetText,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Facet indices / ranges',
+                    hintText: '0,2-8,15 or all',
+                    helperText:
+                        'Valid indices: 0..${volume.mesh.triangles.length - 1}',
+                    errorText: validationMessage,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Material colors use Orca TriangleSelector states and may '
+                  'only reference the real materialized filament slots above.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                try {
+                  final facets = _parseFacetSelection(
+                    facetText.text,
+                    volume.mesh.triangles.length,
+                  );
+                  Navigator.pop(
+                    context,
+                    (
+                      action: action,
+                      slot: slot,
+                      facets: facets,
+                    ),
+                  );
+                } on FormatException catch (e) {
+                  setDialogState(() => validationMessage = e.message);
+                } on RangeError catch (e) {
+                  setDialogState(
+                    () => validationMessage = e.message.toString(),
+                  );
+                }
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+    facetText.dispose();
+    if (result == null) return;
+
+    try {
+      final updated = switch (result.action) {
+        _MaterialFacetPaintAction.paint => project.paintMaterialFacets(
+            objectIndex,
+            volumeIndex,
+            result.facets,
+            filamentSlot: result.slot,
+          ),
+        _MaterialFacetPaintAction.erase => project.clearMaterialFacetPaint(
+            objectIndex,
+            volumeIndex,
+            result.facets,
+          ),
+      };
+      updated.validateExtruderAssignments(filamentSlots.length);
+      setState(() {
+        editableProject = updated;
+        error = null;
+        _publishSelection();
+      });
+    } catch (e) {
+      setState(() => error = e);
+    }
+  }
+
   List<int> _parseFacetSelection(String raw, int triangleCount) {
     final normalized = raw.trim().toLowerCase();
     if (triangleCount <= 0) {
@@ -1663,6 +1839,15 @@ class _PreparePageState extends State<PreparePage> {
                         label: const Text('Facet paint'),
                       ),
                       OutlinedButton.icon(
+                        onPressed: volume.type ==
+                                    WorkspaceEditableVolume.normalPart &&
+                                filamentSlots.isNotEmpty
+                            ? _editSelectedMaterialFacetPaint
+                            : null,
+                        icon: const Icon(Icons.palette_outlined, size: 17),
+                        label: const Text('Material paint'),
+                      ),
+                      OutlinedButton.icon(
                         onPressed: object.volumes.length > 1
                             ? _removeSelectedVolume
                             : null,
@@ -2128,6 +2313,8 @@ class _MeshPainter extends CustomPainter {
 enum _TransformKind { move, rotate, scale }
 
 enum _FacetPaintAction { enforcer, blocker, erase }
+
+enum _MaterialFacetPaintAction { paint, erase }
 
 class _TransformDialog extends StatefulWidget {
   const _TransformDialog({required this.kind});

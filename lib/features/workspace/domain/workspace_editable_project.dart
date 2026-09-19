@@ -280,6 +280,97 @@ class WorkspaceEditableProject {
     );
   }
 
+  WorkspaceEditableProject paintMaterialFacets(
+    int objectIndex,
+    int volumeIndex,
+    Iterable<int> triangleIndices, {
+    required int filamentSlot,
+  }) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      throw StateError(
+        'Orca material facet painting is only defined for normal_part volumes.',
+      );
+    }
+    final encoded = encodeMaterialFacetSlot(filamentSlot);
+    final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
+
+    for (final triangleIndex in triangleIndices.toSet()) {
+      _checkTriangle(volume, triangleIndex);
+      final current = facets[triangleIndex] ?? const ThreeMfFacetMetadata();
+      facets[triangleIndex] = ThreeMfFacetMetadata(
+        supports: current.supports,
+        seam: current.seam,
+        color: encoded,
+        fuzzySkin: current.fuzzySkin,
+      );
+    }
+
+    return updateVolume(
+      objectIndex,
+      volumeIndex,
+      facets: facets,
+    );
+  }
+
+  WorkspaceEditableProject clearMaterialFacetPaint(
+    int objectIndex,
+    int volumeIndex,
+    Iterable<int> triangleIndices,
+  ) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      throw StateError(
+        'Orca material facet painting is only defined for normal_part volumes.',
+      );
+    }
+    final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
+
+    for (final triangleIndex in triangleIndices.toSet()) {
+      _checkTriangle(volume, triangleIndex);
+      final current = facets[triangleIndex];
+      if (current == null) continue;
+      final updated = ThreeMfFacetMetadata(
+        supports: current.supports,
+        seam: current.seam,
+        fuzzySkin: current.fuzzySkin,
+      );
+      if (updated.supports == null &&
+          updated.seam == null &&
+          updated.fuzzySkin == null) {
+        facets.remove(triangleIndex);
+      } else {
+        facets[triangleIndex] = updated;
+      }
+    }
+
+    return updateVolume(
+      objectIndex,
+      volumeIndex,
+      facets: facets,
+    );
+  }
+
+  static String encodeMaterialFacetSlot(int filamentSlot) {
+    if (filamentSlot < 1 || filamentSlot > 16) {
+      throw RangeError.range(filamentSlot, 1, 16, 'filamentSlot');
+    }
+    if (filamentSlot == 1) return '4';
+    if (filamentSlot == 2) return '8';
+    return '${(filamentSlot - 3).toRadixString(16).toUpperCase()}C';
+  }
+
+  static int decodeMaterialFacetSlot(String encoded) {
+    for (var slot = 1; slot <= 16; slot++) {
+      if (encodeMaterialFacetSlot(slot) == encoded) return slot;
+    }
+    throw FormatException('Unsupported Orca material facet code: $encoded');
+  }
+
   WorkspaceEditableProject clearFacetPaint(
     int objectIndex,
     int volumeIndex,
@@ -406,6 +497,54 @@ class WorkspaceEditableProject {
     );
   }
 
+  WorkspaceEditableProject remapFilamentSlotsAfterRemoval(
+    int removedSlot, {
+    int replacementSlot = 1,
+  }) {
+    if (removedSlot < 1 || removedSlot > 16) {
+      throw RangeError.range(removedSlot, 1, 16, 'removedSlot');
+    }
+    if (replacementSlot < 1 || replacementSlot > 16) {
+      throw RangeError.range(replacementSlot, 1, 16, 'replacementSlot');
+    }
+
+    int remapSlot(int slot) {
+      if (slot == removedSlot) return replacementSlot;
+      if (slot > removedSlot) return slot - 1;
+      return slot;
+    }
+
+    return WorkspaceEditableProject(
+      plates: plates,
+      objects: [
+        for (final object in objects)
+          object.copyWith(
+            extruder: remapSlot(object.extruder),
+            volumes: [
+              for (final volume in object.volumes)
+                volume.copyWith(
+                  facets: {
+                    for (final entry in volume.facets.entries)
+                      entry.key: entry.value.color == null
+                          ? entry.value
+                          : ThreeMfFacetMetadata(
+                              supports: entry.value.supports,
+                              seam: entry.value.seam,
+                              color: encodeMaterialFacetSlot(
+                                remapSlot(
+                                  decodeMaterialFacetSlot(entry.value.color!),
+                                ),
+                              ),
+                              fuzzySkin: entry.value.fuzzySkin,
+                            ),
+                  },
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
   void validateExtruderAssignments(int filamentSlotCount) {
     if (filamentSlotCount <= 0) {
       throw StateError('At least one materialized filament slot is required.');
@@ -417,6 +556,20 @@ class WorkspaceEditableProject {
           'but only $filamentSlotCount filament slot'
           '${filamentSlotCount == 1 ? '' : 's'} are materialized.',
         );
+      }
+      for (final volume in object.volumes) {
+        for (final facet in volume.facets.entries) {
+          final color = facet.value.color;
+          if (color == null) continue;
+          final slot = decodeMaterialFacetSlot(color);
+          if (slot > filamentSlotCount) {
+            throw StateError(
+              'Object "${object.name}" facet ${facet.key} uses material '
+              'slot $slot, but only $filamentSlotCount filament slot'
+              '${filamentSlotCount == 1 ? '' : 's'} are materialized.',
+            );
+          }
+        }
       }
     }
   }
