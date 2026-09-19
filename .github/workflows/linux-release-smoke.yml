@@ -36,7 +36,31 @@ jobs:
             ninja-build \
             pkg-config \
             libgtk-3-dev \
-            liblzma-dev
+            liblzma-dev \
+            libopengl0 \
+            libglu1-mesa \
+            libwebkit2gtk-4.1-0 \
+            libjavascriptcoregtk-4.1-0 \
+            xvfb
+
+      - name: Generate packaged QIDI profiles from pinned Orca source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
+          curl -fL --retry 3 \
+            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
+            -o "$orca_source"
+          rm -rf .orca-source
+          mkdir -p .orca-source assets/generated
+          tar -xzf "$orca_source" -C .orca-source --strip-components=1
+          python3 tool/generate_qidi_profile_catalog.py \
+            .orca-source \
+            assets/generated/profile_catalog.json
+          test -s assets/generated/profile_catalog.json
+          grep -q 'X-Plus 4' assets/generated/profile_catalog.json
+          grep -q 'Generic PLA' assets/generated/profile_catalog.json
+          grep -q '0.20mm Standard' assets/generated/profile_catalog.json
 
       - name: Install pinned Flutter
         shell: bash
@@ -91,6 +115,64 @@ jobs:
           bundle="$PWD/build/linux/x64/release/bundle"
           dart run tool/verify_packaged_orca.dart "$bundle/qidi_flow_flutter"
 
+      - name: Run packaged offline end-to-end smoke
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bundle="$PWD/build/linux/x64/release/bundle"
+          mkdir -p fixture smoke
+          python3 - <<'PY'
+          from pathlib import Path
+
+          vertices = [
+              (0,0,0),(20,0,0),(20,20,0),(0,20,0),
+              (0,0,20),(20,0,20),(20,20,20),(0,20,20),
+          ]
+          triangles = [
+              (0,2,1),(0,3,2),(4,5,6),(4,6,7),
+              (0,1,5),(0,5,4),(1,2,6),(1,6,5),
+              (2,3,7),(2,7,6),(3,0,4),(3,4,7),
+          ]
+          lines = ['solid qidi_packaged_smoke']
+          for a, b, c in triangles:
+              lines.append('  facet normal 0 0 0')
+              lines.append('    outer loop')
+              for index in (a, b, c):
+                  x, y, z = vertices[index]
+                  lines.append(f'      vertex {x} {y} {z}')
+              lines.append('    endloop')
+              lines.append('  endfacet')
+          lines.append('endsolid qidi_packaged_smoke')
+          Path('fixture/packaged-smoke-cube.stl').write_text(
+              '\n'.join(lines) + '\n',
+              encoding='ascii',
+          )
+          PY
+
+          xvfb-run -a "$bundle/qidi_flow_flutter" \
+            --packaged-offline-smoke \
+            --model "$PWD/fixture/packaged-smoke-cube.stl" \
+            --report "$PWD/smoke/packaged-offline-smoke.json"
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path('smoke/packaged-offline-smoke.json').read_text()
+          )
+          assert report['status'] == 'ok', report
+          assert report['engine']['packaged_verified'] is True, report
+          assert report['engine']['version'] == '2.4.2', report
+          assert report['model']['triangle_count'] == 12, report
+          assert report['slice']['gcode_bytes'] > 1000, report
+          assert report['slice']['bundle_bytes'] > report['slice']['gcode_bytes'], report
+          assert report['slice']['prediction_seconds'] > 0, report
+          assert report['preview']['move_count'] > 0, report
+          assert report['preview']['extrusion_move_count'] > 0, report
+          print(json.dumps(report, indent=2))
+          PY
+
       - name: Prepare legal notices and corresponding source
         shell: bash
         run: |
@@ -108,9 +190,6 @@ jobs:
             HEAD
 
           orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
-          curl -fL --retry 3 \
-            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
-            -o "$orca_source"
 
           test -s qidi-new-morrax-source.tar.gz
           test -s "$orca_source"
@@ -163,6 +242,7 @@ jobs:
             qidi-new-morrax-linux-x64.tar.gz
             qidi-new-morrax-source.tar.gz
             orcaslicer-source-${{ env.ORCA_PIN }}.tar.gz
+            smoke/packaged-offline-smoke.json
           if-no-files-found: error
           retention-days: 7
 
