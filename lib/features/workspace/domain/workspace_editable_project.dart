@@ -424,6 +424,67 @@ class WorkspaceEditableProject {
     return slot <= 16 ? slot : null;
   }
 
+  WorkspaceEditableProject remapFilamentFacetSlotsAfterRemoval(
+    int removedSlot, {
+    int replacementSlot = 1,
+  }) {
+    facetColorForFilamentSlot(removedSlot);
+    facetColorForFilamentSlot(replacementSlot);
+
+    var changed = false;
+    final remappedObjects = <WorkspaceEditableObject>[];
+    for (final object in objects) {
+      final remappedVolumes = <WorkspaceEditableVolume>[];
+      for (final volume in object.volumes) {
+        if (volume.type != WorkspaceEditableVolume.normalPart ||
+            volume.facets.isEmpty) {
+          remappedVolumes.add(volume);
+          continue;
+        }
+
+        var volumeChanged = false;
+        final facets = <int, ThreeMfFacetMetadata>{};
+        for (final entry in volume.facets.entries) {
+          final current = entry.value;
+          final slot = filamentSlotFromFacetColor(current.color);
+          String? color = current.color;
+          if (slot != null) {
+            if (slot == removedSlot) {
+              color = facetColorForFilamentSlot(replacementSlot);
+              volumeChanged = true;
+            } else if (slot > removedSlot) {
+              color = facetColorForFilamentSlot(slot - 1);
+              volumeChanged = true;
+            }
+          }
+          facets[entry.key] = ThreeMfFacetMetadata(
+            supports: current.supports,
+            seam: current.seam,
+            color: color,
+            fuzzySkin: current.fuzzySkin,
+          );
+        }
+        changed |= volumeChanged;
+        remappedVolumes.add(
+          volumeChanged ? volume.copyWith(facets: facets) : volume,
+        );
+      }
+      final objectChanged = [
+        for (var i = 0; i < remappedVolumes.length; i++)
+          if (!identical(remappedVolumes[i], object.volumes[i])) true,
+      ].isNotEmpty;
+      remappedObjects.add(
+        objectChanged ? object.copyWith(volumes: remappedVolumes) : object,
+      );
+    }
+
+    if (!changed) return this;
+    return WorkspaceEditableProject(
+      plates: plates,
+      objects: remappedObjects,
+    );
+  }
+
   WorkspaceEditableProject removeVolume(int objectIndex, int volumeIndex) {
     _checkVolume(objectIndex, volumeIndex);
     final object = objects[objectIndex];
