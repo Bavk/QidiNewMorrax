@@ -1,0 +1,49 @@
+QidiNewMorrax release notices
+================================
+
+QidiNewMorrax
+-------------
+QidiNewMorrax is distributed under the GNU Affero General Public License,
+version 3 (AGPL-3.0). There is NO WARRANTY, to the extent permitted by law.
+
+A copy of the license is included in this distribution as:
+  legal/AGPL-3.0.txt
+
+The complete source corresponding to this QidiNewMorrax build is distributed
+alongside the binary release as:
+  qidi-new-morrax-source.tar.gz
+
+OrcaSlicer engine
+-----------------
+This release bundles an unmodified upstream OrcaSlicer engine as a separate
+subprocess executable.
+
+Upstream: https://github.com/OrcaSlicer/OrcaSlicer
+Version: 2.4.2
+Commit: 8500fcdccaa10b5099ac20d252af3a7c560046f1
+License: GNU Affero General Public License, version 3
+Linux AppImage SHA-256:
+d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd
+
+The corresponding OrcaSlicer source for the exact pinned commit is distributed
+alongside the binary release as:
+  orcaslicer-source-8500fcdccaa10b5099ac20d252af3a7c560046f1.tar.gz
+
+OrcaSlicer documents an optional Bambu networking plugin based on non-free
+BambuLab libraries. QidiNewMorrax does not bundle, install, or use that
+optional plugin; printer delivery is handled by the Dart Moonraker/QIDI path.
+
+Release source manifest
+-----------------------
+The packaged binary also contains legal/SOURCE-MANIFEST.txt. The release
+workflow writes the exact QidiNewMorrax Git commit, OrcaSlicer source commit,
+source archive names, and SHA-256 checksums there.
+
+Modification notice
+-------------------
+QidiNewMorrax integrates OrcaSlicer as an external pinned engine and contains
+its own Flutter/Dart application, project/editor, Preview, Device and
+calibration integration. This integration was prepared in 2026.
+
+See the full AGPL-3.0 text for your rights to run, study, share and modify the
+covered software and for the complete warranty disclaimer and conditions.
