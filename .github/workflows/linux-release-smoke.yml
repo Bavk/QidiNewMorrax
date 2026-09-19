@@ -1,0 +1,111 @@
+name: Linux packaged release smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      FLUTTER_VERSION: '3.47.2'
+      ORCA_VERSION: '2.4.2'
+      ORCA_APPIMAGE_SHA256: 'd12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux desktop build dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            liblzma-dev
+
+      - name: Install pinned Flutter
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch "$FLUTTER_VERSION" \
+            https://github.com/flutter/flutter.git "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+          git config --global --add safe.directory "$HOME/flutter"
+
+      - name: Generate Linux desktop scaffold
+        shell: bash
+        run: |
+          set -euxo pipefail
+          flutter config --no-analytics --enable-linux-desktop
+          flutter --version
+          flutter create \
+            --platforms=linux \
+            --project-name qidi_flow_flutter \
+            --org com.bavk \
+            --no-pub \
+            .
+          flutter pub get
+
+      - name: Build Flutter Linux release
+        shell: bash
+        run: |
+          set -euxo pipefail
+          flutter build linux --release
+          bundle="$PWD/build/linux/x64/release/bundle"
+          test -x "$bundle/qidi_flow_flutter"
+          test -d "$bundle/data/flutter_assets"
+
+      - name: Bundle pinned OrcaSlicer
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bundle="$PWD/build/linux/x64/release/bundle"
+          mkdir -p "$bundle/orca"
+          curl -fL --retry 3 \
+            "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v${ORCA_VERSION}/OrcaSlicer_Linux_AppImage_Ubuntu2404_V${ORCA_VERSION}.AppImage" \
+            -o "$bundle/orca/OrcaSlicer.AppImage"
+          echo "${ORCA_APPIMAGE_SHA256}  $bundle/orca/OrcaSlicer.AppImage" \
+            | sha256sum -c -
+          chmod +x "$bundle/orca/OrcaSlicer.AppImage"
+          cp packaging/orca/linux/orca-engine.json "$bundle/orca/orca-engine.json"
+
+      - name: Verify packaged runtime discovery and provenance
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bundle="$PWD/build/linux/x64/release/bundle"
+          dart run tool/verify_packaged_orca.dart "$bundle/qidi_flow_flutter"
+
+      - name: Create portable release archive
+        shell: bash
+        run: |
+          set -euxo pipefail
+          tar \
+            -C build/linux/x64/release \
+            -czf qidi-new-morrax-linux-x64.tar.gz \
+            bundle
+          test -s qidi-new-morrax-linux-x64.tar.gz
+          tar -tzf qidi-new-morrax-linux-x64.tar.gz \
+            | grep -q 'bundle/orca/OrcaSlicer.AppImage'
+          tar -tzf qidi-new-morrax-linux-x64.tar.gz \
+            | grep -q 'bundle/orca/orca-engine.json'
+
+      - name: Upload portable Linux bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: qidi-new-morrax-linux-x64
+          path: qidi-new-morrax-linux-x64.tar.gz
+          if-no-files-found: error
+          retention-days: 7
