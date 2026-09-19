@@ -507,4 +507,31 @@ void main() {
     );
   });
 
+
+  test('filament removal remaps object and painted facet slots', () {
+    var project = WorkspaceEditableProject.empty()
+        .addObject(triangle('A', 0), plateIndex: 0, extruder: 3)
+        .addObject(triangle('B', 2), plateIndex: 0, extruder: 2)
+        .paintMaterialFacets(
+          0,
+          0,
+          const [0],
+          filamentSlot: 3,
+        )
+        .paintMaterialFacets(
+          1,
+          0,
+          const [0],
+          filamentSlot: 2,
+        );
+
+    project = project.remapFilamentSlotsAfterRemoval(2);
+
+    expect(project.objects[0].extruder, 2);
+    expect(project.objects[1].extruder, 1);
+    expect(project.objects[0].volumes[0].facets[0]!.color, '8');
+    expect(project.objects[1].volumes[0].facets[0]!.color, '4');
+    expect(() => project.validateExtruderAssignments(2), returnsNormally);
+  });
+
 }
