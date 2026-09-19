@@ -101,6 +101,7 @@ jobs:
               'Qidi X-Plus 4 0.4 nozzle',
               '0.20mm Standard @Qidi XPlus4',
               'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle',
+              'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle',
           }
           names = {entry['values']['name'] for entry in profiles}
           missing = sorted(required - names)
@@ -207,6 +208,15 @@ jobs:
           assert result['extrusion_move_count'] > 0, result
           assert result['prediction_seconds'] > 0, result
           assert result['filament_meters'] > 0, result
+          assert result['filament_slot_count'] == 2, result
+          assert result['primary_filament'] == (
+              'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle'
+          ), result
+          assert result['secondary_filament'] == (
+              'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle'
+          ), result
+          assert result['object_extruder'] == 1, result
+          assert result['paint_color'] == '8', result
           assert result['engine_executable'].endswith(
               '/orca/OrcaSlicer.AppImage'
           ), result
