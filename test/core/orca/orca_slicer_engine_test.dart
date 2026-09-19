@@ -21,13 +21,21 @@ void main() {
     if (!Platform.isLinux) return;
 
     final separator = Platform.pathSeparator;
-    final app = '$separatoropt$separatorqidi$separatorqidi_flow_flutter';
-    final packaged =
-        '$separatoropt$separatorqidi$separatororca$separator'
-        '${OrcaSlicerEngine.packagedLinuxExecutableName}';
-    final manifest =
-        '${separator}opt${separator}qidi${separator}orca${separator}'
-        '${OrcaSlicerEngine.packagedManifestFileName}';
+    final app = ['', 'opt', 'qidi', 'qidi_flow_flutter'].join(separator);
+    final packaged = [
+      '',
+      'opt',
+      'qidi',
+      'orca',
+      OrcaSlicerEngine.packagedLinuxExecutableName,
+    ].join(separator);
+    final manifest = [
+      '',
+      'opt',
+      'qidi',
+      'orca',
+      OrcaSlicerEngine.packagedManifestFileName,
+    ].join(separator);
 
     final executable = OrcaSlicerEngine.defaultExecutable(
       environment: const {},
