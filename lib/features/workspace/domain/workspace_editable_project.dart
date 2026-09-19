@@ -19,6 +19,9 @@ class WorkspaceEditableProject {
           '${object.plateIndex}.',
         );
       }
+      if (object.volumes.isEmpty) {
+        throw ArgumentError('Object "${object.name}" must contain a volume.');
+      }
     }
   }
 
@@ -106,13 +109,15 @@ class WorkspaceEditableProject {
     Map<String, String> settings = const {},
   }) {
     _checkPlate(plateIndex);
+    final objectName =
+        name?.trim().isNotEmpty == true ? name!.trim() : mesh.name;
     return WorkspaceEditableProject(
       plates: plates,
       objects: [
         ...objects,
-        WorkspaceEditableObject(
-          name: name?.trim().isNotEmpty == true ? name!.trim() : mesh.name,
-          mesh: mesh,
+        WorkspaceEditableObject.fromMesh(
+          mesh,
+          name: objectName,
           plateIndex: plateIndex,
           extruder: extruder,
           settings: settings,
@@ -153,6 +158,106 @@ class WorkspaceEditableProject {
     );
   }
 
+  WorkspaceEditableProject addVolume(
+    int objectIndex,
+    Mesh mesh, {
+    String? name,
+    String type = WorkspaceEditableVolume.normalPart,
+    Map<String, String> settings = const {},
+    Map<int, ThreeMfFacetMetadata> facets = const {},
+  }) {
+    _checkObject(objectIndex);
+    WorkspaceEditableVolume.validateType(type);
+    final object = objects[objectIndex];
+    final volume = WorkspaceEditableVolume(
+      name: name?.trim().isNotEmpty == true ? name!.trim() : mesh.name,
+      mesh: mesh,
+      type: type,
+      settings: settings,
+      facets: facets,
+    );
+    return _replaceObject(
+      objectIndex,
+      object.copyWith(volumes: [...object.volumes, volume]),
+    );
+  }
+
+  WorkspaceEditableProject updateVolume(
+    int objectIndex,
+    int volumeIndex, {
+    String? name,
+    String? type,
+    Map<String, String>? settings,
+    Map<int, ThreeMfFacetMetadata>? facets,
+  }) {
+    _checkVolume(objectIndex, volumeIndex);
+    if (type != null) WorkspaceEditableVolume.validateType(type);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    return _replaceObject(
+      objectIndex,
+      object.copyWith(
+        volumes: [
+          for (var i = 0; i < object.volumes.length; i++)
+            i == volumeIndex
+                ? volume.copyWith(
+                    name: name,
+                    type: type,
+                    settings: settings,
+                    facets: facets,
+                  )
+                : object.volumes[i],
+        ],
+      ),
+    );
+  }
+
+  WorkspaceEditableProject removeVolume(int objectIndex, int volumeIndex) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    if (object.volumes.length == 1) {
+      throw StateError('The last volume of an object cannot be removed.');
+    }
+    return _replaceObject(
+      objectIndex,
+      object.copyWith(
+        volumes: [
+          for (var i = 0; i < object.volumes.length; i++)
+            if (i != volumeIndex) object.volumes[i],
+        ],
+      ),
+    );
+  }
+
+  WorkspaceEditableProject transformVolume(
+    int objectIndex,
+    int volumeIndex, {
+    Point3 translation = const Point3(0, 0, 0),
+    Point3 scale = const Point3(1, 1, 1),
+    Point3 rotationDegrees = const Point3(0, 0, 0),
+  }) {
+    _checkVolume(objectIndex, volumeIndex);
+    final object = objects[objectIndex];
+    final volume = object.volumes[volumeIndex];
+    return _replaceObject(
+      objectIndex,
+      object.copyWith(
+        volumes: [
+          for (var i = 0; i < object.volumes.length; i++)
+            i == volumeIndex
+                ? volume.copyWith(
+                    mesh: volume.mesh.transformed(
+                      translation: translation,
+                      scale: scale,
+                      rotationDegrees: rotationDegrees,
+                    ),
+                  )
+                : object.volumes[i],
+        ],
+      ),
+    );
+  }
+
   WorkspaceEditableProject transformObject(
     int objectIndex, {
     Point3 translation = const Point3(0, 0, 0),
@@ -164,11 +269,16 @@ class WorkspaceEditableProject {
     return _replaceObject(
       objectIndex,
       object.copyWith(
-        mesh: object.mesh.transformed(
-          translation: translation,
-          scale: scale,
-          rotationDegrees: rotationDegrees,
-        ),
+        volumes: [
+          for (final volume in object.volumes)
+            volume.copyWith(
+              mesh: volume.mesh.transformed(
+                translation: translation,
+                scale: scale,
+                rotationDegrees: rotationDegrees,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -202,10 +312,15 @@ class WorkspaceEditableProject {
           ThreeMfProjectObject(
             name: object.name,
             volumes: [
-              ThreeMfProjectVolume(
-                name: object.name,
-                mesh: object.mesh,
-              ),
+              for (final volume in object.volumes)
+                ThreeMfProjectVolume(
+                  name: volume.name,
+                  mesh: volume.mesh,
+                  type: volume.type,
+                  settings: volume.settings,
+                  facets: volume.facets,
+                  transform: volume.transform,
+                ),
             ],
             instances: [
               ThreeMfProjectInstance(transform: workspaceToPrinter),
@@ -261,6 +376,14 @@ class WorkspaceEditableProject {
       throw RangeError.index(index, objects, 'objectIndex');
     }
   }
+
+  void _checkVolume(int objectIndex, int volumeIndex) {
+    _checkObject(objectIndex);
+    final volumes = objects[objectIndex].volumes;
+    if (volumeIndex < 0 || volumeIndex >= volumes.length) {
+      throw RangeError.index(volumeIndex, volumes, 'volumeIndex');
+    }
+  }
 }
 
 class WorkspaceEditablePlate {
@@ -289,30 +412,118 @@ class WorkspaceEditablePlate {
 class WorkspaceEditableObject {
   WorkspaceEditableObject({
     required this.name,
-    required this.mesh,
+    required List<WorkspaceEditableVolume> volumes,
     required this.plateIndex,
     this.extruder = 1,
     Map<String, String> settings = const {},
-  }) : settings = Map.unmodifiable(settings);
+  })  : volumes = List.unmodifiable(volumes),
+        settings = Map.unmodifiable(settings) {
+    if (this.volumes.isEmpty) {
+      throw ArgumentError('Editable object must contain at least one volume.');
+    }
+  }
+
+  factory WorkspaceEditableObject.fromMesh(
+    Mesh mesh, {
+    required String name,
+    required int plateIndex,
+    int extruder = 1,
+    Map<String, String> settings = const {},
+  }) =>
+      WorkspaceEditableObject(
+        name: name,
+        volumes: [
+          WorkspaceEditableVolume(
+            name: name,
+            mesh: mesh,
+          ),
+        ],
+        plateIndex: plateIndex,
+        extruder: extruder,
+        settings: settings,
+      );
 
   final String name;
-  final Mesh mesh;
+  final List<WorkspaceEditableVolume> volumes;
   final int plateIndex;
   final int extruder;
   final Map<String, String> settings;
 
+  Mesh get mesh => Mesh(
+        name: name,
+        triangles: [
+          for (final volume in volumes) ...volume.mesh.triangles,
+        ],
+      );
+
   WorkspaceEditableObject copyWith({
     String? name,
-    Mesh? mesh,
+    List<WorkspaceEditableVolume>? volumes,
     int? plateIndex,
     int? extruder,
     Map<String, String>? settings,
   }) =>
       WorkspaceEditableObject(
         name: name ?? this.name,
-        mesh: mesh ?? this.mesh,
+        volumes: volumes ?? this.volumes,
         plateIndex: plateIndex ?? this.plateIndex,
         extruder: extruder ?? this.extruder,
         settings: settings ?? this.settings,
       );
+}
+
+class WorkspaceEditableVolume {
+  WorkspaceEditableVolume({
+    required this.name,
+    required this.mesh,
+    this.type = normalPart,
+    Map<String, String> settings = const {},
+    Map<int, ThreeMfFacetMetadata> facets = const {},
+    this.transform = ThreeMfTransform.identity,
+  })  : settings = Map.unmodifiable(settings),
+        facets = Map.unmodifiable(facets) {
+    validateType(type);
+  }
+
+  static const normalPart = 'normal_part';
+  static const modifier = 'modifier';
+  static const supportEnforcer = 'support_enforcer';
+  static const supportBlocker = 'support_blocker';
+
+  static const supportedTypes = <String>{
+    normalPart,
+    modifier,
+    supportEnforcer,
+    supportBlocker,
+  };
+
+  final String name;
+  final Mesh mesh;
+  final String type;
+  final Map<String, String> settings;
+  final Map<int, ThreeMfFacetMetadata> facets;
+  final ThreeMfTransform transform;
+
+  WorkspaceEditableVolume copyWith({
+    String? name,
+    Mesh? mesh,
+    String? type,
+    Map<String, String>? settings,
+    Map<int, ThreeMfFacetMetadata>? facets,
+    ThreeMfTransform? transform,
+  }) =>
+      WorkspaceEditableVolume(
+        name: name ?? this.name,
+        mesh: mesh ?? this.mesh,
+        type: type ?? this.type,
+        settings: settings ?? this.settings,
+        facets: facets ?? this.facets,
+        transform: transform ?? this.transform,
+      );
+
+  static void validateType(String type) {
+    if (!supportedTypes.contains(type)) {
+      throw ArgumentError.value(type, 'type', 'Unsupported Orca volume type');
+    }
+  }
 }
