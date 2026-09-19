@@ -497,6 +497,54 @@ class WorkspaceEditableProject {
     );
   }
 
+  WorkspaceEditableProject remapFilamentSlotsAfterRemoval(
+    int removedSlot, {
+    int replacementSlot = 1,
+  }) {
+    if (removedSlot < 1 || removedSlot > 16) {
+      throw RangeError.range(removedSlot, 1, 16, 'removedSlot');
+    }
+    if (replacementSlot < 1 || replacementSlot > 16) {
+      throw RangeError.range(replacementSlot, 1, 16, 'replacementSlot');
+    }
+
+    int remapSlot(int slot) {
+      if (slot == removedSlot) return replacementSlot;
+      if (slot > removedSlot) return slot - 1;
+      return slot;
+    }
+
+    return WorkspaceEditableProject(
+      plates: plates,
+      objects: [
+        for (final object in objects)
+          object.copyWith(
+            extruder: remapSlot(object.extruder),
+            volumes: [
+              for (final volume in object.volumes)
+                volume.copyWith(
+                  facets: {
+                    for (final entry in volume.facets.entries)
+                      entry.key: entry.value.color == null
+                          ? entry.value
+                          : ThreeMfFacetMetadata(
+                              supports: entry.value.supports,
+                              seam: entry.value.seam,
+                              color: encodeMaterialFacetSlot(
+                                remapSlot(
+                                  decodeMaterialFacetSlot(entry.value.color!),
+                                ),
+                              ),
+                              fuzzySkin: entry.value.fuzzySkin,
+                            ),
+                  },
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
   void validateExtruderAssignments(int filamentSlotCount) {
     if (filamentSlotCount <= 0) {
       throw StateError('At least one materialized filament slot is required.');
