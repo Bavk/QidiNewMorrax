@@ -13,12 +13,12 @@ Pinned engine:
 
 ## Validated checkpoint — 2026-09-19
 
-- functional code `cbc806db7ecf00c87b6730c4167fa3d3f622223a`;
-- Flutter CI `35401167437` (#752), job `105781146290`;
+- functional code `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c`;
+- Flutter CI `35456145423` (#761), job `105931646159`;
 - analyzer: **No issues found**;
-- tests: **134/134 passed**;
-- Orca smoke `35401167530` (#180), job `105781147329`, conclusion **success**;
-- real QIDI X-Plus 4 two-plate slice remains green: both plate G-code entries are printable, progress reaches **100%**, and each plate validates **1167 s** prediction and **1.335 m** filament.
+- tests: **136/136 passed**;
+- Orca smoke `35456145434` (#189), job `105931646222`, conclusion **success**;
+- real QIDI X-Plus 4 two-plate slice remains green with explicit `modifier`, `support_enforcer` and `support_blocker` volumes: both plate G-code entries are printable, progress reaches **100%**, and each plate validates the existing metadata path.
 
 ## Implemented in this cutover
 
@@ -28,7 +28,7 @@ Pinned engine:
 - imported vendor 3MF packages are preserved losslessly while owned build transforms are updated;
 - object/volume settings, modifier/support volume types, painted facet metadata, extruder assignment and plate membership serialization;
 - Orca virtual-bed offsets for multi-plate projects;
-- generated Prepare projects now have editable multi-plate/object state with add/rename/lock/remove plate actions, object reassignment/removal/transforms and per-object overrides routed into the production 3MF;
+- generated Prepare projects now have editable multi-plate/object state plus explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`) with volume-scoped settings routed into the production 3MF;
 - `Slice plate` routes through Orca instead of a Dart slicer;
 - extraction of every sliced 3MF `Metadata/plate_N.gcode` entry;
 - sliced `Metadata/slice_info.config` parsing with source-shaped G-code statistics fallback for fields Orca CLI leaves empty/zero;
@@ -46,11 +46,11 @@ Pinned engine:
 | Area | Status | Next work |
 |---|---|---|
 | Orca engine process boundary | `integration_verified` | package same pinned engine on all desktop targets |
-| Prepare/project -> Orca 3MF handoff | `integration_verified` | generated multi-plate/object editor now feeds production state; extend modifier/paint/multi-filament/per-volume editing |
+| Prepare/project -> Orca 3MF handoff | `integration_verified` | generated multi-plate/object/volume editor feeds production state; extend facet paint, multi-filament and broader per-volume editing |
 | sliced G-code + estimates/warnings/material -> Dart Preview | `integration_verified` including multi-plate metadata fallback | thumbnails / additional vendor payload metadata remain |
 | QIDI profile materialization | `integration_verified` for X-Plus 4 fixture | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
-| multi-plate / modifiers / paint / per-object settings | `port_started` with generated multi-plate/object editing verified | modifiers/support volumes, facet paint, real multi-filament and wider per-volume overrides remain |
+| multi-plate / modifiers / paint / per-object settings | `port_started` with generated multi-plate/object/volume editing verified | facet paint, real multi-filament and wider per-volume overrides remain |
 | slicing progress / cancellation | `integration_verified` on Linux / process cancellation unit-tested | add native progress transport validation for macOS/Windows packaging |
 | engine packaging / updater / exact version verification | `pending` | Windows/macOS/Linux packaging |
 | AGPL notices / corresponding source delivery | `pending` release gate | package license/source information |
@@ -58,7 +58,7 @@ Pinned engine:
 
 ## Immediate priority
 
-1. Continue the verified generated Prepare editor with modifier/support-enforcer/support-blocker volume creation, facet paint, real multi-filament selection/assignment and wider per-object/per-volume settings; keep imported vendor 3MF structural edits lossless.
+1. Continue the verified generated Prepare editor with facet paint first, then real multi-filament selection/assignment and wider per-object/per-volume settings; keep imported vendor 3MF structural edits lossless.
 2. Consume remaining sliced-package thumbnails and additional vendor printer-payload metadata where useful.
 3. Verify Moonraker upload/start against a real QIDI printer.
 4. Package the pinned engine for Windows/macOS/Linux with exact artifact/version checks, native progress behavior and AGPL compliance.
