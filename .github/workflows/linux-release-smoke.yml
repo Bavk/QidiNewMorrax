@@ -16,6 +16,7 @@ jobs:
     env:
       FLUTTER_VERSION: '3.47.2'
       ORCA_VERSION: '2.4.2'
+      ORCA_PIN: '8500fcdccaa10b5099ac20d252af3a7c560046f1'
       ORCA_APPIMAGE_SHA256: 'd12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd'
 
     steps:
@@ -88,6 +89,54 @@ jobs:
           bundle="$PWD/build/linux/x64/release/bundle"
           dart run tool/verify_packaged_orca.dart "$bundle/qidi_flow_flutter"
 
+      - name: Prepare legal notices and corresponding source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bundle="$PWD/build/linux/x64/release/bundle"
+          mkdir -p "$bundle/legal"
+          cp LICENSE "$bundle/legal/AGPL-3.0.txt"
+          cp packaging/legal/RELEASE-NOTICES.txt \
+            "$bundle/legal/RELEASE-NOTICES.txt"
+
+          git archive \
+            --format=tar.gz \
+            --prefix="QidiNewMorrax-${GITHUB_SHA}/" \
+            -o qidi-new-morrax-source.tar.gz \
+            HEAD
+
+          orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
+          curl -fL --retry 3 \
+            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
+            -o "$orca_source"
+
+          test -s qidi-new-morrax-source.tar.gz
+          test -s "$orca_source"
+          tar -tzf qidi-new-morrax-source.tar.gz > qidi-source-archive.txt
+          tar -tzf "$orca_source" > orca-source-archive.txt
+          grep -q '/LICENSE$' qidi-source-archive.txt
+          grep -q '/packaging/legal/RELEASE-NOTICES.txt$' qidi-source-archive.txt
+          grep -q '/LICENSE.txt$' orca-source-archive.txt
+          grep -q '/src/' orca-source-archive.txt
+          grep -q '/resources/' orca-source-archive.txt
+
+          qidi_source_sha="$(sha256sum qidi-new-morrax-source.tar.gz | cut -d' ' -f1)"
+          orca_source_sha="$(sha256sum "$orca_source" | cut -d' ' -f1)"
+          cat > "$bundle/legal/SOURCE-MANIFEST.txt" <<EOF
+          QidiNewMorrax binary commit: ${GITHUB_SHA}
+          QidiNewMorrax source archive: qidi-new-morrax-source.tar.gz
+          QidiNewMorrax source SHA-256: ${qidi_source_sha}
+
+          OrcaSlicer version: ${ORCA_VERSION}
+          OrcaSlicer source commit: ${ORCA_PIN}
+          OrcaSlicer source archive: ${orca_source}
+          OrcaSlicer source SHA-256: ${orca_source_sha}
+
+          These source archives are uploaded alongside the binary release
+          materials by this workflow.
+          EOF
+
+
       - name: Create portable release archive
         shell: bash
         run: |
@@ -100,11 +149,17 @@ jobs:
           tar -tzf qidi-new-morrax-linux-x64.tar.gz > release-archive.txt
           grep -q '^bundle/orca/OrcaSlicer.AppImage$' release-archive.txt
           grep -q '^bundle/orca/orca-engine.json$' release-archive.txt
+          grep -q '^bundle/legal/AGPL-3.0.txt$' release-archive.txt
+          grep -q '^bundle/legal/RELEASE-NOTICES.txt$' release-archive.txt
+          grep -q '^bundle/legal/SOURCE-MANIFEST.txt$' release-archive.txt
 
-      - name: Upload portable Linux bundle
+      - name: Upload Linux release materials
         uses: actions/upload-artifact@v4
         with:
-          name: qidi-new-morrax-linux-x64
-          path: qidi-new-morrax-linux-x64.tar.gz
+          name: qidi-new-morrax-linux-x64-release
+          path: |
+            qidi-new-morrax-linux-x64.tar.gz
+            qidi-new-morrax-source.tar.gz
+            orcaslicer-source-${{ env.ORCA_PIN }}.tar.gz
           if-no-files-found: error
           retention-days: 7
