@@ -1248,44 +1248,72 @@ class _PreparePageState extends State<PreparePage> {
           ),
           const SizedBox(height: 18),
           const Divider(),
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.inventory_2_outlined,
-            title: 'Filament',
+            title: 'Filaments',
             trailing: IconButton(
-              onPressed: null,
-              icon: Icon(Icons.add),
-              tooltip: 'Profile editing parity pending',
+              onPressed: !loadingProfiles &&
+                      filaments.isNotEmpty &&
+                      selectedFilaments.length < 16
+                  ? _addFilamentSlot
+                  : null,
+              icon: const Icon(Icons.add),
+              tooltip: 'Add filament slot',
             ),
           ),
           const SizedBox(height: 8),
-          _profileDropdown(
-            'Filament preset',
-            filaments,
-            filament,
-            (value) => setState(() {
-              filament = value;
-              _publishSelection();
-            }),
-          ),
-          const SizedBox(height: 8),
-          if (filament != null)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                Chip(
-                  label: Text(
-                    filament!.stringValue('filament_type') ?? 'Material',
-                  ),
-                ),
-                if (filament!.stringValue('nozzle_temperature') != null)
-                  Chip(
-                    label: Text(
-                      '${filament!.stringValue('nozzle_temperature')} °C',
+          if (selectedFilaments.isEmpty)
+            const Text('No compatible filament presets.')
+          else
+            for (var slotIndex = 0;
+                slotIndex < selectedFilaments.length;
+                slotIndex++) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _profileDropdown(
+                      'Filament slot ${slotIndex + 1}',
+                      filaments,
+                      selectedFilaments[slotIndex],
+                      (value) => _setFilamentSlot(slotIndex, value),
                     ),
                   ),
-              ],
-            ),
+                  if (slotIndex > 0) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      onPressed: () => _removeFilamentSlot(slotIndex),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      tooltip: 'Remove slot ${slotIndex + 1}',
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  Chip(
+                    label: Text(
+                      selectedFilaments[slotIndex]
+                              .stringValue('filament_type') ??
+                          'Material',
+                    ),
+                  ),
+                  if (selectedFilaments[slotIndex]
+                          .stringValue('nozzle_temperature') !=
+                      null)
+                    Chip(
+                      label: Text(
+                        '${selectedFilaments[slotIndex].stringValue('nozzle_temperature')} °C',
+                      ),
+                    ),
+                ],
+              ),
+              if (slotIndex + 1 < selectedFilaments.length)
+                const SizedBox(height: 8),
+            ],
           const SizedBox(height: 18),
           const Divider(),
           const _SectionHeader(
