@@ -30,7 +30,7 @@ class WorkspaceController extends ChangeNotifier {
   String? sourceModelPath;
   QidiProfile? machine;
   QidiProfile? process;
-  QidiProfile? filament;
+  List<QidiProfile> selectedFilaments = const [];
   ThreeMfPackage? sourceProject;
   WorkspaceEditableProject? editableProject;
   ThreeMfTransform _sourceProjectTransform = ThreeMfTransform.identity;
@@ -52,7 +52,7 @@ class WorkspaceController extends ChangeNotifier {
           mesh != null) &&
       machine != null &&
       process != null &&
-      filament != null;
+      selectedFilaments.isNotEmpty;
 
   int? get slicingPercent => progress?.totalPercent;
 
@@ -90,6 +90,7 @@ class WorkspaceController extends ChangeNotifier {
     QidiProfile? machine,
     QidiProfile? process,
     QidiProfile? filament,
+    List<QidiProfile>? filaments,
     ThreeMfPackage? sourceProject,
     WorkspaceEditableProject? editableProject,
   }) {
@@ -100,7 +101,9 @@ class WorkspaceController extends ChangeNotifier {
     this.sourceModelPath = sourceModelPath;
     this.machine = machine;
     this.process = process;
-    this.filament = filament;
+    selectedFilaments = List.unmodifiable(
+      filaments ?? (filament == null ? const <QidiProfile>[] : [filament]),
+    );
     this.sourceProject = sourceProject;
     this.editableProject = editableProject;
     error = null;
@@ -155,13 +158,18 @@ class WorkspaceController extends ChangeNotifier {
           await profiles.resolved(machine!.name) ?? machine!;
       final resolvedProcess =
           await profiles.resolved(process!.name) ?? process!;
-      final resolvedFilament =
-          await profiles.resolved(filament!.name) ?? filament!;
+      final resolvedFilaments = <QidiProfile>[];
+      for (final selected in selectedFilaments) {
+        resolvedFilaments.add(
+          await profiles.resolved(selected.name) ?? selected,
+        );
+      }
       _throwIfCancelled();
+      _validateFilamentAssignments(resolvedFilaments.length);
       final projectSettings = const OrcaProjectSettingsBuilder().build(
         machine: resolvedMachine,
         process: resolvedProcess,
-        filaments: [resolvedFilament],
+        filaments: resolvedFilaments,
       );
 
       statusMessage = 'Building 3MF project…';
@@ -178,7 +186,7 @@ class WorkspaceController extends ChangeNotifier {
         directory: profileDirectory,
         machine: resolvedMachine,
         process: resolvedProcess,
-        filaments: [resolvedFilament],
+        filaments: resolvedFilaments,
       );
 
       _throwIfCancelled();
@@ -303,6 +311,37 @@ class WorkspaceController extends ChangeNotifier {
       project,
       directory: modelDirectory,
     );
+  }
+
+  QidiProfile? get filament =>
+      selectedFilaments.isEmpty ? null : selectedFilaments.first;
+
+  void _validateFilamentAssignments(int filamentCount) {
+    final generated = editableProject;
+    if (generated == null) return;
+    for (final object in generated.objects) {
+      if (object.extruder < 1 || object.extruder > filamentCount) {
+        throw StateError(
+          'Object "${object.name}" references filament slot '
+          '${object.extruder}, but only $filamentCount slot(s) are '
+          'materialized.',
+        );
+      }
+      for (final volume in object.volumes) {
+        for (final entry in volume.facets.entries) {
+          final slot = WorkspaceEditableProject.filamentSlotFromFacetColor(
+            entry.value.color,
+          );
+          if (slot != null && slot > filamentCount) {
+            throw StateError(
+              'Facet ${entry.key} in volume "${volume.name}" references '
+              'filament slot $slot, but only $filamentCount slot(s) are '
+              'materialized.',
+            );
+          }
+        }
+      }
+    }
   }
 
   bool _hasRequiredProjectSettings(Map<String, dynamic> settings) =>
