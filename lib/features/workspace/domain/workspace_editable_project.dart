@@ -406,6 +406,21 @@ class WorkspaceEditableProject {
     );
   }
 
+  void validateExtruderAssignments(int filamentSlotCount) {
+    if (filamentSlotCount <= 0) {
+      throw StateError('At least one materialized filament slot is required.');
+    }
+    for (final object in objects) {
+      if (object.extruder < 1 || object.extruder > filamentSlotCount) {
+        throw StateError(
+          'Object "${object.name}" uses extruder ${object.extruder}, '
+          'but only $filamentSlotCount filament slot'
+          '${filamentSlotCount == 1 ? '' : 's'} are materialized.',
+        );
+      }
+    }
+  }
+
   List<int> objectIndicesForPlate(int plateIndex) {
     _checkPlate(plateIndex);
     return [
@@ -550,6 +565,13 @@ class WorkspaceEditableObject {
         settings = Map.unmodifiable(settings) {
     if (this.volumes.isEmpty) {
       throw ArgumentError('Editable object must contain at least one volume.');
+    }
+    if (extruder < 1) {
+      throw ArgumentError.value(
+        extruder,
+        'extruder',
+        'Orca extruder/material slot indices are 1-based.',
+      );
     }
   }
 
