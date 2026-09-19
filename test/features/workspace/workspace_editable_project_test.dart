@@ -383,4 +383,128 @@ void main() {
     expect(child, contains('paint_fuzzy_skin="4"'));
   });
 
+
+  test('MMU facet material codes match pinned Orca slots 1 through 16', () {
+    const expected = <String>[
+      '4',
+      '8',
+      '0C',
+      '1C',
+      '2C',
+      '3C',
+      '4C',
+      '5C',
+      '6C',
+      '7C',
+      '8C',
+      '9C',
+      'AC',
+      'BC',
+      'CC',
+      'DC',
+    ];
+
+    for (var slot = 1; slot <= 16; slot++) {
+      final encoded = WorkspaceEditableProject.encodeMaterialFacetSlot(slot);
+      expect(encoded, expected[slot - 1], reason: 'slot $slot');
+      expect(
+        WorkspaceEditableProject.decodeMaterialFacetSlot(encoded),
+        slot,
+        reason: 'decode slot $slot',
+      );
+    }
+
+    expect(
+      () => WorkspaceEditableProject.encodeMaterialFacetSlot(0),
+      throwsRangeError,
+    );
+    expect(
+      () => WorkspaceEditableProject.encodeMaterialFacetSlot(17),
+      throwsRangeError,
+    );
+    expect(
+      () => WorkspaceEditableProject.decodeMaterialFacetSlot('EC'),
+      throwsFormatException,
+    );
+  });
+
+  test('material facet paint preserves sibling paint channels', () {
+    final paintedMesh = Mesh(
+      name: 'MMU',
+      triangles: [
+        Triangle(
+          const Point3(0, 0, 0),
+          const Point3(10, 0, 0),
+          const Point3(0, 10, 0),
+        ),
+        Triangle(
+          const Point3(10, 0, 0),
+          const Point3(10, 10, 0),
+          const Point3(0, 10, 0),
+        ),
+      ],
+    );
+
+    var project = WorkspaceEditableProject.empty()
+        .addObject(paintedMesh, plateIndex: 0);
+    project = project
+        .paintFacets(
+          0,
+          0,
+          const [0],
+          channel: WorkspaceFacetPaintChannel.seam,
+          state: WorkspaceFacetPaintState.blocker,
+        )
+        .paintMaterialFacets(
+          0,
+          0,
+          const [0, 1],
+          filamentSlot: 3,
+        );
+
+    final facets = project.objects.single.volumes.single.facets;
+    expect(facets[0]!.seam, '8');
+    expect(facets[0]!.color, '0C');
+    expect(facets[1]!.color, '0C');
+
+    project = project.clearMaterialFacetPaint(0, 0, const [0]);
+    expect(project.objects.single.volumes.single.facets[0]!.seam, '8');
+    expect(project.objects.single.volumes.single.facets[0]!.color, isNull);
+
+    final bytes = const ThreeMfProjectWriter().encode(
+      project.paintMaterialFacets(
+        0,
+        0,
+        const [1],
+        filamentSlot: 16,
+      ).toThreeMfProject(
+        projectSettings: projectSettings,
+        workspaceToPrinter: ThreeMfTransform.identity,
+      ),
+    );
+    final package = const ThreeMfParser().parsePackage(bytes);
+    final child = utf8.decode(package.entry('3D/Objects/object_1.model')!);
+    expect(child, contains('paint_color="DC"'));
+  });
+
+  test('painted material slots are validated against materialized filaments', () {
+    final project = WorkspaceEditableProject.empty()
+        .addObject(triangle('Paint', 0), plateIndex: 0)
+        .paintMaterialFacets(
+          0,
+          0,
+          const [0],
+          filamentSlot: 3,
+        );
+
+    expect(
+      () => project.validateExtruderAssignments(2),
+      throwsStateError,
+    );
+    expect(
+      () => project.validateExtruderAssignments(3),
+      returnsNormally,
+    );
+  });
+
 }
