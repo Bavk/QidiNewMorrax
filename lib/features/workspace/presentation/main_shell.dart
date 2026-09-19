@@ -5,6 +5,7 @@ import '../../device/presentation/device_page.dart';
 import '../../prepare/presentation/prepare_page.dart';
 import '../../preview/presentation/preview_page.dart';
 import '../../project/presentation/project_page.dart';
+import '../../../core/legal/release_legal_notice.dart';
 import '../../../core/orca/orca_slicer_engine.dart';
 import '../application/workspace_controller.dart';
 
@@ -34,6 +35,27 @@ class _MainShellState extends State<MainShell> {
 
   void _workspaceChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _showLegalNotices() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Legal notices'),
+        content: const SizedBox(
+          width: 620,
+          child: SingleChildScrollView(
+            child: SelectableText(ReleaseLegalNotice.summary),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _slicePlate() async {
@@ -74,10 +96,25 @@ class _MainShellState extends State<MainShell> {
                 child: Row(
                   children: [
                     const SizedBox(width: 10),
-                    const IconButton(
-                      onPressed: null,
-                      icon: Icon(Icons.menu),
-                      tooltip: 'Application menu parity pending',
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.menu),
+                      tooltip: 'Application menu',
+                      onSelected: (value) {
+                        if (value == 'legal') {
+                          _showLegalNotices();
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: 'legal',
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.gavel_outlined),
+                            title: Text('Legal notices'),
+                            subtitle: Text('License, warranty and source'),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 4),
                     Text(

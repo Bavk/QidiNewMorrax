@@ -69,6 +69,18 @@ For the Linux-first v0.1 target:
 
 Windows/macOS packaging may use platform-appropriate layouts later, but must preserve the same provenance/fail-closed principle.
 
+## Release legal/source contract
+
+For the Linux-first v0.1 release pipeline:
+
+- the repository and binary distribution must carry the GNU AGPL v3 license text and a release notice identifying the application and exact bundled Orca provenance;
+- the application must expose a visible legal-notice surface including no-warranty and source-availability information;
+- the release bundle must identify the exact application revision and pinned Orca source revision corresponding to the conveyed binaries;
+- release automation must generate machine-readable source archives for both and record their SHA-256 values;
+- a published GitHub Release must attach the binary and both corresponding-source archives to the same release;
+- the optional non-free Orca/Bambu networking plugin must not be bundled or used by this product path;
+- automated validation of these artifacts is an engineering gate only; it does not replace final legal review.
+
 ## Testing
 
 Acceptance is split at the engine boundary:

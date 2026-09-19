@@ -30,15 +30,15 @@ The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility l
 
 Functional code checkpoint:
 
-- code: `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`;
-- Flutter parity run `35459351874` (#783), job `105940282076`;
+- code: `c8d0f9c703d98ac5ed25d2719390e71bcfc0e1ea`;
+- Flutter parity run `35459879595` (#793), job `105941708672`;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **141/141 passed**;
+- `flutter test --reporter expanded` — **142/142 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35459351908` (#211), job `105940282185`;
+- Orca smoke run `35459879618` (#221), job `105941708762`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
 - QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
 - the real QIDI X-Plus 4 two-plate project fixture, containing modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint attributes, sliced successfully;
@@ -136,6 +136,28 @@ Validation on HEAD `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`:
 
 This closes packaged pinned-engine discovery/version/hash verification for the first Linux target. It does not yet claim AGPL release completeness or a full GUI/printer end-to-end packaged smoke.
 
+## AGPL/source-delivery checkpoint — 2026-09-19
+
+PR #18 implements the Linux-first release notice/source-delivery pipeline:
+
+- repository root now carries the full GNU AGPL v3 text as `LICENSE`;
+- the packaged app contains `legal/AGPL-3.0.txt`, `legal/RELEASE-NOTICES.txt` and an exact generated `legal/SOURCE-MANIFEST.txt`;
+- the application menu exposes a visible **Legal notices** dialog with the no-warranty notice, exact Orca version/commit and source-delivery information;
+- release CI creates `qidi-new-morrax-source.tar.gz` from the exact checked-out application commit and downloads the full OrcaSlicer source archive for pinned commit `8500fcdccaa10b5099ac20d252af3a7c560046f1`;
+- both source archives are content-checked and SHA-256 checksums are written into the binary bundle's source manifest;
+- CI uploads binary + both source archives together as `qidi-new-morrax-linux-x64-release`;
+- on a published GitHub Release, the same three files are attached to that release as assets;
+- QidiNewMorrax does not bundle or use OrcaSlicer's optional non-free Bambu networking plugin; printer delivery remains in the Dart Moonraker/QIDI path.
+
+Validation on functional HEAD `c8d0f9c703d98ac5ed25d2719390e71bcfc0e1ea`:
+
+- Flutter run `35459879595` (#793), job `105941708672` — analyzer clean, **142/142 tests passed**;
+- Orca smoke `35459879618` (#221), job `105941708762` — **success**;
+- Linux packaged release smoke `35459879592` (#14), job `105941708711` — **success**;
+- release-materials artifact `qidi-new-morrax-linux-x64-release`, artifact id `10589777552`, size **278,677,846 bytes**.
+
+This closes the automated Linux v0.1 **notice/corresponding-source engineering gate**. It does not replace a final legal review of the public release or third-party notices.
+
 ## First-launch definition
 
 For planning purposes, **v0.1 first launch** means an installable single-material desktop build that can:
@@ -149,20 +171,24 @@ For planning purposes, **v0.1 first launch** means an installable single-materia
 
 The following are **not blockers for that first launch** unless the release target is explicitly widened: true multi-filament/MMU authoring, paint-color/MMU brush parity, full imported-vendor-3MF structural editing, sliced thumbnails, all calibration surfaces, and all three desktop operating systems.
 
-Hard first-launch gates still open after PR #17:
+Hard first-launch gates still open after PR #18:
 
 - validate Moonraker upload/start on representative QIDI hardware;
-- add AGPL notice/corresponding-source delivery to the packaged build;
-- run an end-to-end packaged-app smoke (open -> slice -> preview -> upload/start) and close release-blocking desktop errors.
+- run a packaged-app end-to-end smoke for the offline path (launch -> open/import -> slice -> Preview) and close release-blocking desktop errors.
 
-The Linux packaged-engine/version/hash gate is **closed** by release smoke #4.
+Closed engineering gates:
+
+- Linux packaged engine/version/hash verification;
+- AGPL notice + exact corresponding-source generation/delivery automation.
+
+A final legal review remains a release-owner responsibility rather than an automated acceptance result.
 
 ## First unfinished priority
 
 Continue in this order:
 
 1. For feature parity, add real multi-filament selection/materialization/assignment on top of the now-verified object/volume/facet model; `paint_color` stays coupled to that work. Widen per-object/per-volume overrides after slot materialization is correct.
-2. In parallel with parity work, prioritize the remaining **v0.1 first-launch gates** above. Real-printer Moonraker validation requires representative hardware; while that is unavailable, continue with AGPL/source delivery, then packaged end-to-end smoke.
+2. In parallel with parity work, prioritize the remaining **v0.1 first-launch gates** above. Real-printer Moonraker validation requires representative hardware; while that is unavailable, continue with the packaged offline end-to-end smoke.
 3. Improve facet-paint UX with viewport hit-testing/brushes without changing the source-shaped facet state.
 4. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
 5. Continue broader Device/calibration/UI integration and cross-platform packaging after the first target is launchable.

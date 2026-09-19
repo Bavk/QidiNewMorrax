@@ -64,7 +64,7 @@ The first release target is Linux x64. The portable bundle contract is:
 
 Before the first packaged slice, `OrcaSlicerEngine.verifyPackagedEngine()` checks the manifest against the compile-time pin and streams SHA-256 over the actual AppImage. A mismatch is a hard error; the application does not silently run an unknown bundled engine. Bundled AppImage processes receive `APPIMAGE_EXTRACT_AND_RUN=1` so the release does not require FUSE to mount the image.
 
-`.github/workflows/linux-release-smoke.yml` builds the Linux release with pinned Flutter 3.47.2, downloads the exact OrcaSlicer v2.4.2 Ubuntu 24.04 AppImage, verifies its digest, bundles it, runs the Dart packaged-discovery/provenance verifier and uploads `qidi-new-morrax-linux-x64.tar.gz`. Release smoke #4 validates this path end to end through artifact creation.
+`.github/workflows/linux-release-smoke.yml` builds the Linux release with pinned Flutter 3.47.2, downloads the exact OrcaSlicer v2.4.2 Ubuntu 24.04 AppImage, verifies its digest, bundles it and runs the Dart packaged-discovery/provenance verifier. Release smoke #14 additionally embeds legal notices, generates exact application + pinned Orca source archives and uploads binary/source together as release materials.
 
 ## Current limitations
 
@@ -76,6 +76,16 @@ Before the first packaged slice, `OrcaSlicerEngine.verifyPackagedEngine()` check
 
 Engine CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF containing normal/modifier/support volumes plus support/seam/fuzzy-skin facet annotations, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON. A separate Linux packaged release smoke builds the real Flutter release bundle and re-verifies bundled-engine discovery/provenance from the packaged filesystem layout.
 
-## Licensing
+## Licensing and source delivery
 
-OrcaSlicer is AGPL-3.0. Any distribution that includes or modifies the Orca engine must preserve the applicable license, notices and source-code obligations. Release packaging must not ship the engine until those obligations and corresponding source/attribution delivery are explicitly implemented.
+QidiNewMorrax and the bundled OrcaSlicer engine are distributed under GNU AGPL-3.0. The Linux release bundle includes:
+
+- `legal/AGPL-3.0.txt`;
+- `legal/RELEASE-NOTICES.txt`;
+- `legal/SOURCE-MANIFEST.txt` with the exact application commit, Orca commit, source archive names and SHA-256 values.
+
+Release CI produces `qidi-new-morrax-source.tar.gz` from the exact checked-out application revision and `orcaslicer-source-8500fcdccaa10b5099ac20d252af3a7c560046f1.tar.gz` from the pinned upstream source. The binary and both source archives are uploaded together in CI; for `release: published`, the same three files are attached to the GitHub Release.
+
+The app exposes a visible Legal notices dialog. QidiNewMorrax does not bundle or use OrcaSlicer's optional non-free Bambu networking plugin.
+
+Release smoke #14 validates the technical notice/source-delivery path. This is engineering evidence, not a substitute for final legal review of a public release or unrelated third-party notices.
