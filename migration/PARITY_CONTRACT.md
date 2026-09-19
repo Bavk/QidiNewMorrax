@@ -66,6 +66,9 @@ For the Linux-first v0.1 target:
 - the actual bundled AppImage bytes must be hashed before first use; manifest-only trust is insufficient;
 - a packaged hash/provenance mismatch is fatal and must not silently fall back to another engine;
 - release CI must build the real Flutter desktop bundle and verify runtime discovery against the packaged filesystem layout, not merely test a standalone Orca download.
+- release builds must compile a usable QIDI profile catalog into the Flutter asset bundle. Bootstrap-marker directories are not runtime profiles and must never be treated as a complete release asset set;
+- for Linux v0.1, the catalog is generated from the exact pinned Orca source revision before `flutter build`, and the release smoke must assert the target machine/process/filament names are present;
+- the packaged application smoke must run with no `ORCA_SLICER_BIN` override so bundled-engine discovery, profile loading, project materialization, slicing and Preview-input parsing are verified together.
 
 Windows/macOS packaging may use platform-appropriate layouts later, but must preserve the same provenance/fail-closed principle.
 
@@ -87,7 +90,7 @@ Acceptance is split at the engine boundary:
 
 1. Dart tests validate request construction, profile/materialization, model/project handoff, result extraction, Preview parsing and application state.
 2. Engine integration tests execute the pinned OrcaSlicer binary on representative QIDI projects and verify successful output plus selected golden invariants. Generated-project fixtures must exercise structural features being promoted (for example modifier/support volumes and facet-paint triangle attributes), not only legacy two-plate geometry.
-3. Release tests verify the exact bundled Orca version/commit and licensing/source notices.
+3. Release tests verify the exact bundled Orca version/commit, pinned runtime profile catalog, packaged application slice-to-Preview path and licensing/source notices.
 
 Historical Dart Clipper/Arachne parity tests are no longer production acceptance gates.
 
