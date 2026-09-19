@@ -1048,11 +1048,15 @@ class _PreparePageState extends State<PreparePage> {
       text: object.settings['sparse_infill_density'] ?? '',
     );
     var plateIndex = object.plateIndex;
+    var extruder = object.extruder
+        .clamp(1, math.max(1, selectedFilaments.length))
+        .toInt();
 
     final result = await showDialog<
         ({
           String name,
           int plateIndex,
+          int extruder,
           String wallLoops,
           String infill,
         })>(
@@ -1086,6 +1090,30 @@ class _PreparePageState extends State<PreparePage> {
                     }
                   },
                 ),
+                if (selectedFilaments.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int>(
+                    initialValue: extruder,
+                    decoration: const InputDecoration(
+                      labelText: 'Filament slot',
+                    ),
+                    items: [
+                      for (var i = 0; i < selectedFilaments.length; i++)
+                        DropdownMenuItem(
+                          value: i + 1,
+                          child: Text(
+                            'Slot ${i + 1} · ${selectedFilaments[i].name}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => extruder = value);
+                      }
+                    },
+                  ),
+                ],
 
                 const SizedBox(height: 10),
                 Row(
@@ -1126,6 +1154,7 @@ class _PreparePageState extends State<PreparePage> {
                 (
                   name: name.text,
                   plateIndex: plateIndex,
+                  extruder: extruder,
                   wallLoops: wallLoops.text,
                   infill: infill.text,
                 ),
@@ -1160,6 +1189,7 @@ class _PreparePageState extends State<PreparePage> {
       objectIndex,
       name: result.name.trim().isEmpty ? object.name : result.name.trim(),
       plateIndex: result.plateIndex,
+      extruder: result.extruder,
       settings: settings,
     );
     setState(() {
