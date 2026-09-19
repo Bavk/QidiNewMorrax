@@ -113,6 +113,20 @@ Functional/release code `9a2701a879138f1dce113c9b9a8255d07192f8cf`:
 
 This closes the automated packaged offline open/import -> slice -> Preview-input gate. The smoke is intentionally non-interactive; a visual desktop sanity pass remains release QA, while printer-backed upload/start remains the only hard v0.1 integration gate.
 
+## Real multi-filament object-assignment checkpoint — 2026-09-19
+
+Functional code `58f20bbd2468dc14de81d413ba58e38530e6982b`:
+
+- Flutter run `35467266012` (#829), job `105961796643` — analyzer **No issues found**, **144/144 tests passed**;
+- Orca smoke `35467266000` (#257), job `105961796652` — **success**;
+- Linux packaged release smoke `35467265994` (#50), job `105961796769` — **success**;
+- Dart tests lock stable ordered materialization of multiple filament preset JSON files and reject generated object extruder assignments outside the materialized slot range;
+- the real pinned Orca fixture loads `Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle` and `QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle` simultaneously, embeds both `filament_settings_id` values, assigns Cube B to extruder 2, and slices both plates successfully;
+- real output: plate 1 **1574 s / 1.591 m**, plate 2 **1167 s / 1.335 m**;
+- the packaged Linux release path remains green, confirming legacy single-slot packaged application behavior is preserved.
+
+This checkpoint proves real ordered filament slots plus object-level assignment. It does **not** claim MMU facet color painting; `paint_color` remains gated on independent verification of Orca's serialized triangle material states above slot 2.
+
 
 ## Dart boundary tests
 
@@ -130,6 +144,7 @@ The Flutter suite additionally covers:
 - editable generated multi-plate workspace state, object reassignment/transforms/settings and production 3MF serialization;
 - editable child-volume subtype/settings behavior and real Orca acceptance of modifier/support-enforcer/support-blocker project structure;
 - source-shaped support/seam/fuzzy-skin facet annotations, normal-part scope enforcement and real Orca paint-attribute acceptance;
+- ordered multi-filament preset materialization, generated-object 1-based extruder validation and real two-filament Orca acceptance;
 - project 3MF serialization, lossless vendor repack and virtual-bed coordinate mapping.
 
 ## Device integration
@@ -148,7 +163,7 @@ First-launch hard gates:
 
 Post-v0.1 or widened-target gates:
 
-- true multi-filament/MMU authoring and `paint_color` with materialized slots;
+- MMU facet `paint_color` after independent source verification of material-state serialization above slot 2;
 - viewport paint brush/hit-testing UX;
 - sliced thumbnails and additional vendor printer-payload metadata where useful;
 - packaged macOS/Windows progress behavior and process-tree cancellation validation;

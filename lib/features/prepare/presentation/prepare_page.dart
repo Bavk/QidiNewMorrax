@@ -31,7 +31,7 @@ class _PreparePageState extends State<PreparePage> {
   List<QidiProfile> filaments = const [];
   List<QidiProfile> processes = const [];
   QidiProfile? machine;
-  QidiProfile? filament;
+  List<QidiProfile> filamentSlots = const [];
   QidiProfile? process;
   Mesh? mesh;
   ThreeMfPackage? sourceProject;
@@ -57,7 +57,7 @@ class _PreparePageState extends State<PreparePage> {
       sourceModelPath: modelPath,
       machine: machine,
       process: process,
-      filament: filament,
+      filamentSlots: filamentSlots,
       sourceProject: sourceProject,
       editableProject: editableProject,
     );
@@ -98,15 +98,83 @@ class _PreparePageState extends State<PreparePage> {
     processes = allProcesses
         .where((p) => p.isCompatibleWithPrinter(printerName))
         .toList(growable: false);
-    if (resetSelection || filament == null || !filaments.contains(filament)) {
-      filament =
+    final compatibleSlots = filamentSlots
+        .where(filaments.contains)
+        .toList(growable: false);
+    if (resetSelection || compatibleSlots.isEmpty) {
+      final initial =
           filaments.where((p) => p.name.contains('PLA')).firstOrNull ??
           filaments.firstOrNull;
+      filamentSlots =
+          initial == null ? const [] : <QidiProfile>[initial];
+      _clampObjectExtrudersToSlots();
+    } else if (compatibleSlots.length != filamentSlots.length) {
+      filamentSlots = compatibleSlots;
+      _clampObjectExtrudersToSlots();
     }
     if (resetSelection || process == null || !processes.contains(process)) {
       process =
           processes.where((p) => p.name.contains('0.20')).firstOrNull ??
           processes.firstOrNull;
+    }
+  }
+
+  void _setFilamentSlot(int index, QidiProfile? value) {
+    if (value == null || index < 0 || index >= filamentSlots.length) return;
+    setState(() {
+      final updated = [...filamentSlots];
+      updated[index] = value;
+      filamentSlots = List.unmodifiable(updated);
+      _publishSelection();
+    });
+  }
+
+  void _addFilamentSlot() {
+    if (filamentSlots.length >= 16 || filaments.isEmpty) return;
+    final candidate =
+        filaments.where((profile) => !filamentSlots.contains(profile)).firstOrNull ??
+        filaments.first;
+    setState(() {
+      filamentSlots = List.unmodifiable([...filamentSlots, candidate]);
+      _publishSelection();
+    });
+  }
+
+  void _removeFilamentSlot(int index) {
+    if (filamentSlots.length <= 1 ||
+        index < 0 ||
+        index >= filamentSlots.length) {
+      return;
+    }
+    setState(() {
+      final updated = [...filamentSlots]..removeAt(index);
+      filamentSlots = List.unmodifiable(updated);
+      _clampObjectExtrudersToSlots();
+      _publishSelection();
+    });
+  }
+
+  void _clampObjectExtrudersToSlots() {
+    final project = editableProject;
+    if (project == null || filamentSlots.isEmpty) return;
+    var updated = project;
+    var changed = false;
+    for (var index = 0; index < updated.objects.length; index++) {
+      final object = updated.objects[index];
+      if (object.extruder > filamentSlots.length) {
+        updated = updated.updateObject(
+          index,
+          extruder: filamentSlots.length,
+        );
+        changed = true;
+      }
+    }
+    if (changed) {
+      editableProject = updated;
+      final selected = selectedObjectIndex;
+      if (selected != null && selected < updated.objects.length) {
+        mesh = updated.objects[selected].mesh;
+      }
     }
   }
 
@@ -962,6 +1030,14 @@ class _PreparePageState extends State<PreparePage> {
     final project = editableProject;
     final objectIndex = selectedObjectIndex;
     if (project == null || objectIndex == null) return;
+    if (filamentSlots.isEmpty) {
+      setState(() {
+        error = StateError(
+          'Add at least one compatible filament slot before editing an object.',
+        );
+      });
+      return;
+    }
     final object = project.objects[objectIndex];
     final name = TextEditingController(text: object.name);
     final wallLoops = TextEditingController(
@@ -971,11 +1047,13 @@ class _PreparePageState extends State<PreparePage> {
       text: object.settings['sparse_infill_density'] ?? '',
     );
     var plateIndex = object.plateIndex;
+    var extruder = object.extruder.clamp(1, filamentSlots.length).toInt();
 
     final result = await showDialog<
         ({
           String name,
           int plateIndex,
+          int extruder,
           String wallLoops,
           String infill,
         })>(
@@ -1006,6 +1084,28 @@ class _PreparePageState extends State<PreparePage> {
                   onChanged: (value) {
                     if (value != null) {
                       setDialogState(() => plateIndex = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<int>(
+                  initialValue: extruder,
+                  decoration: const InputDecoration(
+                    labelText: 'Filament slot',
+                  ),
+                  items: [
+                    for (var i = 0; i < filamentSlots.length; i++)
+                      DropdownMenuItem(
+                        value: i + 1,
+                        child: Text(
+                          '${i + 1} · ${filamentSlots[i].name}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => extruder = value);
                     }
                   },
                 ),
@@ -1049,6 +1149,7 @@ class _PreparePageState extends State<PreparePage> {
                 (
                   name: name.text,
                   plateIndex: plateIndex,
+                  extruder: extruder,
                   wallLoops: wallLoops.text,
                   infill: infill.text,
                 ),
@@ -1083,6 +1184,7 @@ class _PreparePageState extends State<PreparePage> {
       objectIndex,
       name: result.name.trim().isEmpty ? object.name : result.name.trim(),
       plateIndex: result.plateIndex,
+      extruder: result.extruder,
       settings: settings,
     );
     setState(() {
@@ -1141,44 +1243,85 @@ class _PreparePageState extends State<PreparePage> {
           ),
           const SizedBox(height: 18),
           const Divider(),
-          const _SectionHeader(
+          _SectionHeader(
             icon: Icons.inventory_2_outlined,
-            title: 'Filament',
+            title: 'Filament slots',
             trailing: IconButton(
-              onPressed: null,
-              icon: Icon(Icons.add),
-              tooltip: 'Profile editing parity pending',
+              onPressed: loadingProfiles ||
+                      filaments.isEmpty ||
+                      filamentSlots.length >= 16
+                  ? null
+                  : _addFilamentSlot,
+              icon: const Icon(Icons.add),
+              tooltip: filamentSlots.length >= 16
+                  ? 'Orca supports up to 16 painted material states'
+                  : 'Add filament slot',
             ),
           ),
           const SizedBox(height: 8),
-          _profileDropdown(
-            'Filament preset',
-            filaments,
-            filament,
-            (value) => setState(() {
-              filament = value;
-              _publishSelection();
-            }),
-          ),
-          const SizedBox(height: 8),
-          if (filament != null)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                Chip(
-                  label: Text(
-                    filament!.stringValue('filament_type') ?? 'Material',
-                  ),
-                ),
-                if (filament!.stringValue('nozzle_temperature') != null)
-                  Chip(
-                    label: Text(
-                      '${filament!.stringValue('nozzle_temperature')} °C',
+          if (filamentSlots.isEmpty)
+            const Text('No compatible filament profiles are available.')
+          else
+            for (var slot = 0; slot < filamentSlots.length; slot++) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 34,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 15),
+                      child: Text(
+                        '${slot + 1}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
                     ),
                   ),
-              ],
-            ),
+                  Expanded(
+                    child: _profileDropdown(
+                      'Filament slot ${slot + 1}',
+                      filaments,
+                      filamentSlots[slot],
+                      (value) => _setFilamentSlot(slot, value),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: filamentSlots.length <= 1
+                        ? null
+                        : () => _removeFilamentSlot(slot),
+                    icon: const Icon(Icons.remove_circle_outline),
+                    tooltip: 'Remove slot ${slot + 1}',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 38),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    Chip(
+                      label: Text(
+                        filamentSlots[slot].stringValue('filament_type') ??
+                            'Material',
+                      ),
+                    ),
+                    if (filamentSlots[slot]
+                            .stringValue('nozzle_temperature') !=
+                        null)
+                      Chip(
+                        label: Text(
+                          '${filamentSlots[slot].stringValue('nozzle_temperature')} °C',
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (slot != filamentSlots.length - 1)
+                const SizedBox(height: 8),
+            ],
           const SizedBox(height: 18),
           const Divider(),
           const _SectionHeader(

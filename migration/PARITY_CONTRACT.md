@@ -53,7 +53,11 @@ Generated Prepare projects must keep Orca/Bambu project structure explicit inste
 - the first Dart facet editor may address whole source triangles by index/range; future viewport brush/hit-testing must write the same volume/facet state rather than introduce a second paint model;
 - generated editor state must be the same state handed to `ThreeMfProjectWriter` and OrcaSlicer; do not maintain a separate presentation-only project model;
 - imported vendor 3MF remains lossless by default. Do not structurally rewrite imported package internals until the edited metadata can be round-tripped without dropping unknown vendor entries;
-- runtime filament/extruder assignments must not expose slots that are not backed by materialized filament profiles.
+- runtime filament/extruder assignments must not expose slots that are not backed by materialized filament profiles;
+- generated multi-filament state is an **ordered, 1-based slot list**. Slot N maps to the Nth resolved preset passed both to `OrcaProjectSettingsBuilder` and `OrcaProfileMaterializer`, and object `extruder=N` is valid only while that slot exists;
+- changing machine compatibility or removing a slot must repair/reject dangling object assignments before slicing; never silently pass an object extruder outside the materialized slot range to Orca;
+- the current pinned Orca material-paint state surface is capped at 16 slots. Object-level slot assignment may use the verified ordered preset list independently of MMU facet painting;
+- `paint_color` remains gated until its full slot-state triangle serialization (including states above slot 2) is independently source-verified; do not infer it from support/seam `4`/`8` encodings.
 
 
 ## Packaged-engine contract

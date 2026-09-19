@@ -18,6 +18,9 @@ The Dart process bridge is `lib/core/orca/orca_slicer_engine.dart`.
 
 Prepare/project state is handed to Orca as:
 
+Filament selection is an ordered slot list. Each selected QIDI filament preset is inheritance-resolved, written as its own standalone Orca JSON, merged into `Metadata/project_settings.config` in the same order, and passed through `--load-filaments` as that ordered list. Generated object `extruder` values are 1-based references into this materialized list and are validated before slicing.
+
+
 1. generated state -> Orca/Bambu production-extension project 3MF; imported vendor 3MF packages are repacked losslessly;
 2. resolved QIDI machine/process/filament settings -> embedded `Metadata/project_settings.config` plus standalone preset JSON;
 3. headless Orca CLI invocation using `--load-settings`, `--load-filaments`, `--slice`, `--export-3mf` and `--outputdir`;
@@ -71,7 +74,7 @@ Before the first packaged slice, `OrcaSlicerEngine.verifyPackagedEngine()` check
 - Linux release bundles carry the pinned Orca AppImage, verify it at runtime, and compile a QIDI profile catalog derived from the same pinned Orca source revision. Development/unpackaged builds may still use `ORCA_SLICER_BIN` or the platform default.
 - Native progress transport is verified on Linux only; equivalent macOS/Windows progress transport remains a packaging/integration task.
 - Estimates, warnings and material usage are consumed; sliced thumbnails and additional vendor printer-payload metadata are not yet fully integrated.
-- Generated multi-plate/object/volume editing is wired into Prepare and production 3MF, including modifier/support-enforcer/support-blocker creation, volume-scoped wall/infill overrides, and source-shaped support/seam/fuzzy-skin facet annotations. The first paint UI addresses whole source facets by index/range; viewport brush/hit-testing remains UX work. Real multi-filament selection/assignment, MMU `paint_color`, and wider per-volume overrides remain open; imported vendor 3MF stays on the lossless repack path.
+- Generated multi-plate/object/volume editing is wired into Prepare and production 3MF, including modifier/support-enforcer/support-blocker creation, volume-scoped wall/infill overrides, and source-shaped support/seam/fuzzy-skin facet annotations. Prepare now materializes an ordered list of real QIDI filament slots and object-level extruder assignment is restricted to those slots. MMU `paint_color` remains open until the slot-state triangle bitstream above slot 2 is source-verified; viewport brush/hit-testing and wider per-volume overrides also remain open. Imported vendor 3MF stays on the lossless repack path.
 - The Linux-first packaged-engine gate is verified. Windows/macOS bundling, updater behavior and their native progress transport remain pending and are not v0.1 blockers for the deliberately Linux-first target.
 
 Engine CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF containing normal/modifier/support volumes plus support/seam/fuzzy-skin facet annotations, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON. A separate Linux packaged release smoke builds the real Flutter release bundle, embeds pinned QIDI profiles, re-verifies bundled-engine discovery/provenance from the packaged filesystem layout, and launches the packaged app through production `ProfileRepository -> WorkspaceController -> OrcaSlicerEngine -> GCodeParser` flow. Release smoke #27 produced 5005 moves / 1988 extrusion moves with a 537 s estimate and 0.35 m filament from that path.

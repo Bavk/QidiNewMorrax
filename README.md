@@ -28,7 +28,7 @@ Linux x64 bundling/version/hash verification is exercised by the `Linux packaged
 
 Implemented foundations include Flutter desktop navigation, Prepare model loading/transforms, QIDI profile loading/inheritance, lossless 3MF import/repack, Orca-compatible multi-plate project 3MF serialization, live Linux slicing progress, cancellation, sliced-metadata parsing, G-code Preview, Moonraker/QIDI device foundations and calibration resources.
 
-Generated Prepare projects now edit plates, objects and explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`). Normal-part volumes also carry source-shaped Orca support/seam/fuzzy-skin facet annotations. The same state is serialized to production 3MF and exercised by the pinned Orca CI fixture.
+Generated Prepare projects now edit plates, objects and explicit child volumes (`normal_part`, `modifier`, `support_enforcer`, `support_blocker`). Normal-part volumes also carry source-shaped Orca support/seam/fuzzy-skin facet annotations. Filament selection is an ordered list of real QIDI preset slots, and generated objects may only reference a materialized slot. The same state is serialized to production 3MF and exercised by the pinned Orca CI fixture.
 
 For continuation rules and current evidence, read [docs/HANDOFF.md](docs/HANDOFF.md) and [migration/PARITY_CONTRACT.md](migration/PARITY_CONTRACT.md) before extending the editor.
 

@@ -2,9 +2,9 @@
 
 ## Current validated checkpoint
 
-Functional code `9a2701a879138f1dce113c9b9a8255d07192f8cf` is green in Flutter CI run `35462902220` (#806), job `105949847037`: analyzer clean, **142/142 tests passed**.
+Functional code `58f20bbd2468dc14de81d413ba58e38530e6982b` is green in Flutter CI run `35467266012` (#829), job `105961796643`: analyzer clean, **144/144 tests passed**.
 
-The same functional HEAD is green in OrcaSlicer smoke run `35462902163` (#234), job `105949846774`. Linux packaged release smoke `35462902353` (#27), job `105949847400`, builds the real Flutter bundle, generates **1547** QIDI profiles from pinned Orca source, verifies bundled engine provenance/hash and runs the packaged binary through model import -> profile resolution -> WorkspaceController -> bundled Orca -> sliced metadata/GCodeParser. The smoke result is Preview-ready with **5005** moves, **1988** extrusion moves, **537 s** prediction and **0.35 m** filament.
+The same functional HEAD is green in OrcaSlicer smoke run `35467266000` (#257), job `105961796652`: ordered Qidi Generic PLA + QIDI PETG Basic slots are loaded, object B uses extruder 2, and both plates slice successfully. Linux packaged release smoke `35467265994` (#50), job `105961796769`, is also green, preserving the verified bundled-engine/profile/legal/offline app path.
 
 ## Production slicing path
 
@@ -28,6 +28,7 @@ The same functional HEAD is green in OrcaSlicer smoke run `35462902163` (#234), 
 | generated Prepare multi-plate/object editing | Dart `WorkspaceEditableProject` + `PreparePage` + `WorkspaceController` | add/rename/lock/remove plates; add/remove/reassign/transform objects; object overrides serialized into production 3MF; Flutter #752 + Orca smoke #180 |
 | generated Prepare volume editing | Dart `WorkspaceEditableVolume` + `PreparePage` + `ThreeMfProjectWriter` | normal/modifier/support-enforcer/support-blocker child volumes, volume overrides and object-wide transforms; Flutter #761 + real Orca subtype smoke #189 |
 | generated Prepare facet paint | Dart `WorkspaceEditableProject.paintFacets` + `PreparePage` + `ThreeMfProjectWriter` | support/seam/fuzzy-skin whole-facet annotations, source codes `4`/`8`, normal-part-only enforcement; Flutter #770 + real Orca paint smoke #198 |
+| generated Prepare multi-filament slots | Dart `WorkspaceController.filamentSlots` + `PreparePage` + `OrcaProfileMaterializer` / `OrcaProjectSettingsBuilder` | ordered real QIDI presets, 1-based object extruder validation, two-slot PLA/PETG real slice; Flutter #829 + Orca #257 + packaged release #50 |
 | Linux packaged Orca | Dart `OrcaSlicerEngine` + `packaging/orca/linux/orca-engine.json` + `linux-release-smoke.yml` | release bundle discovery, manifest pin validation, actual AppImage SHA-256 verification and portable artifact upload; packaged smoke #4 |
 | packaged QIDI profiles + offline app E2E | pinned Orca `resources/profiles/Qidi` -> generated Flutter catalog + `PackagedOfflineSmoke` | 1547 profiles compiled before build; packaged binary resolves X-Plus 4 profiles and completes STL -> slice -> Preview-input; release smoke #27 |
 
@@ -45,4 +46,4 @@ The former `lib/core/slicer` source-shaped Dart implementation, custom Clipper s
 
 ## First unfinished integration boundary
 
-The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, per-plate estimates/warnings/material usage are consumed, generated multi-plate/object/volume/facet Prepare editing feeds the real production 3MF, and the Linux-first release bundle now contains a fail-closed verified pinned Orca engine plus a pinned QIDI profile catalog. The packaged application offline path is integration-verified through Preview-ready G-code. The first unfinished parity boundary is real multi-filament selection/materialization/assignment (with MMU `paint_color` tied to those slots), followed by wider per-object/per-volume overrides and viewport paint UX. The only remaining hard v0.1 gate is real-printer Moonraker upload/start validation; imported vendor 3MF structural editing must preserve the existing lossless package contract.
+The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, per-plate estimates/warnings/material usage are consumed, generated multi-plate/object/volume/facet Prepare editing feeds the real production 3MF, and the Linux-first release bundle now contains a fail-closed verified pinned Orca engine plus a pinned QIDI profile catalog. The packaged application offline path is integration-verified through Preview-ready G-code. The first unfinished parity boundary is independent source verification of MMU/material facet-state serialization for slots above 2 and implementation of `paint_color` on the verified slot model, followed by wider per-object/per-volume overrides and viewport paint UX. The only remaining hard v0.1 gate is real-printer Moonraker upload/start validation; imported vendor 3MF structural editing must preserve the existing lossless package contract.

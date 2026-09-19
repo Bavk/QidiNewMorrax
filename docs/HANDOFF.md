@@ -30,20 +30,20 @@ The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility l
 
 Functional code checkpoint:
 
-- code: `9a2701a879138f1dce113c9b9a8255d07192f8cf`;
-- Flutter parity run `35462902220` (#806), job `105949847037`;
+- code: `58f20bbd2468dc14de81d413ba58e38530e6982b`;
+- Flutter parity run `35467266012` (#829), job `105961796643`;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **142/142 passed**;
+- `flutter test --reporter expanded` — **144/144 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35462902163` (#234), job `105949846774`;
+- Orca smoke run `35467266000` (#257), job `105961796652`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
-- QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
-- the real QIDI X-Plus 4 two-plate project fixture, containing modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint attributes, sliced successfully;
+- QIDI X-Plus 4 machine/process profiles plus ordered Qidi Generic PLA and QIDI PETG Basic filament slots were loaded by the real engine;
+- the real QIDI X-Plus 4 two-plate project fixture, containing modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint attributes, sliced successfully with Cube B assigned to filament slot/extruder 2;
 - both `Metadata/plate_1.gcode` and `Metadata/plate_2.gcode` were present with printable G0/G1 moves;
-- progress reached **100%**, and each plate retained the verified **1167 s** prediction / **1.335 m** filament metadata fallback;
+- progress reached **100%**; the multi-filament fixture validated ordered settings `['Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle', 'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle']`, with plate 1 at **1574 s / 1.591 m** and plate 2 at **1167 s / 1.335 m**;
 - conclusion — **success**.
 
 ## Project/3MF handoff checkpoint — 2026-09-18
@@ -178,6 +178,19 @@ Validation on functional HEAD `9a2701a879138f1dce113c9b9a8255d07192f8cf`:
 
 This closes the automated packaged **open/import -> slice -> Preview-input** gate for the Linux-first v0.1. It does not replace a final visual desktop sanity check or printer-backed upload/start validation.
 
+## Multi-filament slot checkpoint — 2026-09-19
+
+PR #22 promotes filament selection from one profile to an explicit ordered list of real QIDI preset slots:
+
+- `WorkspaceController` resolves and materializes every selected filament slot in order and passes the same ordered list to `OrcaProjectSettingsBuilder`, `OrcaProfileMaterializer` and Orca `--load-filaments`;
+- legacy single-filament callers normalize to a one-slot list, preserving the packaged v0.1 path;
+- generated object `extruder` values are 1-based references into the materialized slot list and are rejected before slicing if the slot does not exist;
+- Prepare can add/remove/change slots and assign each generated object only to an actually materialized slot; machine compatibility or slot removal repairs dangling assignments;
+- the current editor caps slots at 16; object-level assignment is verified independently of MMU facet-color encoding;
+- `paint_color` remains deliberately unimplemented until the full Orca triangle-state serialization for material states above slot 2 is independently source-verified.
+
+Functional HEAD `58f20bbd2468dc14de81d413ba58e38530e6982b` is green in Flutter run `35467266012` (#829), job `105961796643`: analyzer clean, **144/144 tests passed**. Pinned Orca smoke `35467266000` (#257), job `105961796652`, is green with Qidi Generic PLA + QIDI PETG Basic and object 2 assigned to extruder 2. Linux packaged release smoke `35467265994` (#50), job `105961796769`, also remains green, so the already-verified installable Linux v0.1 path is not regressed.
+
 ## First-launch definition
 
 For planning purposes, **v0.1 first launch** means an installable single-material desktop build that can:
@@ -210,7 +223,7 @@ A final legal review remains a release-owner responsibility rather than an autom
 
 Continue in this order:
 
-1. For feature parity, add real multi-filament selection/materialization/assignment on top of the now-verified object/volume/facet model; `paint_color` stays coupled to that work. Widen per-object/per-volume overrides after slot materialization is correct.
+1. For feature parity, source-verify Orca MMU/material facet-state serialization beyond slot 2 and then add `paint_color` on top of the now-verified real filament slots. After that, widen per-object/per-volume overrides.
 2. The only remaining hard **v0.1 first-launch gate** is real-printer Moonraker upload/start validation. It requires representative QIDI hardware; do not replace it with another mock. While hardware is unavailable, continue parity work and release QA without reopening the already-verified packaged offline path.
 3. Improve facet-paint UX with viewport hit-testing/brushes without changing the source-shaped facet state.
 4. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
