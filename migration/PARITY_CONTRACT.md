@@ -38,6 +38,21 @@ Flutter/Dart remains responsible for:
 - calibration orchestration;
 - localization/accessibility and desktop integration.
 
+## Editable project model contract
+
+Generated Prepare projects must keep Orca/Bambu project structure explicit instead of flattening editor state into a single mesh:
+
+- a plate owns object instances;
+- an editable object owns one or more volumes;
+- the first/simple volume may be a `normal_part`, while additional volumes may be `normal_part`, `modifier`, `support_enforcer` or `support_blocker`;
+- per-object and per-volume settings must remain attached to their original scope when serialized to `Metadata/model_settings.config`;
+- transforms that conceptually target an object must move all of its volumes together; volume-specific edits must not silently rewrite sibling volumes;
+- facet paint metadata belongs to a volume/facet and must remain volume-scoped when paint editing is added;
+- generated editor state must be the same state handed to `ThreeMfProjectWriter` and OrcaSlicer; do not maintain a separate presentation-only project model;
+- imported vendor 3MF remains lossless by default. Do not structurally rewrite imported package internals until the edited metadata can be round-tripped without dropping unknown vendor entries;
+- runtime filament/extruder assignments must not expose slots that are not backed by materialized filament profiles.
+
+
 ## Testing
 
 Acceptance is split at the engine boundary:
