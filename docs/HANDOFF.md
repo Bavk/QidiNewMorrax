@@ -30,15 +30,15 @@ The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility l
 
 Functional code checkpoint:
 
-- code: `c8d0f9c703d98ac5ed25d2719390e71bcfc0e1ea`;
-- Flutter parity run `35459879595` (#793), job `105941708672`;
+- code: `9a2701a879138f1dce113c9b9a8255d07192f8cf`;
+- Flutter parity run `35462902220` (#806), job `105949847037`;
 - `flutter analyze` — **No issues found!**;
 - `flutter test --reporter expanded` — **142/142 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35459879618` (#221), job `105941708762`;
+- Orca smoke run `35462902163` (#234), job `105949846774`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
 - QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
 - the real QIDI X-Plus 4 two-plate project fixture, containing modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint attributes, sliced successfully;
@@ -158,6 +158,26 @@ Validation on functional HEAD `c8d0f9c703d98ac5ed25d2719390e71bcfc0e1ea`:
 
 This closes the automated Linux v0.1 **notice/corresponding-source engineering gate**. It does not replace a final legal review of the public release or third-party notices.
 
+## Packaged offline end-to-end checkpoint — 2026-09-19
+
+PR #20 closes the remaining automated/offline v0.1 gate and fixes a release-only profile gap that earlier CLI fixtures did not expose:
+
+- the committed profile directories still contain bootstrap markers rather than the original large runtime asset tree, so the Linux release workflow now generates `assets/generated/profile_catalog.json` from the exact pinned Orca source revision **before** `flutter build`;
+- release smoke #27 generated **1547** pinned QIDI profiles and asserted the X-Plus 4 machine, `0.20mm Standard @Qidi XPlus4` process and Qidi Generic PLA profile are present in the compiled Flutter assets;
+- the packaged binary exposes an environment-gated CI smoke path that uses production `ProfileRepository`, `ModelLoader`, `WorkspaceController`, `ThreeMfProjectWriter`, profile materialization, bundled `OrcaSlicerEngine`, sliced metadata and `GCodeParser`;
+- CI launches the real release binary under Xvfb with **no** `ORCA_SLICER_BIN` override, so sibling bundled-engine discovery/provenance is exercised exactly as installed;
+- a four-triangle STL produced one real sliced plate with **5005 moves**, **1988 extrusion moves**, Orca prediction **537 s**, filament length **0.35 m**, and `preview_ready=true`;
+- packaged engine verification returned true and the engine path resolved to the release bundle's `orca/OrcaSlicer.AppImage`;
+- release-material artifact `qidi-new-morrax-linux-x64-release` id `10590381363` was uploaded successfully.
+
+Validation on functional HEAD `9a2701a879138f1dce113c9b9a8255d07192f8cf`:
+
+- Flutter run `35462902220` (#806), job `105949847037` — analyzer clean, **142/142 tests passed**;
+- Orca smoke `35462902163` (#234), job `105949846774` — **success**;
+- Linux packaged release smoke `35462902353` (#27), job `105949847400` — **success**.
+
+This closes the automated packaged **open/import -> slice -> Preview-input** gate for the Linux-first v0.1. It does not replace a final visual desktop sanity check or printer-backed upload/start validation.
+
 ## First-launch definition
 
 For planning purposes, **v0.1 first launch** means an installable single-material desktop build that can:
@@ -171,15 +191,18 @@ For planning purposes, **v0.1 first launch** means an installable single-materia
 
 The following are **not blockers for that first launch** unless the release target is explicitly widened: true multi-filament/MMU authoring, paint-color/MMU brush parity, full imported-vendor-3MF structural editing, sliced thumbnails, all calibration surfaces, and all three desktop operating systems.
 
-Hard first-launch gates still open after PR #18:
+Hard first-launch gate still open after PR #20:
 
-- validate Moonraker upload/start on representative QIDI hardware;
-- run a packaged-app end-to-end smoke for the offline path (launch -> open/import -> slice -> Preview) and close release-blocking desktop errors.
+- validate Moonraker upload/start on representative QIDI hardware, including the uploaded remote filename returned by Moonraker and optional print start.
 
-Closed engineering gates:
+Closed automated engineering gates:
 
 - Linux packaged engine/version/hash verification;
-- AGPL notice + exact corresponding-source generation/delivery automation.
+- AGPL notice + exact corresponding-source generation/delivery automation;
+- pinned QIDI runtime profile catalog compiled into the release bundle;
+- packaged application offline open/import -> slice -> Preview-input smoke.
+
+A brief human visual sanity check of the packaged desktop UI is still appropriate release QA, but it is no longer an untested architecture/data-path gate.
 
 A final legal review remains a release-owner responsibility rather than an automated acceptance result.
 
@@ -188,7 +211,7 @@ A final legal review remains a release-owner responsibility rather than an autom
 Continue in this order:
 
 1. For feature parity, add real multi-filament selection/materialization/assignment on top of the now-verified object/volume/facet model; `paint_color` stays coupled to that work. Widen per-object/per-volume overrides after slot materialization is correct.
-2. In parallel with parity work, prioritize the remaining **v0.1 first-launch gates** above. Real-printer Moonraker validation requires representative hardware; while that is unavailable, continue with the packaged offline end-to-end smoke.
+2. The only remaining hard **v0.1 first-launch gate** is real-printer Moonraker upload/start validation. It requires representative QIDI hardware; do not replace it with another mock. While hardware is unavailable, continue parity work and release QA without reopening the already-verified packaged offline path.
 3. Improve facet-paint UX with viewport hit-testing/brushes without changing the source-shaped facet state.
 4. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
 5. Continue broader Device/calibration/UI integration and cross-platform packaging after the first target is launchable.
