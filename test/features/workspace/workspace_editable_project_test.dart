@@ -110,4 +110,105 @@ void main() {
     expect(root, contains('QidiNewMorrax:ProjectBoundary'));
     expect(package.mesh.triangles, hasLength(2));
   });
+
+  test('editable object supports modifier and support volumes', () {
+    var project = WorkspaceEditableProject.empty()
+        .addObject(triangle('Base', 0), plateIndex: 0);
+
+    project = project
+        .addVolume(
+          0,
+          triangle('Modifier', 2),
+          name: 'Dense zone',
+          type: WorkspaceEditableVolume.modifier,
+          settings: const {'sparse_infill_density': '80%'},
+        )
+        .addVolume(
+          0,
+          triangle('Enforcer', 4),
+          type: WorkspaceEditableVolume.supportEnforcer,
+        )
+        .addVolume(
+          0,
+          triangle('Blocker', 6),
+          type: WorkspaceEditableVolume.supportBlocker,
+        );
+
+    expect(project.objects.single.volumes, hasLength(4));
+    expect(
+      project.objects.single.volumes.map((volume) => volume.type),
+      [
+        WorkspaceEditableVolume.normalPart,
+        WorkspaceEditableVolume.modifier,
+        WorkspaceEditableVolume.supportEnforcer,
+        WorkspaceEditableVolume.supportBlocker,
+      ],
+    );
+
+    project = project.updateVolume(
+      0,
+      1,
+      name: 'Sparse zone',
+      type: WorkspaceEditableVolume.modifier,
+      settings: const {'sparse_infill_density': '10%'},
+    );
+    expect(project.objects.single.volumes[1].name, 'Sparse zone');
+    expect(
+      project.objects.single.volumes[1].settings['sparse_infill_density'],
+      '10%',
+    );
+
+    project = project.removeVolume(0, 2);
+    expect(project.objects.single.volumes, hasLength(3));
+    expect(
+      () => WorkspaceEditableProject.empty()
+          .addObject(triangle('Only', 0), plateIndex: 0)
+          .removeVolume(0, 0),
+      throwsStateError,
+    );
+  });
+
+  test('editable volume subtypes and overrides serialize to model settings', () {
+    final editable = WorkspaceEditableProject.empty()
+        .addObject(triangle('Base', 0), plateIndex: 0)
+        .addVolume(
+          0,
+          triangle('Modifier', 2),
+          name: 'Modifier',
+          type: WorkspaceEditableVolume.modifier,
+          settings: const {
+            'wall_loops': '5',
+            'sparse_infill_density': '75%',
+          },
+        )
+        .addVolume(
+          0,
+          triangle('Enforcer', 4),
+          name: 'Support Enforcer',
+          type: WorkspaceEditableVolume.supportEnforcer,
+        )
+        .addVolume(
+          0,
+          triangle('Blocker', 6),
+          name: 'Support Blocker',
+          type: WorkspaceEditableVolume.supportBlocker,
+        );
+
+    final project = editable.toThreeMfProject(
+      projectSettings: projectSettings,
+      workspaceToPrinter: ThreeMfTransform.identity,
+    );
+    final bytes = const ThreeMfProjectWriter().encode(project);
+    final package = const ThreeMfParser().parsePackage(bytes);
+    final settings = package.modelSettingsXml!;
+
+    expect(settings, contains('subtype="normal_part"'));
+    expect(settings, contains('subtype="modifier"'));
+    expect(settings, contains('subtype="support_enforcer"'));
+    expect(settings, contains('subtype="support_blocker"'));
+    expect(settings, contains('key="wall_loops" value="5"'));
+    expect(settings, contains('key="sparse_infill_density" value="75%"'));
+    expect(package.mesh.triangles, hasLength(4));
+  });
+
 }
