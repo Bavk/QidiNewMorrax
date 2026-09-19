@@ -30,15 +30,15 @@ The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility l
 
 Functional code checkpoint:
 
-- code: `c54cbacf31346049e7dd342759e12f5795e95a8b`;
-- Flutter parity run `35457718002` (#770), job `105935857211`;
+- code: `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`;
+- Flutter parity run `35459351874` (#783), job `105940282076`;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **138/138 passed**;
+- `flutter test --reporter expanded` — **141/141 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35457717977` (#198), job `105935857104`;
+- Orca smoke run `35459351908` (#211), job `105940282185`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
 - QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
 - the real QIDI X-Plus 4 two-plate project fixture, containing modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint attributes, sliced successfully;
@@ -116,6 +116,26 @@ PR #16 promotes source-shaped facet annotations into generated Prepare state:
 
 Functional HEAD `c54cbacf31346049e7dd342759e12f5795e95a8b` is green in Flutter run `35457718002` (#770), job `105935857211`: analyzer clean, **138/138 tests passed**. Pinned Orca smoke `35457717977` (#198), job `105935857104`, is green with real support/seam/fuzzy-skin facet attributes in the sliced project fixture.
 
+## Linux packaged-engine checkpoint — 2026-09-19
+
+PR #17 closes the first v0.1 release gate for a Linux-first portable bundle:
+
+- `OrcaSlicerEngine.defaultExecutable()` keeps explicit `ORCA_SLICER_BIN` as the highest-precedence development override, then discovers `orca/OrcaSlicer.AppImage` beside the packaged Flutter executable;
+- a bundled engine is selected only when the sibling `orca-engine.json` provenance manifest is present;
+- before the first packaged slice, Dart validates manifest version `2.4.2`, source commit, `linux-x64` platform and the pinned AppImage SHA-256, then streams SHA-256 over the actual bundled AppImage;
+- bundled AppImage launches with `APPIMAGE_EXTRACT_AND_RUN=1`, avoiding a hard runtime dependency on host FUSE;
+- `.github/workflows/linux-release-smoke.yml` generates the missing Linux Flutter scaffold with pinned Flutter 3.47.2, builds the real release executable, downloads the exact 131 MB Orca artifact, verifies it, places it beside the app and archives the full portable bundle;
+- `tool/verify_packaged_orca.dart` verifies the packaged discovery + provenance path using the real release layout.
+
+Validation on HEAD `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`:
+
+- Flutter run `35459351874` (#783), job `105940282076` — analyzer clean, **141/141 tests passed**;
+- Orca smoke `35459351908` (#211), job `105940282185` — **success**;
+- Linux packaged release smoke `35459351920` (#4), job `105940282171` — **success**;
+- uploaded artifact `qidi-new-morrax-linux-x64`, artifact id `10588977100`, size **147,540,938 bytes**.
+
+This closes packaged pinned-engine discovery/version/hash verification for the first Linux target. It does not yet claim AGPL release completeness or a full GUI/printer end-to-end packaged smoke.
+
 ## First-launch definition
 
 For planning purposes, **v0.1 first launch** means an installable single-material desktop build that can:
@@ -129,19 +149,20 @@ For planning purposes, **v0.1 first launch** means an installable single-materia
 
 The following are **not blockers for that first launch** unless the release target is explicitly widened: true multi-filament/MMU authoring, paint-color/MMU brush parity, full imported-vendor-3MF structural editing, sliced thumbnails, all calibration surfaces, and all three desktop operating systems.
 
-Hard first-launch gates still open after PR #16:
+Hard first-launch gates still open after PR #17:
 
-- package/discover the pinned Orca executable for the chosen first desktop target and verify its version/hash from the packaged app;
 - validate Moonraker upload/start on representative QIDI hardware;
 - add AGPL notice/corresponding-source delivery to the packaged build;
 - run an end-to-end packaged-app smoke (open -> slice -> preview -> upload/start) and close release-blocking desktop errors.
+
+The Linux packaged-engine/version/hash gate is **closed** by release smoke #4.
 
 ## First unfinished priority
 
 Continue in this order:
 
 1. For feature parity, add real multi-filament selection/materialization/assignment on top of the now-verified object/volume/facet model; `paint_color` stays coupled to that work. Widen per-object/per-volume overrides after slot materialization is correct.
-2. In parallel with parity work, prioritize the **v0.1 first-launch gates** above: packaged pinned engine, real-printer Moonraker validation, AGPL/source delivery, then packaged end-to-end smoke.
+2. In parallel with parity work, prioritize the remaining **v0.1 first-launch gates** above. Real-printer Moonraker validation requires representative hardware; while that is unavailable, continue with AGPL/source delivery, then packaged end-to-end smoke.
 3. Improve facet-paint UX with viewport hit-testing/brushes without changing the source-shaped facet state.
 4. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
 5. Continue broader Device/calibration/UI integration and cross-platform packaging after the first target is launchable.

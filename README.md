@@ -14,7 +14,7 @@ See [docs/ORCASLICER_ENGINE.md](docs/ORCASLICER_ENGINE.md).
 
 ## Engine setup
 
-Set `ORCA_SLICER_BIN` to the OrcaSlicer executable when it is not available at the platform default location.
+`ORCA_SLICER_BIN` is the explicit development override. Linux release bundles now carry the pinned Orca AppImage at `orca/OrcaSlicer.AppImage` beside the Flutter executable; the runtime requires the sibling provenance manifest and verifies the actual AppImage SHA-256 before first use.
 
 The current bridge pins:
 
@@ -22,7 +22,7 @@ The current bridge pins:
 - commit `8500fcdccaa10b5099ac20d252af3a7c560046f1`
 - GNU AGPL-3.0
 
-Release bundling of the engine is still pending; development builds currently expect an installed/configured executable.
+Linux x64 bundling/version/hash verification is exercised by the `Linux packaged release smoke` workflow. Development or unpackaged builds may still use an installed/configured executable.
 
 ## Current application foundations
 
@@ -36,7 +36,7 @@ For continuation rules and current evidence, read [docs/HANDOFF.md](docs/HANDOFF
 
 The deliberately narrow first-launch target is a single-material installable desktop build that can open/import a model, edit basic project state, slice through the pinned Orca engine, show Preview, and upload/start the resulting G-code on one representative QIDI printer.
 
-The remaining hard launch gates are engine packaging/version verification on the first desktop target, real-printer Moonraker validation, AGPL notice/corresponding-source delivery, and a packaged end-to-end smoke. Multi-filament/MMU authoring, viewport paint brushes, imported-vendor structural editing, thumbnails and all-platform packaging are parity work unless the v0.1 target is widened.
+The Linux packaged-engine/version/hash gate is now closed. The remaining hard launch gates are real-printer Moonraker validation, AGPL notice/corresponding-source delivery, and a packaged end-to-end smoke. Multi-filament/MMU authoring, viewport paint brushes, imported-vendor structural editing, thumbnails and all-platform packaging are parity work unless the v0.1 target is widened.
 
 ## Development
 
@@ -52,6 +52,8 @@ For slicing during development, configure OrcaSlicer:
 ```bash
 ORCA_SLICER_BIN=/path/to/orca-slicer flutter run -d linux
 ```
+
+The Linux portable release bundle is produced by `.github/workflows/linux-release-smoke.yml`. It builds the Flutter executable with pinned Flutter 3.47.2, embeds the exact Orca v2.4.2 AppImage and provenance manifest, verifies the packaged layout from Dart, and uploads `qidi-new-morrax-linux-x64.tar.gz` as a workflow artifact.
 
 ## License
 

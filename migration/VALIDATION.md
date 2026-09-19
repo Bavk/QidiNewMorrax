@@ -84,11 +84,26 @@ Functional code `c54cbacf31346049e7dd342759e12f5795e95a8b`:
 
 MMU/material color paint is not promoted by this checkpoint. It remains coupled to real runtime multi-filament slot materialization.
 
+## Linux packaged engine checkpoint — 2026-09-19
+
+Functional/release code `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`:
+
+- Flutter run `35459351874` (#783), job `105940282076` — analyzer **No issues found**, **141/141 tests passed**;
+- Orca smoke `35459351908` (#211), job `105940282185` — **success**;
+- Linux packaged release smoke `35459351920` (#4), job `105940282171` — **success**;
+- pinned Flutter 3.47.2 generated the Linux desktop scaffold and built `build/linux/x64/release/bundle/qidi_flow_flutter`;
+- the exact OrcaSlicer v2.4.2 Ubuntu 24.04 AppImage was placed at `bundle/orca/OrcaSlicer.AppImage`, its upstream SHA-256 matched the pin, and the canonical `orca-engine.json` manifest was copied beside it;
+- `tool/verify_packaged_orca.dart` resolved the bundled engine through the same Dart runtime discovery code and re-validated manifest version/commit/platform plus the actual AppImage SHA-256;
+- the portable archive contained both the AppImage and provenance manifest and was uploaded as workflow artifact `qidi-new-morrax-linux-x64` (artifact id `10588977100`, **147,540,938 bytes**).
+
+This closes the bundled-engine/version/hash gate for the Linux-first v0.1 target. The artifact is still a CI portable bundle rather than a claim of AGPL-complete public distribution.
+
 ## Dart boundary tests
 
 The Flutter suite additionally covers:
 
 - exact Orca CLI argument construction, including Orca's `--outputdir`, relative `--export-3mf` and optional `--pipe` semantics;
+- packaged Linux engine discovery precedence, provenance manifest validation and tampered-AppImage SHA-256 rejection;
 - Orca progress JSON parsing for messages/warnings and overall/plate percentages;
 - managed-process cancellation without waiting for inherited stdout/stderr descriptors;
 - sliced 3MF `Metadata/plate_N.gcode` extraction and missing-plate failure;
@@ -108,10 +123,10 @@ The latest generated Orca G-code and selected-plate estimate are routed into the
 
 First-launch hard gates:
 
-- package/discover the pinned Orca executable on the chosen first desktop target and verify the packaged version/hash;
-- Moonraker upload/start on representative QIDI hardware;
-- AGPL notice/corresponding-source delivery in release packaging;
-- packaged end-to-end smoke from model open/import through slice/Preview to upload/start.
+- Linux packaged-engine discovery/version/hash verification — **closed** by packaged release smoke #4;
+- Moonraker upload/start on representative QIDI hardware — open;
+- AGPL notice/corresponding-source delivery in release packaging — open;
+- packaged end-to-end smoke from model open/import through slice/Preview to upload/start — open.
 
 Post-v0.1 or widened-target gates:
 

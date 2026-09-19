@@ -1,0 +1,9 @@
+{
+  "name": "OrcaSlicer",
+  "version": "2.4.2",
+  "commit": "8500fcdccaa10b5099ac20d252af3a7c560046f1",
+  "platform": "linux-x64",
+  "artifact": "OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.4.2.AppImage",
+  "sha256": "d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd",
+  "upstream": "https://github.com/OrcaSlicer/OrcaSlicer"
+}

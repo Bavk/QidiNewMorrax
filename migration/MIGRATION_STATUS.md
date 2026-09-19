@@ -13,12 +13,12 @@ Pinned engine:
 
 ## Validated checkpoint — 2026-09-19
 
-- functional code `c54cbacf31346049e7dd342759e12f5795e95a8b`;
-- Flutter CI `35457718002` (#770), job `105935857211`;
+- functional code `6e51c7e8c571a4158a43317ae5f6ca022cb1a195`;
+- Flutter CI `35459351874` (#783), job `105940282076`;
 - analyzer: **No issues found**;
-- tests: **138/138 passed**;
-- Orca smoke `35457717977` (#198), job `105935857104`, conclusion **success**;
-- real QIDI X-Plus 4 two-plate slice remains green with explicit modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint: both plate G-code entries are printable and progress reaches **100%**.
+- tests: **141/141 passed**;
+- Orca smoke `35459351908` (#211), job `105940282185`, conclusion **success**;
+- real QIDI X-Plus 4 two-plate slice remains green with explicit modifier/support volumes plus source-shaped support/seam/fuzzy-skin facet paint; Linux packaged release smoke `35459351920` (#4), job `105940282171`, also succeeds and uploads the verified portable bundle artifact.
 
 ## Implemented in this cutover
 
@@ -38,6 +38,7 @@ Pinned engine:
 - automatic handoff of generated G-code to Dart Preview;
 - latest sliced G-code can be uploaded from Device through Moonraker and started;
 - real pinned Orca binary is exercised in CI with SHA-256 verification and a QIDI profile/model fixture;
+- Linux x64 release CI builds the real Flutter desktop bundle, embeds the pinned Orca AppImage plus provenance manifest, verifies runtime discovery and re-hashes the bundled engine before artifact upload;
 - complete removal of the old `lib/core/slicer` tree, Dart Clipper compatibility layer, and custom Dart G-code generator;
 - removal of the `clipper2` dependency.
 
@@ -45,21 +46,21 @@ Pinned engine:
 
 | Area | Status | Next work |
 |---|---|---|
-| Orca engine process boundary | `integration_verified` | package same pinned engine on all desktop targets |
+| Orca engine process boundary | `integration_verified` | Linux bundled runtime verified; Windows/macOS packaging can follow after v0.1 |
 | Prepare/project -> Orca 3MF handoff | `integration_verified` | generated multi-plate/object/volume/facet editor feeds production state; extend real multi-filament and broader per-volume editing |
 | sliced G-code + estimates/warnings/material -> Dart Preview | `integration_verified` including multi-plate metadata fallback | thumbnails / additional vendor payload metadata remain |
 | QIDI profile materialization | `integration_verified` for X-Plus 4 fixture | widen representative QIDI preset matrix |
 | latest slice -> Moonraker upload/start | `implemented_unverified` | printer-backed integration fixture |
 | multi-plate / modifiers / paint / per-object settings | `port_started` with generated facet paint verified | viewport paint brush, real multi-filament/MMU color and wider per-volume overrides remain |
 | slicing progress / cancellation | `integration_verified` on Linux / process cancellation unit-tested | add native progress transport validation for macOS/Windows packaging |
-| engine packaging / updater / exact version verification | `pending` | Windows/macOS/Linux packaging |
+| engine packaging / updater / exact version verification | `integration_verified` for Linux-first portable bundle | Windows/macOS packaging/updater remain post-v0.1 |
 | AGPL notices / corresponding source delivery | `pending` release gate | package license/source information |
 | Flutter editor/project/Preview/Device/calibration | `port_started` | continue application integration |
 
 ## Immediate priority
 
 1. Continue the verified Prepare model with real multi-filament selection/materialization/assignment; couple MMU `paint_color` to those real slots, then widen per-object/per-volume overrides.
-2. For v0.1 first launch, prioritize packaging/version verification of the pinned engine on the first desktop target, real QIDI Moonraker upload/start, AGPL notice/source delivery, and one packaged end-to-end smoke.
+2. For v0.1 first launch, the Linux packaged-engine/version/hash gate is closed. Real QIDI Moonraker validation still needs hardware; while unavailable, prioritize AGPL notice/source delivery and then packaged end-to-end smoke.
 3. Improve facet-paint UX with viewport hit-testing/brushes while preserving the verified source-shaped facet state.
 4. Consume remaining sliced-package thumbnails/additional vendor payload metadata and continue broader Device/calibration/UI work.
 
@@ -67,9 +68,12 @@ Pinned engine:
 
 A first-launch build is intentionally narrower than full QIDI/Orca editor parity. The minimum release target is a single-material installable desktop build that opens a model, edits basic project state, slices through the pinned Orca engine, shows Preview, and uploads/starts on one representative QIDI printer.
 
+Closed hard gate:
+
+- Linux-first bundled/discovered pinned Orca executable with packaged version/hash verification — **verified** by release smoke #4.
+
 Open hard gates:
 
-- bundled/discovered pinned Orca executable with packaged version/hash verification on the chosen first desktop target;
 - real-printer Moonraker upload/start validation;
 - AGPL notices plus corresponding-source delivery in the distributable;
 - packaged end-to-end smoke from open/import through slice/preview to upload/start.

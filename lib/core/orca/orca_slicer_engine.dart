@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 
 import 'orca_slice_metadata.dart';
 
@@ -19,10 +20,16 @@ class OrcaSlicerEngine {
 
   static const pinnedVersion = '2.4.2';
   static const pinnedCommit = '8500fcdccaa10b5099ac20d252af3a7c560046f1';
+  static const pinnedLinuxAppImageSha256 =
+      'd12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd';
+  static const packagedEngineDirectoryName = 'orca';
+  static const packagedLinuxExecutableName = 'OrcaSlicer.AppImage';
+  static const packagedManifestFileName = 'orca-engine.json';
 
   final String executable;
   Process? _activeProcess;
   bool _cancelRequested = false;
+  Future<bool>? _packagedVerification;
 
   bool get isRunning => _activeProcess != null;
 
@@ -33,16 +40,103 @@ class OrcaSlicerEngine {
     return process.kill();
   }
 
-  static String defaultExecutable() {
-    final configured = Platform.environment['ORCA_SLICER_BIN'];
+  static String defaultExecutable({
+    Map<String, String>? environment,
+    String? resolvedExecutable,
+    bool Function(String path)? fileExists,
+  }) {
+    final configured =
+        (environment ?? Platform.environment)['ORCA_SLICER_BIN'];
     if (configured != null && configured.trim().isNotEmpty) {
       return configured.trim();
     }
+
+    if (Platform.isLinux) {
+      final appExecutable = resolvedExecutable ?? Platform.resolvedExecutable;
+      final appDirectory = File(appExecutable).parent.path;
+      final packagedDirectory = _join(
+        appDirectory,
+        packagedEngineDirectoryName,
+      );
+      final packagedExecutable = _join(
+        packagedDirectory,
+        packagedLinuxExecutableName,
+      );
+      final packagedManifest = _join(
+        packagedDirectory,
+        packagedManifestFileName,
+      );
+      final exists = fileExists ?? ((path) => File(path).existsSync());
+      if (exists(packagedExecutable) && exists(packagedManifest)) {
+        return packagedExecutable;
+      }
+    }
+
     if (Platform.isMacOS) {
       return '/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer';
     }
     if (Platform.isWindows) return 'OrcaSlicer.exe';
     return 'orca-slicer';
+  }
+
+  Future<bool> verifyPackagedEngine() {
+    return _packagedVerification ??= _verifyPackagedEngine();
+  }
+
+  Future<bool> _verifyPackagedEngine() async {
+    if (!Platform.isLinux) return false;
+
+    final executableFile = File(executable);
+    final manifestFile = File(
+      _join(executableFile.parent.path, packagedManifestFileName),
+    );
+    if (!await manifestFile.exists()) return false;
+    if (!await executableFile.exists()) {
+      throw OrcaSlicerException(
+        'Bundled OrcaSlicer manifest exists but executable is missing: '
+        '${executableFile.path}',
+      );
+    }
+
+    Map<String, dynamic> manifest;
+    try {
+      final decoded = jsonDecode(await manifestFile.readAsString());
+      if (decoded is! Map) {
+        throw const FormatException('manifest root is not an object');
+      }
+      manifest = decoded.cast<String, dynamic>();
+    } catch (error) {
+      throw OrcaSlicerException(
+        'Bundled OrcaSlicer provenance manifest is invalid: '
+        '${manifestFile.path}',
+        cause: error,
+      );
+    }
+
+    final version = manifest['version']?.toString();
+    final commit = manifest['commit']?.toString();
+    final expectedSha = manifest['sha256']?.toString().toLowerCase();
+    final platform = manifest['platform']?.toString();
+    if (version != pinnedVersion ||
+        commit != pinnedCommit ||
+        expectedSha != pinnedLinuxAppImageSha256 ||
+        platform != 'linux-x64') {
+      throw OrcaSlicerException(
+        'Bundled OrcaSlicer provenance does not match the pinned engine. '
+        'Expected v$pinnedVersion / $pinnedCommit / '
+        '$pinnedLinuxAppImageSha256 / linux-x64.',
+      );
+    }
+
+    final digest = await sha256.bind(executableFile.openRead()).first;
+    final actualSha = digest.toString().toLowerCase();
+    if (actualSha != pinnedLinuxAppImageSha256) {
+      throw OrcaSlicerException(
+        'Bundled OrcaSlicer SHA-256 mismatch. '
+        'Expected $pinnedLinuxAppImageSha256, got $actualSha.',
+      );
+    }
+    return true;
   }
 
   List<String> buildArguments(
@@ -90,6 +184,7 @@ class OrcaSlicerEngine {
       throw StateError('An OrcaSlicer process is already running.');
     }
 
+    await verifyPackagedEngine();
     await _requireFile(request.modelPath, 'model');
     await _requireFile(request.machineProfilePath, 'machine profile');
     await _requireFile(request.processProfilePath, 'process profile');
@@ -136,6 +231,9 @@ class OrcaSlicerEngine {
           executable,
           arguments,
           runInShell: Platform.isWindows,
+          environment: _isPackagedLinuxEngine()
+              ? const {'APPIMAGE_EXTRACT_AND_RUN': '1'}
+              : null,
         );
       } on ProcessException catch (error) {
         throw OrcaSlicerException(
@@ -317,6 +415,14 @@ class OrcaSlicerEngine {
     final dot = name.lastIndexOf('.');
     final stem = dot <= 0 ? name : name.substring(0, dot);
     return stem.replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
+  }
+
+  bool _isPackagedLinuxEngine() {
+    if (!Platform.isLinux) return false;
+    final file = File(executable);
+    return file.uri.pathSegments.isNotEmpty &&
+        file.uri.pathSegments.last == packagedLinuxExecutableName &&
+        File(_join(file.parent.path, packagedManifestFileName)).existsSync();
   }
 
   static String _join(String directory, String name) {

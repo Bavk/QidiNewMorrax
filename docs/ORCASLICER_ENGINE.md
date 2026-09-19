@@ -10,7 +10,7 @@ QidiNewMorrax uses OrcaSlicer as its production slicing and G-code engine. Flutt
 - Linux Ubuntu 24.04 AppImage SHA-256: `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
 - license: GNU AGPL-3.0
 
-The executable may be supplied with `ORCA_SLICER_BIN`. Platform defaults are used when the environment variable is absent.
+`ORCA_SLICER_BIN` remains the highest-precedence development override. On packaged Linux builds, the runtime next looks for `orca/OrcaSlicer.AppImage` beside the Flutter executable and requires a sibling `orca-engine.json` provenance manifest. System platform defaults are used only when no valid packaged candidate is present.
 
 ## Runtime boundary
 
@@ -54,15 +54,27 @@ Cancellation is process-owned: the bridge uses `Process.start`, keeps the active
 
 The upstream `--pipe` callback manager is Linux-only in OrcaSlicer 2.4.2, so macOS/Windows keep normal slicing and process cancellation but do not yet receive native FIFO progress events.
 
+## Linux packaged engine
+
+The first release target is Linux x64. The portable bundle contract is:
+
+- Flutter executable at the bundle root;
+- `orca/OrcaSlicer.AppImage`;
+- `orca/orca-engine.json` carrying version, upstream commit, platform and SHA-256 provenance.
+
+Before the first packaged slice, `OrcaSlicerEngine.verifyPackagedEngine()` checks the manifest against the compile-time pin and streams SHA-256 over the actual AppImage. A mismatch is a hard error; the application does not silently run an unknown bundled engine. Bundled AppImage processes receive `APPIMAGE_EXTRACT_AND_RUN=1` so the release does not require FUSE to mount the image.
+
+`.github/workflows/linux-release-smoke.yml` builds the Linux release with pinned Flutter 3.47.2, downloads the exact OrcaSlicer v2.4.2 Ubuntu 24.04 AppImage, verifies its digest, bundles it, runs the Dart packaged-discovery/provenance verifier and uploads `qidi-new-morrax-linux-x64.tar.gz`. Release smoke #4 validates this path end to end through artifact creation.
+
 ## Current limitations
 
-- OrcaSlicer must currently be installed or configured with `ORCA_SLICER_BIN`.
+- Linux release bundles carry the pinned Orca AppImage and verify it at runtime. Development/unpackaged builds may still use `ORCA_SLICER_BIN` or the platform default.
 - Native progress transport is verified on Linux only; equivalent macOS/Windows progress transport remains a packaging/integration task.
 - Estimates, warnings and material usage are consumed; sliced thumbnails and additional vendor printer-payload metadata are not yet fully integrated.
 - Generated multi-plate/object/volume editing is wired into Prepare and production 3MF, including modifier/support-enforcer/support-blocker creation, volume-scoped wall/infill overrides, and source-shaped support/seam/fuzzy-skin facet annotations. The first paint UI addresses whole source facets by index/range; viewport brush/hit-testing remains UX work. Real multi-filament selection/assignment, MMU `paint_color`, and wider per-volume overrides remain open; imported vendor 3MF stays on the lossless repack path.
-- Cross-platform bundled-engine packaging and exact-version/updater verification remain pending.
+- The Linux-first packaged-engine gate is verified. Windows/macOS bundling, updater behavior and their native progress transport remain pending and are not v0.1 blockers for the deliberately Linux-first target.
 
-CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF containing normal/modifier/support volumes plus support/seam/fuzzy-skin facet annotations, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON.
+Engine CI downloads the pinned Ubuntu 24.04 AppImage, verifies its SHA-256, loads QIDI X-Plus 4 presets, slices a two-plate project 3MF containing normal/modifier/support volumes plus support/seam/fuzzy-skin facet annotations, validates both plate G-code entries, parses real `slice_info.config`, verifies the G-code statistics fallback and verifies real FIFO progress JSON. A separate Linux packaged release smoke builds the real Flutter release bundle and re-verifies bundled-engine discovery/provenance from the packaged filesystem layout.
 
 ## Licensing
 
