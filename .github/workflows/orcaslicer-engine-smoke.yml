@@ -58,7 +58,20 @@ jobs:
 
           def mesh_object_xml(object_id, uuid):
               vs = ''.join(f'<vertex x="{x}" y="{y}" z="{z}"/>' for x,y,z in vertices)
-              ts = ''.join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a,b,c in triangles)
+              triangle_xml = []
+              for index, (a, b, c) in enumerate(triangles):
+                  attrs = ''
+                  if object_id == 1:
+                      if index == 0:
+                          attrs += ' paint_supports="4"'
+                      if index == 1:
+                          attrs += ' paint_seam="8"'
+                      if index == 2:
+                          attrs += ' paint_fuzzy_skin="4"'
+                  triangle_xml.append(
+                      f'<triangle v1="{a}" v2="{b}" v3="{c}"{attrs}/>'
+                  )
+              ts = ''.join(triangle_xml)
               return f'''<object id="{object_id}" p:UUID="{uuid}" type="model"><mesh>
               <vertices>{vs}</vertices><triangles>{ts}</triangles>
             </mesh></object>'''
@@ -241,6 +254,10 @@ jobs:
 
           test -s out/project.gcode.3mf
           test -s "$progress_log"
+          unzip -p fixture/project.3mf 3D/Objects/object_1.model > out/object_1.model
+          grep -q 'paint_supports="4"' out/object_1.model
+          grep -q 'paint_seam="8"' out/object_1.model
+          grep -q 'paint_fuzzy_skin="4"' out/object_1.model
           unzip -p fixture/project.3mf Metadata/model_settings.config > out/model_settings.config
           grep -q 'subtype="modifier"' out/model_settings.config
           grep -q 'subtype="support_enforcer"' out/model_settings.config
