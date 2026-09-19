@@ -38,6 +38,7 @@ class _PreparePageState extends State<PreparePage> {
   WorkspaceEditableProject? editableProject;
   int activePlateIndex = 0;
   int? selectedObjectIndex;
+  int? selectedVolumeIndex;
   String? modelPath;
   Object? error;
   bool loadingProfiles = true;
@@ -142,6 +143,7 @@ class _PreparePageState extends State<PreparePage> {
         editableProject = null;
         activePlateIndex = 0;
         selectedObjectIndex = null;
+        selectedVolumeIndex = null;
         mesh = sourceProject!.mesh;
         modelPath = single.path ?? single.name;
         _publishSelection();
@@ -166,6 +168,7 @@ class _PreparePageState extends State<PreparePage> {
       selectedObjectIndex = project.objects.isEmpty
           ? null
           : project.objects.length - 1;
+      selectedVolumeIndex = selectedObjectIndex == null ? null : 0;
       mesh = selectedObjectIndex == null
           ? project.mergedMeshForPlate(activePlateIndex)
           : project.objects[selectedObjectIndex!].mesh;
@@ -214,6 +217,7 @@ class _PreparePageState extends State<PreparePage> {
     setState(() {
       activePlateIndex = plateIndex;
       selectedObjectIndex = indices.firstOrNull;
+      selectedVolumeIndex = selectedObjectIndex == null ? null : 0;
       mesh = selectedObjectIndex == null
           ? project.mergedMeshForPlate(plateIndex)
           : project.objects[selectedObjectIndex!].mesh;
@@ -230,6 +234,7 @@ class _PreparePageState extends State<PreparePage> {
     }
     setState(() {
       selectedObjectIndex = objectIndex;
+      selectedVolumeIndex = 0;
       activePlateIndex = project.objects[objectIndex].plateIndex;
       mesh = project.objects[objectIndex].mesh;
       _publishSelection();
@@ -323,6 +328,7 @@ class _PreparePageState extends State<PreparePage> {
       editableProject = WorkspaceEditableProject.empty();
       activePlateIndex = 0;
       selectedObjectIndex = null;
+      selectedVolumeIndex = null;
       mesh = null;
       modelPath = null;
       error = null;
@@ -346,6 +352,7 @@ class _PreparePageState extends State<PreparePage> {
       editableProject = updated;
       activePlateIndex = updated.plates.length - 1;
       selectedObjectIndex = null;
+      selectedVolumeIndex = null;
       mesh = null;
       sourceProject = null;
       _publishSelection();
@@ -362,6 +369,7 @@ class _PreparePageState extends State<PreparePage> {
       editableProject = updated;
       activePlateIndex = nextPlate;
       selectedObjectIndex = indices.firstOrNull;
+      selectedVolumeIndex = selectedObjectIndex == null ? null : 0;
       mesh = selectedObjectIndex == null
           ? updated.mergedMeshForPlate(nextPlate)
           : updated.objects[selectedObjectIndex!].mesh;
@@ -436,9 +444,280 @@ class _PreparePageState extends State<PreparePage> {
     setState(() {
       editableProject = updated;
       selectedObjectIndex = indices.firstOrNull;
+      selectedVolumeIndex = selectedObjectIndex == null ? null : 0;
       mesh = selectedObjectIndex == null
           ? updated.mergedMeshForPlate(activePlateIndex)
           : updated.objects[selectedObjectIndex!].mesh;
+      _publishSelection();
+    });
+  }
+
+  void _selectVolume(int volumeIndex) {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (project == null || objectIndex == null) return;
+    final volumes = project.objects[objectIndex].volumes;
+    if (volumeIndex < 0 || volumeIndex >= volumes.length) return;
+    setState(() {
+      selectedVolumeIndex = volumeIndex;
+    });
+  }
+
+  Future<void> _addVolumeToSelectedObject() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    if (project == null || objectIndex == null) return;
+
+    var type = WorkspaceEditableVolume.modifier;
+    final selectedType = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add volume'),
+          content: SizedBox(
+            width: 420,
+            child: DropdownButtonFormField<String>(
+              initialValue: type,
+              decoration: const InputDecoration(labelText: 'Volume type'),
+              items: const [
+                DropdownMenuItem(
+                  value: WorkspaceEditableVolume.modifier,
+                  child: Text('Modifier'),
+                ),
+                DropdownMenuItem(
+                  value: WorkspaceEditableVolume.supportEnforcer,
+                  child: Text('Support enforcer'),
+                ),
+                DropdownMenuItem(
+                  value: WorkspaceEditableVolume.supportBlocker,
+                  child: Text('Support blocker'),
+                ),
+                DropdownMenuItem(
+                  value: WorkspaceEditableVolume.normalPart,
+                  child: Text('Normal part'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) setDialogState(() => type = value);
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, type),
+              child: const Text('Choose model'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selectedType == null) return;
+
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['stl', 'obj', '3mf', 'amf', 'xml'],
+      withData: true,
+      allowMultiple: false,
+    );
+    if (picked == null || picked.files.isEmpty) return;
+
+    setState(() {
+      loadingModel = true;
+      error = null;
+    });
+    try {
+      final file = picked.files.single;
+      final bytes = await _pickedBytes(file);
+      final loaded = file.name.toLowerCase().endsWith('.3mf')
+          ? const ThreeMfParser().parsePackage(bytes, name: file.name).mesh
+          : const ModelLoader().load(bytes, file.name);
+      final updated = project.addVolume(
+        objectIndex,
+        loaded,
+        name: loaded.name,
+        type: selectedType,
+      );
+      setState(() {
+        editableProject = updated;
+        selectedVolumeIndex = updated.objects[objectIndex].volumes.length - 1;
+        mesh = updated.objects[objectIndex].mesh;
+        _publishSelection();
+      });
+    } catch (e) {
+      setState(() => error = e);
+    } finally {
+      loadingModel = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _editSelectedVolume() async {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    final volumeIndex = selectedVolumeIndex;
+    if (project == null || objectIndex == null || volumeIndex == null) return;
+    final object = project.objects[objectIndex];
+    if (volumeIndex < 0 || volumeIndex >= object.volumes.length) return;
+    final volume = object.volumes[volumeIndex];
+
+    final name = TextEditingController(text: volume.name);
+    final wallLoops = TextEditingController(
+      text: volume.settings['wall_loops'] ?? '',
+    );
+    final infill = TextEditingController(
+      text: volume.settings['sparse_infill_density'] ?? '',
+    );
+    var type = volume.type;
+
+    final result = await showDialog<
+        ({
+          String name,
+          String type,
+          String wallLoops,
+          String infill,
+        })>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Volume settings'),
+          content: SizedBox(
+            width: 460,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Volume name'),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Volume type'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: WorkspaceEditableVolume.normalPart,
+                      child: Text('Normal part'),
+                    ),
+                    DropdownMenuItem(
+                      value: WorkspaceEditableVolume.modifier,
+                      child: Text('Modifier'),
+                    ),
+                    DropdownMenuItem(
+                      value: WorkspaceEditableVolume.supportEnforcer,
+                      child: Text('Support enforcer'),
+                    ),
+                    DropdownMenuItem(
+                      value: WorkspaceEditableVolume.supportBlocker,
+                      child: Text('Support blocker'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => type = value);
+                  },
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: wallLoops,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Wall loops override',
+                          hintText: 'inherit',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: infill,
+                        decoration: const InputDecoration(
+                          labelText: 'Sparse infill override',
+                          hintText: 'inherit (e.g. 50%)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                context,
+                (
+                  name: name.text,
+                  type: type,
+                  wallLoops: wallLoops.text,
+                  infill: infill.text,
+                ),
+              ),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    name.dispose();
+    wallLoops.dispose();
+    infill.dispose();
+    if (result == null) return;
+
+    final settings = <String, String>{...volume.settings};
+    final loops = result.wallLoops.trim();
+    final density = result.infill.trim();
+    if (loops.isEmpty) {
+      settings.remove('wall_loops');
+    } else {
+      settings['wall_loops'] = loops;
+    }
+    if (density.isEmpty) {
+      settings.remove('sparse_infill_density');
+    } else {
+      settings['sparse_infill_density'] = density;
+    }
+
+    final updated = project.updateVolume(
+      objectIndex,
+      volumeIndex,
+      name: result.name.trim().isEmpty ? volume.name : result.name.trim(),
+      type: result.type,
+      settings: settings,
+    );
+    setState(() {
+      editableProject = updated;
+      mesh = updated.objects[objectIndex].mesh;
+      _publishSelection();
+    });
+  }
+
+  void _removeSelectedVolume() {
+    final project = editableProject;
+    final objectIndex = selectedObjectIndex;
+    final volumeIndex = selectedVolumeIndex;
+    if (project == null || objectIndex == null || volumeIndex == null) return;
+    final object = project.objects[objectIndex];
+    if (object.volumes.length <= 1) return;
+
+    final updated = project.removeVolume(objectIndex, volumeIndex);
+    setState(() {
+      editableProject = updated;
+      selectedVolumeIndex = volumeIndex.clamp(
+        0,
+        updated.objects[objectIndex].volumes.length - 1,
+      );
+      mesh = updated.objects[objectIndex].mesh;
       _publishSelection();
     });
   }
@@ -944,10 +1223,92 @@ class _PreparePageState extends State<PreparePage> {
               );
             },
           ),
+          const SizedBox(height: 12),
+          Builder(
+            builder: (context) {
+              final object = project.objects[selectedOnPlate];
+              final volumeIndex = selectedVolumeIndex != null &&
+                      selectedVolumeIndex! >= 0 &&
+                      selectedVolumeIndex! < object.volumes.length
+                  ? selectedVolumeIndex
+                  : 0;
+              final volume = object.volumes[volumeIndex!];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<int>(
+                    key: ValueKey(
+                      'volume-$selectedOnPlate-$volumeIndex-'
+                      '${object.volumes.length}',
+                    ),
+                    initialValue: volumeIndex,
+                    decoration: const InputDecoration(
+                      labelText: 'Selected volume',
+                    ),
+                    items: [
+                      for (var i = 0; i < object.volumes.length; i++)
+                        DropdownMenuItem(
+                          value: i,
+                          child: Text(
+                            '${object.volumes[i].name} · '
+                            '${_volumeTypeLabel(object.volumes[i].type)}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) _selectVolume(value);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _addVolumeToSelectedObject,
+                        icon: const Icon(Icons.add_box_outlined, size: 17),
+                        label: const Text('Add volume'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _editSelectedVolume,
+                        icon: const Icon(Icons.tune, size: 17),
+                        label: const Text('Volume settings'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: object.volumes.length > 1
+                            ? _removeSelectedVolume
+                            : null,
+                        icon: const Icon(
+                          Icons.remove_circle_outline,
+                          size: 17,
+                        ),
+                        label: const Text('Remove volume'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${_volumeTypeLabel(volume.type)}'
+                    '${volume.settings.isEmpty ? '' : ' · ${volume.settings.entries.map((entry) => '${entry.key}=${entry.value}').join(' · ')}'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ],
     );
   }
+
+  String _volumeTypeLabel(String type) => switch (type) {
+        WorkspaceEditableVolume.normalPart => 'Normal part',
+        WorkspaceEditableVolume.modifier => 'Modifier',
+        WorkspaceEditableVolume.supportEnforcer => 'Support enforcer',
+        WorkspaceEditableVolume.supportBlocker => 'Support blocker',
+        _ => type,
+      };
 
   Widget _profileDropdown(
     String label,
