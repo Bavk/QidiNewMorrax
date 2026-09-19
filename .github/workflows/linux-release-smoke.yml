@@ -43,6 +43,25 @@ jobs:
             libjavascriptcoregtk-4.1-0 \
             xvfb
 
+      - name: Generate packaged QIDI profiles from pinned Orca source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
+          curl -fL --retry 3 \
+            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
+            -o "$orca_source"
+          rm -rf .orca-source
+          mkdir -p .orca-source assets/generated
+          tar -xzf "$orca_source" -C .orca-source --strip-components=1
+          python3 tool/generate_qidi_profile_catalog.py \
+            .orca-source \
+            assets/generated/profile_catalog.json
+          test -s assets/generated/profile_catalog.json
+          grep -q 'X-Plus 4' assets/generated/profile_catalog.json
+          grep -q 'Generic PLA' assets/generated/profile_catalog.json
+          grep -q '0.20mm Standard' assets/generated/profile_catalog.json
+
       - name: Install pinned Flutter
         shell: bash
         run: |
@@ -171,9 +190,6 @@ jobs:
             HEAD
 
           orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
-          curl -fL --retry 3 \
-            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
-            -o "$orca_source"
 
           test -s qidi-new-morrax-source.tar.gz
           test -s "$orca_source"
