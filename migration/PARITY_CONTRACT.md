@@ -56,6 +56,19 @@ Generated Prepare projects must keep Orca/Bambu project structure explicit inste
 - runtime filament/extruder assignments must not expose slots that are not backed by materialized filament profiles.
 
 
+## Packaged-engine contract
+
+For the Linux-first v0.1 target:
+
+- explicit `ORCA_SLICER_BIN` is a development override and remains highest precedence;
+- a release bundle may select the sibling `orca/OrcaSlicer.AppImage` only when `orca/orca-engine.json` is also present;
+- the manifest version, upstream commit, platform and SHA-256 must match the compile-time engine pin;
+- the actual bundled AppImage bytes must be hashed before first use; manifest-only trust is insufficient;
+- a packaged hash/provenance mismatch is fatal and must not silently fall back to another engine;
+- release CI must build the real Flutter desktop bundle and verify runtime discovery against the packaged filesystem layout, not merely test a standalone Orca download.
+
+Windows/macOS packaging may use platform-appropriate layouts later, but must preserve the same provenance/fail-closed principle.
+
 ## Testing
 
 Acceptance is split at the engine boundary:
