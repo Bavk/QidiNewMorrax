@@ -211,4 +211,131 @@ void main() {
     expect(package.mesh.triangles, hasLength(4));
   });
 
+
+  test('facet paint keeps channels independent and source-shaped', () {
+    final paintedMesh = Mesh(
+      name: 'Painted',
+      triangles: [
+        Triangle(
+          const Point3(0, 0, 0),
+          const Point3(10, 0, 0),
+          const Point3(0, 10, 0),
+        ),
+        Triangle(
+          const Point3(10, 0, 0),
+          const Point3(10, 10, 0),
+          const Point3(0, 10, 0),
+        ),
+        Triangle(
+          const Point3(0, 10, 0),
+          const Point3(10, 10, 0),
+          const Point3(5, 15, 0),
+        ),
+      ],
+    );
+
+    var project = WorkspaceEditableProject.empty()
+        .addObject(paintedMesh, plateIndex: 0);
+    project = project
+        .paintFacets(
+          0,
+          0,
+          const [0, 1],
+          channel: WorkspaceFacetPaintChannel.supports,
+          state: WorkspaceFacetPaintState.enforcer,
+        )
+        .paintFacets(
+          0,
+          0,
+          const [1],
+          channel: WorkspaceFacetPaintChannel.seam,
+          state: WorkspaceFacetPaintState.blocker,
+        )
+        .paintFacets(
+          0,
+          0,
+          const [2],
+          channel: WorkspaceFacetPaintChannel.fuzzySkin,
+          state: WorkspaceFacetPaintState.enforcer,
+        );
+
+    final facets = project.objects.single.volumes.single.facets;
+    expect(facets[0]!.supports, '4');
+    expect(facets[0]!.seam, isNull);
+    expect(facets[1]!.supports, '4');
+    expect(facets[1]!.seam, '8');
+    expect(facets[2]!.fuzzySkin, '4');
+
+    project = project.clearFacetPaint(
+      0,
+      0,
+      const [1],
+      channel: WorkspaceFacetPaintChannel.supports,
+    );
+    final cleared = project.objects.single.volumes.single.facets[1]!;
+    expect(cleared.supports, isNull);
+    expect(cleared.seam, '8');
+
+    expect(
+      () => project.paintFacets(
+        0,
+        0,
+        const [0],
+        channel: WorkspaceFacetPaintChannel.fuzzySkin,
+        state: WorkspaceFacetPaintState.blocker,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => project.paintFacets(
+        0,
+        0,
+        const [99],
+        channel: WorkspaceFacetPaintChannel.supports,
+        state: WorkspaceFacetPaintState.enforcer,
+      ),
+      throwsRangeError,
+    );
+  });
+
+  test('facet paint serializes into Orca triangle attributes', () {
+    var project = WorkspaceEditableProject.empty()
+        .addObject(triangle('Paint', 0), plateIndex: 0);
+    project = project
+        .paintFacets(
+          0,
+          0,
+          const [0],
+          channel: WorkspaceFacetPaintChannel.supports,
+          state: WorkspaceFacetPaintState.enforcer,
+        )
+        .paintFacets(
+          0,
+          0,
+          const [0],
+          channel: WorkspaceFacetPaintChannel.seam,
+          state: WorkspaceFacetPaintState.blocker,
+        )
+        .paintFacets(
+          0,
+          0,
+          const [0],
+          channel: WorkspaceFacetPaintChannel.fuzzySkin,
+          state: WorkspaceFacetPaintState.enforcer,
+        );
+
+    final bytes = const ThreeMfProjectWriter().encode(
+      project.toThreeMfProject(
+        projectSettings: projectSettings,
+        workspaceToPrinter: ThreeMfTransform.identity,
+      ),
+    );
+    final package = const ThreeMfParser().parsePackage(bytes);
+    final child = utf8.decode(package.entry('3D/Objects/object_1.model')!);
+
+    expect(child, contains('paint_supports="4"'));
+    expect(child, contains('paint_seam="8"'));
+    expect(child, contains('paint_fuzzy_skin="4"'));
+  });
+
 }
