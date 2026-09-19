@@ -11,7 +11,7 @@ Pinned engine:
 - Ubuntu 24.04 AppImage SHA-256 `d12fb8c8eac1aecd2dfb6377acd48f994f8fa439ed5292fa532dd82880f029fd`
 - GNU AGPL-3.0
 
-Read [ORCASLICER_ENGINE.md](ORCASLICER_ENGINE.md) and [../migration/PARITY_CONTRACT.md](../migration/PARITY_CONTRACT.md) before continuing.
+Read [ORCASLICER_ENGINE.md](ORCASLICER_ENGINE.md) and [../migration/PARITY_CONTRACT.md](../migration/PARITY_CONTRACT.md) before continuing. Generated-project editing now follows the explicit `plate -> object -> volumes` contract in `PARITY_CONTRACT.md`; do not collapse modifier/support volumes into a single object mesh when extending Prepare.
 
 ## Current production path
 
@@ -30,18 +30,18 @@ The old `lib/core/slicer` tree, its test suite, the Dart Clipper compatibility l
 
 Functional code checkpoint:
 
-- code: `cbc806db7ecf00c87b6730c4167fa3d3f622223a`;
-- Flutter parity run `35401167437` (#752), job `105781146290`;
+- code: `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c`;
+- Flutter parity run `35456145423` (#761), job `105931646159`;
 - `flutter analyze` — **No issues found!**;
-- `flutter test --reporter expanded` — **134/134 passed**;
+- `flutter test --reporter expanded` — **136/136 passed**;
 - conclusion — **success**.
 
 Real engine checkpoint on the same functional HEAD:
 
-- Orca smoke run `35401167530` (#180), job `105781147329`;
+- Orca smoke run `35456145434` (#189), job `105931646222`;
 - downloaded Orca v2.4.2 Ubuntu 24.04 AppImage passed the pinned SHA-256 check;
 - QIDI X-Plus 4 machine/process/PLA profiles were loaded by the real engine;
-- the real QIDI X-Plus 4 two-plate project fixture sliced successfully;
+- the real QIDI X-Plus 4 two-plate project fixture, now containing modifier, support-enforcer and support-blocker volumes, sliced successfully;
 - both `Metadata/plate_1.gcode` and `Metadata/plate_2.gcode` were present with printable G0/G1 moves;
 - progress reached **100%**, and each plate retained the verified **1167 s** prediction / **1.335 m** filament metadata fallback;
 - conclusion — **success**.
@@ -90,11 +90,24 @@ PR #14 wires the verified project serializer into real generated-project editing
 
 Functional HEAD `cbc806db7ecf00c87b6730c4167fa3d3f622223a` is green in Flutter run `35401167437` (#752), job `105781146290`: analyzer clean, **134/134 tests passed**. Orca smoke `35401167530` (#180), job `105781147329`, is also green on the same HEAD with the pinned AppImage and verified two-plate QIDI fixture.
 
+## Editable volume checkpoint — 2026-09-19
+
+PR #15 extends generated objects from the earlier single-mesh assumption to an explicit Orca/Bambu volume model:
+
+- `WorkspaceEditableObject` owns one or more `WorkspaceEditableVolume` values;
+- supported subtypes are `normal_part`, `modifier`, `support_enforcer` and `support_blocker`;
+- Prepare can add geometry as a child volume, select volumes, change subtype/name, edit volume-scoped wall/infill overrides and remove secondary volumes;
+- object transforms apply to all child volumes together while volume settings/facet metadata stay scoped to the volume;
+- `ThreeMfProjectWriter` receives the explicit volume list directly, preserving subtype/settings/facets in `Metadata/model_settings.config`;
+- `PARITY_CONTRACT.md` now makes `plate -> object -> volumes` an explicit continuation rule and forbids flattening modifier/support state into a separate presentation-only mesh.
+
+Functional HEAD `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c` is green in Flutter run `35456145423` (#761), job `105931646159`: analyzer clean, **136/136 tests passed**. The strengthened pinned Orca smoke `35456145434` (#189), job `105931646222`, is green with a real fixture containing all three non-normal volume subtypes.
+
 ## First unfinished priority
 
 The next application boundary is richer editing of the already verified project model. Continue in this order:
 
-1. Continue the richer Prepare editor beyond the now-wired generated multi-plate/object path: create/edit modifier, support-enforcer and support-blocker volumes; add facet paint editing; add real multi-filament selection/assignment; widen per-object/per-volume overrides; then decide how much structured editing imported vendor 3MF can support without violating lossless preservation.
+1. Continue the richer Prepare editor from the now-verified multi-volume model: add facet paint editing first, then real multi-filament selection/assignment, widen per-object/per-volume overrides, and finally decide how much structured editing imported vendor 3MF can support without violating lossless preservation.
 2. Consume remaining sliced-package presentation data such as thumbnails and additional vendor printer-payload metadata where useful.
 3. Verify Moonraker upload/start against representative QIDI hardware.
 4. Package and verify the exact Orca engine for Windows/macOS/Linux, including updater/version checks and platform progress behavior.

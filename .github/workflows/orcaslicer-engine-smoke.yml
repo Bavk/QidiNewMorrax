@@ -56,9 +56,18 @@ jobs:
               (2,3,7),(2,7,6),(3,0,4),(3,4,7),
           ]
 
-          def mesh_xml(object_id, uuid):
+          def mesh_object_xml(object_id, uuid):
               vs = ''.join(f'<vertex x="{x}" y="{y}" z="{z}"/>' for x,y,z in vertices)
               ts = ''.join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a,b,c in triangles)
+              return f'''<object id="{object_id}" p:UUID="{uuid}" type="model"><mesh>
+              <vertices>{vs}</vertices><triangles>{ts}</triangles>
+            </mesh></object>'''
+
+          def mesh_xml(objects):
+              resources = ''.join(
+                  mesh_object_xml(object_id, uuid)
+                  for object_id, uuid in objects
+              )
               return f'''<?xml version="1.0" encoding="UTF-8"?>
           <model unit="millimeter" xml:lang="en-US"
             xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
@@ -66,9 +75,7 @@ jobs:
             xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
             requiredextensions="p">
             <metadata name="BambuStudio:3mfVersion">1</metadata>
-            <resources><object id="{object_id}" p:UUID="{uuid}" type="model"><mesh>
-              <vertices>{vs}</vertices><triangles>{ts}</triangles>
-            </mesh></object></resources><build/>
+            <resources>{resources}</resources><build/>
           </model>'''
 
           root = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -83,6 +90,9 @@ jobs:
             <resources>
               <object id="2" p:UUID="00000001-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>
                 <component p:path="/3D/Objects/object_1.model" objectid="1" p:UUID="00010000-b206-40ff-9872-83e8017abed1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>
+                <component p:path="/3D/Objects/object_1.model" objectid="5" p:UUID="00010004-b206-40ff-9872-83e8017abed1" transform="0.5 0 0 0 0.5 0 0 0 0.5 5 5 0"/>
+                <component p:path="/3D/Objects/object_1.model" objectid="6" p:UUID="00010005-b206-40ff-9872-83e8017abed1" transform="0.25 0 0 0 0.25 0 0 0 0.25 2 2 0"/>
+                <component p:path="/3D/Objects/object_1.model" objectid="7" p:UUID="00010006-b206-40ff-9872-83e8017abed1" transform="0.25 0 0 0 0.25 0 0 0 0.25 13 13 0"/>
               </components></object>
               <object id="4" p:UUID="00000002-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>
                 <component p:path="/3D/Objects/object_2.model" objectid="3" p:UUID="00020000-b206-40ff-9872-83e8017abed1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>
@@ -96,7 +106,12 @@ jobs:
 
           settings = '''<?xml version="1.0" encoding="UTF-8"?>
           <config>
-            <object id="2"><metadata key="name" value="Cube A"/><metadata key="extruder" value="1"/><part id="1" subtype="normal_part"><metadata key="name" value="Cube A"/><metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part></object>
+            <object id="2"><metadata key="name" value="Cube A"/><metadata key="extruder" value="1"/>
+              <part id="1" subtype="normal_part"><metadata key="name" value="Cube A"/><metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part>
+              <part id="5" subtype="modifier"><metadata key="name" value="Dense Modifier"/><metadata key="matrix" value="0.5 0 0 5 0 0.5 0 5 0 0 0.5 0 0 0 0 1"/><metadata key="sparse_infill_density" value="80%"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part>
+              <part id="6" subtype="support_enforcer"><metadata key="name" value="Support Enforcer"/><metadata key="matrix" value="0.25 0 0 2 0 0.25 0 2 0 0 0.25 0 0 0 0 1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part>
+              <part id="7" subtype="support_blocker"><metadata key="name" value="Support Blocker"/><metadata key="matrix" value="0.25 0 0 13 0 0.25 0 13 0 0 0.25 0 0 0 0 1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part>
+            </object>
             <object id="4"><metadata key="name" value="Cube B"/><metadata key="extruder" value="1"/><part id="3" subtype="normal_part"><metadata key="name" value="Cube B"/><metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/><mesh_stat edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/></part></object>
             <plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value="Plate 1"/><metadata key="locked" value="false"/><model_instance><metadata key="object_id" value="2"/><metadata key="instance_id" value="0"/><metadata key="identify_id" value="1"/></model_instance></plate>
             <plate><metadata key="plater_id" value="2"/><metadata key="plater_name" value="Plate 2"/><metadata key="locked" value="false"/><model_instance><metadata key="object_id" value="4"/><metadata key="instance_id" value="0"/><metadata key="identify_id" value="2"/></model_instance></plate>
@@ -124,8 +139,19 @@ jobs:
               z.writestr('_rels/.rels', root_rels)
               z.writestr('3D/3dmodel.model', root)
               z.writestr('3D/_rels/3dmodel.model.rels', model_rels)
-              z.writestr('3D/Objects/object_1.model', mesh_xml(1, '00010000-81cb-4c03-9d28-80fed5dfa1dc'))
-              z.writestr('3D/Objects/object_2.model', mesh_xml(3, '00020000-81cb-4c03-9d28-80fed5dfa1dc'))
+              z.writestr(
+                  '3D/Objects/object_1.model',
+                  mesh_xml([
+                      (1, '00010000-81cb-4c03-9d28-80fed5dfa1dc'),
+                      (5, '00010004-81cb-4c03-9d28-80fed5dfa1dc'),
+                      (6, '00010005-81cb-4c03-9d28-80fed5dfa1dc'),
+                      (7, '00010006-81cb-4c03-9d28-80fed5dfa1dc'),
+                  ]),
+              )
+              z.writestr(
+                  '3D/Objects/object_2.model',
+                  mesh_xml([(3, '00020000-81cb-4c03-9d28-80fed5dfa1dc')]),
+              )
               z.writestr('Metadata/model_settings.config', settings)
           PY
 
@@ -215,6 +241,10 @@ jobs:
 
           test -s out/project.gcode.3mf
           test -s "$progress_log"
+          unzip -p fixture/project.3mf Metadata/model_settings.config > out/model_settings.config
+          grep -q 'subtype="modifier"' out/model_settings.config
+          grep -q 'subtype="support_enforcer"' out/model_settings.config
+          grep -q 'subtype="support_blocker"' out/model_settings.config
           for plate in 1 2; do
             unzip -p out/project.gcode.3mf "Metadata/plate_${plate}.gcode" \
               > "out/plate_${plate}.gcode"
