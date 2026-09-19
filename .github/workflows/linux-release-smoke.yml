@@ -36,7 +36,12 @@ jobs:
             ninja-build \
             pkg-config \
             libgtk-3-dev \
-            liblzma-dev
+            liblzma-dev \
+            libopengl0 \
+            libglu1-mesa \
+            libwebkit2gtk-4.1-0 \
+            libjavascriptcoregtk-4.1-0 \
+            xvfb
 
       - name: Install pinned Flutter
         shell: bash
@@ -60,6 +65,57 @@ jobs:
             --no-pub \
             .
           flutter pub get
+
+      - name: Prepare pinned QIDI profile catalog
+        shell: bash
+        run: |
+          set -euxo pipefail
+          orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
+          curl -fL --retry 3 \
+            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
+            -o "$orca_source"
+          rm -rf .orca-source
+          mkdir -p .orca-source
+          tar -xzf "$orca_source" -C .orca-source --strip-components=1
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('.orca-source/resources/profiles/Qidi')
+          assert root.is_dir(), f'missing pinned QIDI profile tree: {root}'
+          profiles = []
+          for path in sorted(root.rglob('*.json')):
+              try:
+                  values = json.loads(path.read_text(encoding='utf-8-sig'))
+              except Exception as exc:
+                  raise RuntimeError(f'failed to parse {path}: {exc}') from exc
+              if not isinstance(values, dict) or not values.get('name'):
+                  continue
+              profiles.append({
+                  'assetPath': 'pinned-orca/' + path.relative_to(root).as_posix(),
+                  'values': values,
+              })
+
+          required = {
+              'Qidi X-Plus 4 0.4 nozzle',
+              '0.20mm Standard @Qidi XPlus4',
+              'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle',
+          }
+          names = {entry['values']['name'] for entry in profiles}
+          missing = sorted(required - names)
+          assert not missing, f'missing v0.1 profiles: {missing}'
+
+          output = Path('assets/generated/profile_catalog.json')
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(
+              json.dumps(profiles, ensure_ascii=False, indent=2),
+              encoding='utf-8',
+          )
+          print(f'wrote {len(profiles)} pinned QIDI profiles to {output}')
+          PY
+
+          test -s assets/generated/profile_catalog.json
 
       - name: Build Flutter Linux release
         shell: bash
@@ -91,6 +147,74 @@ jobs:
           bundle="$PWD/build/linux/x64/release/bundle"
           dart run tool/verify_packaged_orca.dart "$bundle/qidi_flow_flutter"
 
+      - name: Run packaged offline application smoke
+        shell: bash
+        run: |
+          set -euxo pipefail
+          bundle="$PWD/build/linux/x64/release/bundle"
+          mkdir -p packaged-smoke
+          cat > packaged-smoke/model.stl <<'STL'
+          solid tetra
+            facet normal 0 0 -1
+              outer loop
+                vertex 0 0 0
+                vertex 20 0 0
+                vertex 0 20 0
+              endloop
+            endfacet
+            facet normal 0 -1 1
+              outer loop
+                vertex 0 0 0
+                vertex 20 0 0
+                vertex 0 0 20
+              endloop
+            endfacet
+            facet normal 1 1 1
+              outer loop
+                vertex 20 0 0
+                vertex 0 20 0
+                vertex 0 0 20
+              endloop
+            endfacet
+            facet normal -1 0 1
+              outer loop
+                vertex 0 20 0
+                vertex 0 0 0
+                vertex 0 0 20
+              endloop
+            endfacet
+          endsolid tetra
+          STL
+
+          result="$PWD/packaged-smoke/result.json"
+          env -u ORCA_SLICER_BIN \
+            QIDI_PACKAGED_OFFLINE_SMOKE_MODEL="$PWD/packaged-smoke/model.stl" \
+            QIDI_PACKAGED_OFFLINE_SMOKE_RESULT="$result" \
+            xvfb-run -a "$bundle/qidi_flow_flutter"
+
+          test -s "$result"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path('packaged-smoke/result.json').read_text())
+          assert result['success'] is True, result
+          assert result['packaged_engine_verified'] is True, result
+          assert result['preview_ready'] is True, result
+          assert result['model_triangles'] == 4, result
+          assert result['selected_plate'] == 1, result
+          assert result['move_count'] > 0, result
+          assert result['extrusion_move_count'] > 0, result
+          assert result['prediction_seconds'] > 0, result
+          assert result['filament_meters'] > 0, result
+          assert result['engine_executable'].endswith(
+              '/orca/OrcaSlicer.AppImage'
+          ), result
+          assert Path(result['bundle_path']).is_file(), result
+          assert Path(result['gcode_path']).is_file(), result
+          print(json.dumps(result, indent=2))
+          PY
+
       - name: Prepare legal notices and corresponding source
         shell: bash
         run: |
@@ -108,9 +232,6 @@ jobs:
             HEAD
 
           orca_source="orcaslicer-source-${ORCA_PIN}.tar.gz"
-          curl -fL --retry 3 \
-            "https://github.com/OrcaSlicer/OrcaSlicer/archive/${ORCA_PIN}.tar.gz" \
-            -o "$orca_source"
 
           test -s qidi-new-morrax-source.tar.gz
           test -s "$orca_source"
