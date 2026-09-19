@@ -101,7 +101,7 @@ jobs:
               'Qidi X-Plus 4 0.4 nozzle',
               '0.20mm Standard @Qidi XPlus4',
               'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle',
-              'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle',
+              'QIDI PLA Basic @Qidi X-Plus 4 0.4 nozzle',
           }
           names = {entry['values']['name'] for entry in profiles}
           missing = sorted(required - names)
@@ -213,7 +213,7 @@ jobs:
               'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle'
           ), result
           assert result['secondary_filament'] == (
-              'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle'
+              'QIDI PLA Basic @Qidi X-Plus 4 0.4 nozzle'
           ), result
           assert result['object_extruder'] == 1, result
           assert result['paint_color'] == '8', result

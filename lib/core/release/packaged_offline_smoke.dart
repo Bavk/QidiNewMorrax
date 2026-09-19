@@ -16,7 +16,7 @@ class PackagedOfflineSmoke {
   static const filamentProfileName =
       'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle';
   static const secondaryFilamentProfileName =
-      'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle';
+      'QIDI PLA Basic @Qidi X-Plus 4 0.4 nozzle';
 
   Future<Map<String, Object?>> run({required String modelPath}) async {
     final modelFile = File(modelPath);
