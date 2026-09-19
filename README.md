@@ -36,7 +36,7 @@ For continuation rules and current evidence, read [docs/HANDOFF.md](docs/HANDOFF
 
 The deliberately narrow first-launch target is a single-material installable desktop build that can open/import a model, edit basic project state, slice through the pinned Orca engine, show Preview, and upload/start the resulting G-code on one representative QIDI printer.
 
-The Linux packaged-engine/version/hash gate is now closed. The remaining hard launch gates are real-printer Moonraker validation, AGPL notice/corresponding-source delivery, and a packaged end-to-end smoke. Multi-filament/MMU authoring, viewport paint brushes, imported-vendor structural editing, thumbnails and all-platform packaging are parity work unless the v0.1 target is widened.
+The Linux packaged-engine/version/hash gate, pinned QIDI runtime profile catalog, AGPL notice/corresponding-source automation, and packaged offline model -> slice -> Preview-input smoke are now closed. The only remaining hard v0.1 integration gate is Moonraker upload/start validation on representative QIDI hardware. Multi-filament/MMU authoring, viewport paint brushes, imported-vendor structural editing, thumbnails and all-platform packaging are parity work unless the v0.1 target is widened.
 
 ## Development
 
@@ -53,7 +53,7 @@ For slicing during development, configure OrcaSlicer:
 ORCA_SLICER_BIN=/path/to/orca-slicer flutter run -d linux
 ```
 
-The Linux portable release bundle is produced by `.github/workflows/linux-release-smoke.yml`. It builds the Flutter executable with pinned Flutter 3.47.2, embeds the exact Orca v2.4.2 AppImage and provenance manifest, verifies the packaged layout from Dart, and uploads `qidi-new-morrax-linux-x64.tar.gz` as a workflow artifact.
+The Linux portable release bundle is produced by `.github/workflows/linux-release-smoke.yml`. It derives the QIDI profile catalog from the exact pinned Orca source revision, builds the Flutter executable with pinned Flutter 3.47.2, embeds the exact Orca v2.4.2 AppImage and provenance manifest, launches the packaged app through an offline production-stack slice/Preview smoke, and uploads the binary plus corresponding-source materials as a workflow artifact.
 
 ## License
 
