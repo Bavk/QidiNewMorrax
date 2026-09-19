@@ -97,10 +97,9 @@ jobs:
             -czf qidi-new-morrax-linux-x64.tar.gz \
             bundle
           test -s qidi-new-morrax-linux-x64.tar.gz
-          tar -tzf qidi-new-morrax-linux-x64.tar.gz \
-            | grep -q 'bundle/orca/OrcaSlicer.AppImage'
-          tar -tzf qidi-new-morrax-linux-x64.tar.gz \
-            | grep -q 'bundle/orca/orca-engine.json'
+          tar -tzf qidi-new-morrax-linux-x64.tar.gz > release-archive.txt
+          grep -q '^bundle/orca/OrcaSlicer.AppImage$' release-archive.txt
+          grep -q '^bundle/orca/orca-engine.json$' release-archive.txt
 
       - name: Upload portable Linux bundle
         uses: actions/upload-artifact@v4
