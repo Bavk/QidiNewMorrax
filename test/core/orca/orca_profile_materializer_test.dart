@@ -40,4 +40,46 @@ void main() {
     expect(filament['name'], 'PLA');
     expect(machine.containsKey('inherits'), isFalse);
   });
+
+  test('materializes multiple filament slots in stable order', () async {
+    final dir = await Directory.systemTemp.createTemp('orca_multi_profiles_');
+    addTearDown(() => dir.delete(recursive: true));
+
+    QidiProfile profile(String name, String type, String temperature) =>
+        QidiProfile(
+          assetPath: 'assets/$name.json',
+          values: {
+            'name': name,
+            'type': type,
+            'nozzle_temperature': [temperature],
+          },
+        );
+
+    final files = await const OrcaProfileMaterializer().materialize(
+      directory: dir,
+      machine: profile('machine', 'machine', '0'),
+      process: profile('process', 'process', '0'),
+      filaments: [
+        profile('PLA', 'filament', '210'),
+        profile('PETG', 'filament', '245'),
+      ],
+    );
+
+    expect(files.filaments, hasLength(2));
+    expect(files.filaments[0], endsWith('filament_0.json'));
+    expect(files.filaments[1], endsWith('filament_1.json'));
+
+    final first = jsonDecode(
+      await File(files.filaments[0]).readAsString(),
+    ) as Map<String, dynamic>;
+    final second = jsonDecode(
+      await File(files.filaments[1]).readAsString(),
+    ) as Map<String, dynamic>;
+
+    expect(first['name'], 'PLA');
+    expect(second['name'], 'PETG');
+    expect(first['nozzle_temperature'], ['210']);
+    expect(second['nozzle_temperature'], ['245']);
+  });
+
 }
