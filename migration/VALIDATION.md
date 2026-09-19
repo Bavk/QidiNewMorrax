@@ -58,6 +58,18 @@ Functional code `cbc806db7ecf00c87b6730c4167fa3d3f622223a`:
 
 This checkpoint verifies the generated multi-plate/object editing boundary only. Modifier/support volumes, facet paint authoring, true multi-filament runtime selection and wider per-volume overrides remain open. Imported vendor 3MF continues through the lossless read/repack path rather than being structurally rewritten by the editor.
 
+## Editable modifier/support volume checkpoint — 2026-09-19
+
+Functional code `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c`:
+
+- Flutter run `35456145423` (#761), job `105931646159` — analyzer **No issues found**, **136/136 tests passed**;
+- Orca smoke `35456145434` (#189), job `105931646222` — **success**;
+- generated objects now own explicit child volumes instead of a single flattened mesh;
+- Dart coverage locks add/update/remove behavior and exact serialization of `normal_part`, `modifier`, `support_enforcer` and `support_blocker` subtypes plus volume-scoped settings;
+- the pinned Orca fixture itself now contains all three non-normal subtype classes and slices both plates successfully, proving the real engine accepts the produced project structure.
+
+This checkpoint does not claim facet-paint authoring or true multi-filament runtime assignment; those remain the next Prepare boundaries.
+
 ## Dart boundary tests
 
 The Flutter suite additionally covers:
@@ -70,6 +82,7 @@ The Flutter suite additionally covers:
 - Orca G-code time/gram/millimeter fallback, including the real length-only case where mass stays unknown;
 - selected QIDI profile JSON materialization;
 - editable generated multi-plate workspace state, object reassignment/transforms/settings and production 3MF serialization;
+- editable child-volume subtype/settings behavior and real Orca acceptance of modifier/support-enforcer/support-blocker project structure;
 - project 3MF serialization, lossless vendor repack and virtual-bed coordinate mapping.
 
 ## Device integration
