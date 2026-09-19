@@ -175,7 +175,7 @@ jobs:
           curl -fL "$base/process/0.20mm%20Standard%20@Qidi%20XPlus4.json" -o fixture/process.json
           curl -fL "$base/filament/Qidi%20Generic%20PLA%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament.json
           curl -fL "$base/filament/QIDI%20PETG%20Basic%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament_2.json
-          curl -fL "$base/filament/QIDI%20PLA%20Rapido%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament_3.json
+          curl -fL "$base/filament/QIDI%20PLA%20Basic%20@Qidi%20X-Plus%204%200.4%20nozzle.json" -o fixture/filament_3.json
       - name: Embed canonical Orca project settings
         shell: bash
         run: |
@@ -280,7 +280,7 @@ jobs:
           assert len(ids) == 3, ids
           assert any('Generic PLA' in item for item in ids), ids
           assert any('PETG' in item for item in ids), ids
-          assert any('PLA Rapido' in item for item in ids), ids
+          assert any('PLA Basic' in item for item in ids), ids
           print(f'validated multi-filament project settings: {ids}')
           PY
           for plate in 1 2; do
