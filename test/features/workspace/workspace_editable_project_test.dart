@@ -296,6 +296,24 @@ void main() {
       ),
       throwsRangeError,
     );
+
+    final modifierProject = WorkspaceEditableProject.empty()
+        .addObject(triangle('Base', 0), plateIndex: 0)
+        .addVolume(
+          0,
+          triangle('Modifier', 2),
+          type: WorkspaceEditableVolume.modifier,
+        );
+    expect(
+      () => modifierProject.paintFacets(
+        0,
+        1,
+        const [0],
+        channel: WorkspaceFacetPaintChannel.supports,
+        state: WorkspaceFacetPaintState.enforcer,
+      ),
+      throwsStateError,
+    );
   });
 
   test('facet paint serializes into Orca triangle attributes', () {
