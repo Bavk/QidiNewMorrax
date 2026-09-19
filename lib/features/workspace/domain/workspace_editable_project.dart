@@ -240,6 +240,11 @@ class WorkspaceEditableProject {
 
     final object = objects[objectIndex];
     final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      throw StateError(
+        'Orca facet painting is only defined for normal_part volumes.',
+      );
+    }
     final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
     final encoded = state == WorkspaceFacetPaintState.enforcer ? '4' : '8';
 
@@ -284,6 +289,11 @@ class WorkspaceEditableProject {
     _checkVolume(objectIndex, volumeIndex);
     final object = objects[objectIndex];
     final volume = object.volumes[volumeIndex];
+    if (volume.type != WorkspaceEditableVolume.normalPart) {
+      throw StateError(
+        'Orca facet painting is only defined for normal_part volumes.',
+      );
+    }
     final facets = <int, ThreeMfFacetMetadata>{...volume.facets};
 
     for (final triangleIndex in triangleIndices.toSet()) {
