@@ -1030,6 +1030,14 @@ class _PreparePageState extends State<PreparePage> {
     final project = editableProject;
     final objectIndex = selectedObjectIndex;
     if (project == null || objectIndex == null) return;
+    if (filamentSlots.isEmpty) {
+      setState(() {
+        error = StateError(
+          'Add at least one compatible filament slot before editing an object.',
+        );
+      });
+      return;
+    }
     final object = project.objects[objectIndex];
     final name = TextEditingController(text: object.name);
     final wallLoops = TextEditingController(
