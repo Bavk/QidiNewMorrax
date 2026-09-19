@@ -122,6 +122,8 @@ void main() {
         '/tmp/out',
         '--debug',
         '2',
+        '--logfile',
+        '/tmp/out/orca.log',
       ],
     );
   });

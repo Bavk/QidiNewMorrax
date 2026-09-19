@@ -173,6 +173,8 @@ class OrcaSlicerEngine {
       request.outputDirectory,
       '--debug',
       request.debugLevel.toString(),
+      '--logfile',
+      _join(request.outputDirectory, 'orca.log'),
     ];
   }
 
@@ -274,9 +276,29 @@ class OrcaSlicerEngine {
       stdoutText = stdoutBuffer.toString();
       stderrText = stderrBuffer.toString();
       if (exitCode != 0) {
+        final logFile = File(_join(request.outputDirectory, 'orca.log'));
+        var logText = '';
+        try {
+          if (await logFile.exists()) {
+            logText = await logFile.readAsString();
+            const maxLogChars = 12000;
+            if (logText.length > maxLogChars) {
+              logText = logText.substring(logText.length - maxLogChars);
+            }
+          }
+        } catch (_) {
+          // Keep the original process failure even if diagnostic log reading
+          // itself fails.
+        }
+        final processText = stderrText.isEmpty ? stdoutText : stderrText;
+        final details = [
+          if (processText.trim().isNotEmpty) processText.trim(),
+          if (logText.trim().isNotEmpty)
+            'Orca logfile tail:\n${logText.trim()}',
+        ].join('\n');
         throw OrcaSlicerException(
-          'OrcaSlicer exited with code $exitCode.\n'
-          '${stderrText.isEmpty ? stdoutText : stderrText}',
+          'OrcaSlicer exited with code $exitCode.'
+          '${details.isEmpty ? '' : '\n$details'}',
           exitCode: exitCode,
         );
       }
