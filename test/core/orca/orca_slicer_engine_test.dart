@@ -7,6 +7,79 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:qidi_flow_flutter/core/orca/orca_slicer_engine.dart';
 
 void main() {
+  test('defaultExecutable keeps explicit ORCA_SLICER_BIN override', () {
+    final executable = OrcaSlicerEngine.defaultExecutable(
+      environment: const {'ORCA_SLICER_BIN': ' /custom/orca '},
+      resolvedExecutable: '/opt/qidi/qidi_flow_flutter',
+      fileExists: (_) => true,
+    );
+
+    expect(executable, '/custom/orca');
+  });
+
+  test('defaultExecutable discovers packaged Linux Orca beside app bundle', () {
+    if (!Platform.isLinux) return;
+
+    final separator = Platform.pathSeparator;
+    final app = '${separator}opt${separator}qidi${separator}qidi_flow_flutter';
+    final packaged =
+        '${separator}opt${separator}qidi${separator}orca${separator}'
+        '${OrcaSlicerEngine.packagedLinuxExecutableName}';
+    final manifest =
+        '${separator}opt${separator}qidi${separator}orca${separator}'
+        '${OrcaSlicerEngine.packagedManifestFileName}';
+
+    final executable = OrcaSlicerEngine.defaultExecutable(
+      environment: const {},
+      resolvedExecutable: app,
+      fileExists: (path) => path == packaged || path == manifest,
+    );
+
+    expect(executable, packaged);
+  });
+
+  test('verifyPackagedEngine rejects a tampered bundled AppImage', () async {
+    if (!Platform.isLinux) return;
+
+    final temp = await Directory.systemTemp.createTemp(
+      'orca_packaged_verify_test_',
+    );
+    addTearDown(() async {
+      if (await temp.exists()) await temp.delete(recursive: true);
+    });
+
+    final executable = File(
+      '${temp.path}${Platform.pathSeparator}'
+      '${OrcaSlicerEngine.packagedLinuxExecutableName}',
+    );
+    await executable.writeAsString('tampered');
+    final manifest = File(
+      '${temp.path}${Platform.pathSeparator}'
+      '${OrcaSlicerEngine.packagedManifestFileName}',
+    );
+    await manifest.writeAsString(
+      jsonEncode({
+        'name': 'OrcaSlicer',
+        'version': OrcaSlicerEngine.pinnedVersion,
+        'commit': OrcaSlicerEngine.pinnedCommit,
+        'platform': 'linux-x64',
+        'sha256': OrcaSlicerEngine.pinnedLinuxAppImageSha256,
+      }),
+    );
+
+    final engine = OrcaSlicerEngine(executable: executable.path);
+    await expectLater(
+      engine.verifyPackagedEngine(),
+      throwsA(
+        isA<OrcaSlicerException>().having(
+          (error) => error.message,
+          'message',
+          contains('SHA-256 mismatch'),
+        ),
+      ),
+    );
+  });
+
   test('buildArguments maps the Dart job to the pinned Orca CLI contract', () {
     final engine = OrcaSlicerEngine(executable: '/opt/orca-slicer');
     final request = OrcaSlicerRequest(
