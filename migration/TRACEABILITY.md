@@ -2,9 +2,9 @@
 
 ## Current validated checkpoint
 
-Functional code `cbc806db7ecf00c87b6730c4167fa3d3f622223a` is green in Flutter CI run `35401167437` (#752), job `105781146290`: analyzer clean, **134/134 tests passed**.
+Functional code `3aa01f3fd65c618c22d9eeffa1c9056e00e0689c` is green in Flutter CI run `35456145423` (#761), job `105931646159`: analyzer clean, **136/136 tests passed**.
 
-The same functional HEAD is green in OrcaSlicer smoke run `35401167530` (#180), job `105781147329`: pinned AppImage digest verified, the two-plate QIDI fixture sliced successfully, progress reached 100%, both plate G-code entries remained printable, and each plate reported **1167 s** prediction and **1.335 m** filament.
+The same functional HEAD is green in OrcaSlicer smoke run `35456145434` (#189), job `105931646222`: pinned AppImage digest verified, the two-plate QIDI fixture containing `modifier`, `support_enforcer` and `support_blocker` volumes sliced successfully, progress reached 100%, and both plate G-code entries remained printable.
 
 ## Production slicing path
 
@@ -26,6 +26,7 @@ The same functional HEAD is green in OrcaSlicer smoke run `35401167530` (#180), 
 | Preview | Dart `GCodeParser` + selected `OrcaPlateMetadata` | generated Orca G-code plus estimates/warnings/support/material usage routed automatically |
 | printer upload/start | Dart `DeviceController` + `MoonrakerClient` | implementation complete; printer-backed validation pending |
 | generated Prepare multi-plate/object editing | Dart `WorkspaceEditableProject` + `PreparePage` + `WorkspaceController` | add/rename/lock/remove plates; add/remove/reassign/transform objects; object overrides serialized into production 3MF; Flutter #752 + Orca smoke #180 |
+| generated Prepare volume editing | Dart `WorkspaceEditableVolume` + `PreparePage` + `ThreeMfProjectWriter` | normal/modifier/support-enforcer/support-blocker child volumes, volume overrides and object-wide transforms; Flutter #761 + real Orca subtype smoke #189 |
 
 ## Engine provenance
 
@@ -41,4 +42,4 @@ The former `lib/core/slicer` source-shaped Dart implementation, custom Clipper s
 
 ## First unfinished integration boundary
 
-The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, per-plate estimates/warnings/material usage are consumed, and generated multi-plate/object Prepare editing now feeds the real production 3MF. The first unfinished application boundary is deeper Prepare editing: modifier/support volume creation, facet paint, real multi-filament selection/assignment and wider per-object/per-volume overrides. Imported vendor 3MF structural editing must preserve the existing lossless package contract. Sliced thumbnails and additional vendor payload metadata remain secondary Preview/Device work.
+The STL boundary is retired, Linux Orca `--pipe` progress/cancellation is integrated, per-plate estimates/warnings/material usage are consumed, and generated multi-plate/object/volume Prepare editing now feeds the real production 3MF. The first unfinished application boundary is facet paint editing on the verified volume model, followed by real multi-filament selection/assignment and wider per-object/per-volume overrides. Imported vendor 3MF structural editing must preserve the existing lossless package contract. Sliced thumbnails and additional vendor payload metadata remain secondary Preview/Device work.
