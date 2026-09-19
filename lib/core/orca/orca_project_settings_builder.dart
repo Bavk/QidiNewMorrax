@@ -40,6 +40,16 @@ class OrcaProjectSettingsBuilder {
       for (final filament in filaments) filament.name,
     ];
 
+    // For a Bambu/Orca 3MF the CLI validates the process embedded in
+    // project_settings.config against the selected printer before the external
+    // --load-settings process preset replaces it. Keep the resolved process
+    // compatibility list here even though compatible_printers is normally
+    // preset metadata and is omitted by _mergeConfig().
+    final compatiblePrinters = process.values['compatible_printers'];
+    if (compatiblePrinters != null) {
+      result['compatible_printers'] = _copyValue(compatiblePrinters);
+    }
+
     // Orca CLI reads these without null-checks immediately after identifying a
     // BBS/Orca 3MF, before external --load-settings are applied.
     result.putIfAbsent(
