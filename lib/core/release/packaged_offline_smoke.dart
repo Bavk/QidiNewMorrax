@@ -6,6 +6,7 @@ import '../gcode/gcode_parser.dart';
 import '../model_io/model_loader.dart';
 import '../profiles/profile_repository.dart';
 import '../../features/workspace/application/workspace_controller.dart';
+import '../../features/workspace/domain/workspace_editable_project.dart';
 
 class PackagedOfflineSmoke {
   const PackagedOfflineSmoke();
@@ -14,6 +15,8 @@ class PackagedOfflineSmoke {
   static const processProfileName = '0.20mm Standard @Qidi XPlus4';
   static const filamentProfileName =
       'Qidi Generic PLA @Qidi X-Plus 4 0.4 nozzle';
+  static const secondaryFilamentProfileName =
+      'QIDI PETG Basic @Qidi X-Plus 4 0.4 nozzle';
 
   Future<Map<String, Object?>> run({required String modelPath}) async {
     final modelFile = File(modelPath);
@@ -25,12 +28,18 @@ class PackagedOfflineSmoke {
     final machine = await repository.findByName(machineProfileName);
     final process = await repository.findByName(processProfileName);
     final filament = await repository.findByName(filamentProfileName);
-    if (machine == null || process == null || filament == null) {
+    final secondaryFilament =
+        await repository.findByName(secondaryFilamentProfileName);
+    if (machine == null ||
+        process == null ||
+        filament == null ||
+        secondaryFilament == null) {
       final available = await repository.loadAll();
       throw StateError(
         'Packaged QIDI profile catalog is incomplete. '
         'Required: $machineProfileName / $processProfileName / '
-        '$filamentProfileName. Loaded ${available.length} profiles.',
+        '$filamentProfileName / $secondaryFilamentProfileName. '
+        'Loaded ${available.length} profiles.',
       );
     }
 
@@ -42,13 +51,21 @@ class PackagedOfflineSmoke {
           : modelFile.uri.pathSegments.last,
     );
 
+    final editableProject = WorkspaceEditableProject.empty()
+        .addObject(mesh, plateIndex: 0)
+        .paintFilamentFacets(
+          0,
+          0,
+          const [0],
+          filamentSlot: 2,
+        );
     final controller = WorkspaceController(profiles: repository);
     controller.updateSelection(
-      mesh: mesh,
       sourceModelPath: modelFile.path,
       machine: machine,
       process: process,
-      filament: filament,
+      filaments: [filament, secondaryFilament],
+      editableProject: editableProject,
     );
 
     final result = await controller.slice();
@@ -88,6 +105,12 @@ class PackagedOfflineSmoke {
       'extrusion_move_count': stats.extrusionMoveCount,
       'prediction_seconds': metadata.predictionSeconds,
       'filament_meters': metadata.totalFilamentMeters,
+      'filament_slot_count': controller.selectedFilaments.length,
+      'primary_filament': filament.name,
+      'secondary_filament': secondaryFilament.name,
+      'object_extruder': editableProject.objects.single.extruder,
+      'paint_color':
+          editableProject.objects.single.volumes.single.facets[0]?.color,
       'warning_count': metadata.warnings.length,
       'preview_ready': true,
     };
